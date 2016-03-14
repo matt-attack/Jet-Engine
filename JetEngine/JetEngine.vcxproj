@@ -1,0 +1,189 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{DC4DF58B-4F03-4FF2-90D1-64A70780A75E}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>JetEngine</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\Users\Matthew\Desktop\JetNet;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(DXSDK_DIR)include;C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(DXSDK_DIR)Lib\x86;</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>C:\Users\Matthew\Desktop\JetNet;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(DXSDK_DIR)include;C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(DXSDK_DIR)Lib\x86;</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BlockModel.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="DbgNew.cpp" />
+    <ClCompile Include="Defines.cpp" />
+    <ClCompile Include="Graphics\CIndexBuffer.cpp" />
+    <ClCompile Include="Graphics\CRenderer.cpp" />
+    <ClCompile Include="Graphics\CTexture.cpp" />
+    <ClCompile Include="Graphics\CVertexBuffer.cpp" />
+    <ClCompile Include="Graphics\FoliageRenderer.cpp" />
+    <ClCompile Include="Graphics\font.cpp" />
+    <ClCompile Include="Graphics\IModel.cpp" />
+    <ClCompile Include="Graphics\Models\BasicModel.cpp" />
+    <ClCompile Include="Graphics\Models\ObjModel.cpp" />
+    <ClCompile Include="Graphics\ParticleRenderer.cpp" />
+    <ClCompile Include="Graphics\Renderable.cpp" />
+    <ClCompile Include="Graphics\RenderTexture.cpp" />
+    <ClCompile Include="Graphics\Shader.cpp" />
+    <ClCompile Include="GUI\gui_slider.cpp" />
+    <ClCompile Include="GUI\gui_window.cpp" />
+    <ClCompile Include="IMaterial.cpp" />
+    <ClCompile Include="Math\AABB.cpp" />
+    <ClCompile Include="Math\geom.cpp" />
+    <ClCompile Include="Math\Matrix.cpp" />
+    <ClCompile Include="Math\Quaternion.cpp" />
+    <ClCompile Include="Math\Vector.cpp" />
+    <ClCompile Include="ModelData.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="Sound\SoundManager.cpp" />
+    <ClCompile Include="Sound\SoundObject.cpp" />
+    <ClCompile Include="Sound\Wrapper_WAV.cpp" />
+    <ClCompile Include="TerrainPatch.cpp" />
+    <ClCompile Include="TerrainSystem.cpp" />
+    <ClCompile Include="Util\CTimer.cpp" />
+    <ClCompile Include="Util\Noise.cpp" />
+    <ClCompile Include="Util\Profile.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BlockModel.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="CInput.h" />
+    <ClInclude Include="DbgNew.h" />
+    <ClInclude Include="Decals.h" />
+    <ClInclude Include="Defines.h" />
+    <ClInclude Include="Graphics\Animation.h" />
+    <ClInclude Include="Graphics\CIndexBuffer.h" />
+    <ClInclude Include="Graphics\CRenderer.h" />
+    <ClInclude Include="Graphics\CTexture.h" />
+    <ClInclude Include="Graphics\CVertexBuffer.h" />
+    <ClInclude Include="Graphics\FoliageRenderer.h" />
+    <ClInclude Include="Graphics\font.h" />
+    <ClInclude Include="Graphics\IModel.h" />
+    <ClInclude Include="Graphics\Models\BasicModel.h" />
+    <ClInclude Include="Graphics\Models\ObjModel.h" />
+    <ClInclude Include="Graphics\ParticleRenderer.h" />
+    <ClInclude Include="Graphics\Renderable.h" />
+    <ClInclude Include="Graphics\Renderer.h" />
+    <ClInclude Include="Graphics\RenderTexture.h" />
+    <ClInclude Include="Graphics\Shader.h" />
+    <ClInclude Include="GUI\gui_button.h" />
+    <ClInclude Include="GUI\gui_dropbox.h" />
+    <ClInclude Include="GUI\gui_label.h" />
+    <ClInclude Include="GUI\gui_listview.h" />
+    <ClInclude Include="GUI\gui_messagebox.h" />
+    <ClInclude Include="GUI\gui_progressbar.h" />
+    <ClInclude Include="GUI\gui_list.h" />
+    <ClInclude Include="GUI\gui_slider.h" />
+    <ClInclude Include="GUI\gui_tabpages.h" />
+    <ClInclude Include="GUI\gui_textbox.h" />
+    <ClInclude Include="GUI\gui_vertical_scrollbar.h" />
+    <ClInclude Include="GUI\gui_window.h" />
+    <ClInclude Include="IMaterial.h" />
+    <ClInclude Include="iqm.h" />
+    <ClInclude Include="Math\AABB.h" />
+    <ClInclude Include="Math\geom.h" />
+    <ClInclude Include="Math\Matrix.h" />
+    <ClInclude Include="Math\OBB.h" />
+    <ClInclude Include="Math\Quaternion.h" />
+    <ClInclude Include="Math\Rect.h" />
+    <ClInclude Include="Math\Vector.h" />
+    <ClInclude Include="ModelData.h" />
+    <ClInclude Include="Particles.h" />
+    <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="Sound\ISoundFileWrapper.h" />
+    <ClInclude Include="Sound\OpenAL.h" />
+    <ClInclude Include="Sound\SoundManager.h" />
+    <ClInclude Include="Sound\SoundObject.h" />
+    <ClInclude Include="Sound\Wrapper_WAV.h" />
+    <ClInclude Include="TerrainPatch.h" />
+    <ClInclude Include="TerrainSystem.h" />
+    <ClInclude Include="Graphics\TrailRenderer.h" />
+    <ClInclude Include="Util\CriticalSection.h" />
+    <ClInclude Include="Util\CThread.h" />
+    <ClInclude Include="Util\CTimer.h" />
+    <ClInclude Include="Util\HashMap.h" />
+    <ClInclude Include="Util\hash_map.h" />
+    <ClInclude Include="Util\list.h" />
+    <ClInclude Include="Util\map.h" />
+    <ClInclude Include="Util\Noise.h" />
+    <ClInclude Include="Util\Profile.h" />
+    <ClInclude Include="Util\queue.h" />
+    <ClInclude Include="Util\vector.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
