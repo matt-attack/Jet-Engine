@@ -139,9 +139,8 @@ public:
 	TData operator*()
 	{
 		if (this->ptr)
-		{
 			return this->ptr->second;//item;
-		}
+		
 		return 0;
 	}
 };

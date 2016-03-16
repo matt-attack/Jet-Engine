@@ -1,6 +1,7 @@
 #include "ObjModel.h"
 #include "../../ModelData.h"
 #include "../Renderable.h"
+#include "../Shader.h"
 
 #ifndef MATT_SERVER
 #include "../CRenderer.h"

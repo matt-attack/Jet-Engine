@@ -1,6 +1,7 @@
 #include "BasicModel.h"
 
 #include "../CRenderer.h"
+#include "../../IMaterial.h"
 
 struct D3DVERTEX2 {
 	float x, y, z;
@@ -307,7 +308,11 @@ void BasicModel::MakeCubeModel(int blockid, float scale, unsigned long color)
 #else
 	this->vb->Data(vertexArray, sizeof(D3DVERTEX2)*36, sizeof(D3DVERTEX2));
 #endif
-	this->vb->SetVertexDeclaration(renderer->GetVertexDeclaration(3));
+	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+
+	this->vb->SetVertexDeclaration(renderer->GetVertexDeclaration(elm3,3));
 	//delete[] vertexArray;
 
 	this->verts = 36;
@@ -423,7 +428,11 @@ void BasicModel::MakeFlatModel(int blockid, float scale)
 	glBufferData( GL_ARRAY_BUFFER, sizeof(D3DVERTEX2)*12, vertexArray, GL_STATIC_DRAW );
 	glBindBuffer( GL_ARRAY_BUFFER, 0);
 #endif
-	vb->SetVertexDeclaration(renderer->GetVertexDeclaration(3));
+	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+
+	vb->SetVertexDeclaration(renderer->GetVertexDeclaration(elm3,3));
 	delete[] vertexArray;
 
 	this->verts = 12;

@@ -1,6 +1,7 @@
 #include "IMaterial.h"
 #include "Graphics\CTexture.h"
 #include "Graphics\Shader.h"
+#include "Graphics\Renderer.h"
 
 std::map<std::string, IMaterial*> materials;
 

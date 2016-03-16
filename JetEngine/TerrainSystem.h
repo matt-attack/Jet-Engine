@@ -43,6 +43,8 @@ class HeightmapTerrainSystem: public ITerrainSystem
 
 	CShader *shader, *shader_s;
 
+	VertexDeclaration vertex_declaration;
+
 	//ok, lets have a LOD Tree
 	float* heights;
 

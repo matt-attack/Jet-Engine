@@ -2,7 +2,9 @@
 #include "Util\Profile.h"
 #include "camera.h"
 
+#include "Graphics\CRenderer.h"
 #include "Graphics\Renderable.h"
+#include "Graphics\Renderer.h"
 #include "Graphics\CTexture.h"
 #include "Graphics\Shader.h"
 
@@ -564,7 +566,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 
 	renderer->SetCullmode(CULL_CW);
 
-	shader->BindIL(renderer->GetVertexDeclaration(10));
+	shader->BindIL(&this->vertex_declaration);// renderer->GetVertexDeclaration(10));
 
 	renderer->context->VSSetSamplers(0, 1, &this->sampler);
 	renderer->context->PSSetSamplers(0, 1, &this->sampler);
@@ -789,6 +791,7 @@ void HeightmapTerrainSystem::SaveHeightmap(const char* file)
 	}
 }
 
+VertexDeclaration terrain_vd;
 void HeightmapTerrainSystem::Load()
 {
 	shader = renderer->CreateShader(18, "Shaders/terrain.shdr");
@@ -796,13 +799,10 @@ void HeightmapTerrainSystem::Load()
 
 	bool loaded = this->grass ? true : false;
 
-	if (renderer->GetVertexDeclaration(10)->elements == 0)
-	{
-		//get texuring and shadow maps plzs
-		VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-		{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-		renderer->CreateVertexDeclaration(10, elm9, 2);
-	}
+	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
+	terrain_vd = this->vertex_declaration;
 
 	grass = resources.get<CTexture>("snow.jpg");// grass.jpg");
 	rock = resources.get<CTexture>("rock.png");
@@ -1018,46 +1018,9 @@ void HeightmapTerrainSystem::GenerateNormals()
 
 	if (this->hmapv == 0)
 	{
-		D3D11_TEXTURE2D_DESC desc1;
-		desc1.Width = this->world_size;
-		desc1.Height = this->world_size;
-		desc1.MipLevels = desc1.ArraySize = 1;
-		desc1.Format = DXGI_FORMAT_R32_FLOAT;// DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc1.SampleDesc.Count = 1;
-		desc1.SampleDesc.Quality = 0;
-		desc1.Usage = D3D11_USAGE_DYNAMIC;
-		desc1.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc1.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		desc1.MiscFlags = 0;
-
-		ID3D11Texture2D *pTexture = NULL;
-
-		D3D11_SUBRESOURCE_DATA data;
-		data.pSysMem = this->heights;
-		data.SysMemPitch = this->world_size * 4;
-		data.SysMemSlicePitch = this->world_size*this->world_size * 4;
-		auto hr3 = renderer->device->CreateTexture2D(&desc1, &data, &pTexture);
-		if (FAILED(hr3))
-			throw 7;
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC htshaderResourceViewDesc;
-		ZeroMemory(&htshaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-		htshaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		htshaderResourceViewDesc.Format = DXGI_FORMAT_R32_FLOAT;// DXGI_FORMAT_R8G8B8A8_UNORM;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-		htshaderResourceViewDesc.Texture2D.MipLevels = 1;
-
-		//this is how to access the texture later
-		ID3D11ShaderResourceView* htresourceView;
-		auto hr2 = renderer->device->CreateShaderResourceView(
-			pTexture,
-			&htshaderResourceViewDesc,
-			&this->hmapv
-			);
-		if (FAILED(hr2))
-			throw 7;
-
-		hmapt = pTexture;
-		pTexture->Release();
+		auto tex = CTexture::Create(this->world_size, this->world_size, DXGI_FORMAT_R32_FLOAT, (const char*)this->heights);
+		hmapv = tex->texture;
+		hmapt = tex->data;
 	}
 	else
 	{
@@ -1072,14 +1035,9 @@ void HeightmapTerrainSystem::GenerateNormals()
 	//allocate shadow maps
 	if (this->nmap == 0)
 	{
-		auto rt = CRenderTexture::Create(this->world_size, this->world_size, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_D24_UNORM_S8_UINT);
+		auto rt = CRenderTexture::Create(this->world_size, this->world_size, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);//DXGI_FORMAT_D24_UNORM_S8_UINT);
 		this->nmap = rt;
-		this->nmap->texture = rt->GetColorResourceView();
 	}
-		//this->nmap =
-
-	//if (!rtview)
-	//	auto rtview = myrt->GetColorResourceView();
 
 	render = [=]()
 	{
@@ -1123,13 +1081,6 @@ void HeightmapTerrainSystem::GenerateNormals()
 		renderer->SetViewport(&oldvp);
 
 		renderer->SetRenderTarget(0, &ort);
-
-		//auto old = this->nmap->texture;
-		//this->nmap->texture = rtview;
-
-		//need to queue this up for the next frame or something
-		//if (old)
-			//old->Release();
 	};
 
 	this->need_to_reload_normals = true;

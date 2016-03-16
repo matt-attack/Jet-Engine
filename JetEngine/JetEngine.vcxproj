@@ -84,6 +84,7 @@
     <ClCompile Include="BlockModel.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DbgNew.cpp" />
+    <ClCompile Include="Decals.cpp" />
     <ClCompile Include="Defines.cpp" />
     <ClCompile Include="Graphics\CIndexBuffer.cpp" />
     <ClCompile Include="Graphics\CRenderer.cpp" />
@@ -96,6 +97,7 @@
     <ClCompile Include="Graphics\Models\ObjModel.cpp" />
     <ClCompile Include="Graphics\ParticleRenderer.cpp" />
     <ClCompile Include="Graphics\Renderable.cpp" />
+    <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\RenderTexture.cpp" />
     <ClCompile Include="Graphics\Shader.cpp" />
     <ClCompile Include="GUI\gui_slider.cpp" />
@@ -174,7 +176,6 @@
     <ClInclude Include="Util\CriticalSection.h" />
     <ClInclude Include="Util\CThread.h" />
     <ClInclude Include="Util\CTimer.h" />
-    <ClInclude Include="Util\HashMap.h" />
     <ClInclude Include="Util\hash_map.h" />
     <ClInclude Include="Util\list.h" />
     <ClInclude Include="Util\map.h" />

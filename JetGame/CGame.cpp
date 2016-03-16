@@ -6,7 +6,8 @@
 #endif
 #include <JetEngine/Sound/SoundObject.h>
 #include "CGameState.h"
-#include <JetEngine/Graphics/Renderable.h>
+//#include <JetEngine/Graphics/Renderable.h>
+#include <JetEngine/Graphics/Renderer.h>
 #include <JetEngine/ResourceManager.h>
 
 #include <JetEngine/Util/Profile.h>
@@ -82,31 +83,12 @@ void CGame::Init(Window* window)
 	//maybe integrate sounds into the resource manager?
 
 	SoundManager::GetInstance()->AddSound("Content/Sounds/select.wav", "select");
-	//SoundManager::GetInstance()->GetSound("test")->Play();
 	SoundManager::GetInstance()->Update();
 
 	resources.init();
 
-	//load shaders here
-#ifdef _WIN32
-	//renderer->CreateShader(1, "Shaders/world.shdr");
-	//renderer->CreateShader(3, "Shaders/stars.shdr");
-	//renderer->CreateShader(5, "Shaders/stars.shdr");
-	//renderer->CreateShader(9, "Shaders/model.shdr");
-	//renderer->CreateShader(11, "Shaders/texturedblock.shdr");
-	//renderer->CreateShader(12, "Shaders/blockmodel.shdr");
-
-	//renderer->CreateShader(7, "Shaders/shadow2.vsh");
-
-
-
-
-	//renderer->CreateShader(6, "Shaders/skinning.shdr");
-
-#endif
-	//ok, redo this system
 	//also fix the fonts
-	VertexElement elm[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	/*VertexElement elm[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_COLOR, USAGE_COLOR },
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
 	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
@@ -160,7 +142,7 @@ void CGame::Init(Window* window)
 
 	VertexElement elm10[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(14, elm10, 2);
+	renderer->CreateVertexDeclaration(14, elm10, 2);*/
 
 	r.Init(renderer);//initialize the pipeline
 

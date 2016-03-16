@@ -2,6 +2,7 @@
 #pragma once
 
 #include "../camera.h"
+#include "CVertexBuffer.h"
 
 struct Particle;
 class CShader;
@@ -17,6 +18,8 @@ class ParticleRenderer
 	CShader* shader;
 
 	CTexture* texture;
+
+	VertexDeclaration vd;
 
 	int num_particles;
 public:

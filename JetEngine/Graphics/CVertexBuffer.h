@@ -2,6 +2,13 @@
 #ifndef VERTEX_BUFFER_HEADER
 #define VERTEX_BUFFER_HEADER
 
+struct D3D11_INPUT_ELEMENT_DESC;
+struct VertexDeclaration
+{
+	D3D11_INPUT_ELEMENT_DESC* elements;
+	int size;
+};
+
 enum class VertexBufferUsage
 {
 	Dynamic,//upload and read many times
@@ -75,8 +82,6 @@ public:
 };
 #else
 
-class VertexDeclaration;
-
 class ID3D11Buffer;
 
 class CVertexBuffer
@@ -87,7 +92,7 @@ public:
 	
 	friend class CRenderer;
 	ID3D11Buffer* vb;
-	VertexDeclaration* vd;
+	VertexDeclaration vd;
 
 private:
 	VertexBufferUsage type;
@@ -98,7 +103,8 @@ public:
 	{
 		size = 0;
 		vb = 0;
-		vd = 0;
+		vd.elements = 0;
+		vd.size = 0;
 		type = vb_type;
 	}
 
@@ -106,7 +112,7 @@ public:
 	{
 		size = 0;
 		vb = 0;
-		vd = 0;
+		//vd. = 0;
 		type = VertexBufferUsage::Dynamic;
 	}
 
@@ -124,7 +130,7 @@ public:
 
 	//need way to cache the formats, so there are not duplicates
 
-	void SetVertexDeclaration(VertexDeclaration* vd)
+	void SetVertexDeclaration(VertexDeclaration vd)
 	{
 		this->vd = vd;
 	}

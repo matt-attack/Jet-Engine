@@ -7,10 +7,12 @@ class ModelData;
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "../Util/list.h"
 #include "../Math/OBB.h"
 #include "../Iqm.h"
+
 
 struct Rect
 {
@@ -42,7 +44,6 @@ struct Rect
 
 #include "../defines.h"
 #include "../Math/geom.h"
-//#include "../Util/Map.h"
 
 #include "../Math/AABB.h"
 
@@ -201,12 +202,6 @@ class CRenderTexture;
 
 struct D3D11_INPUT_ELEMENT_DESC;
 
-struct VertexDeclaration
-{
-	D3D11_INPUT_ELEMENT_DESC* elements;
-	int size;
-};
-
 interface ID3D11SamplerState;
 interface ID3D11BlendState;
 interface ID3D11RasterizerState;
@@ -258,6 +253,16 @@ class CRenderer
 	bool wireframe;
 
 	PrimitiveType current_pt = PrimitiveType::PT_NONE;
+
+	struct VertexElementCache
+	{
+		VertexElement* data;
+		int size;
+		int key;
+		VertexDeclaration vd;
+	};
+
+	std::vector<VertexElementCache> vaos;
 public:
 
 	ID3D11ShaderResourceView* missing_texture;
@@ -289,16 +294,14 @@ public:
 	int starunif;
 #endif
 
-	VertexDeclaration* input_layout;
+	VertexDeclaration input_layout;
 
-	VertexDeclaration vertexdeclarations[25];//use me and store here not in the shader
 	CShader* passthrough;
 	CShader* unlit_textured;
 	CShader* shaders[25];
 	//change shaders to not use magic numbers anymore and name them
 
 	CTexture* gui_texture;
-	//CTexture* terrain_texture;
 
 	int xres;
 	int yres;
@@ -389,13 +392,13 @@ public:
 	void CreateShader(int id, char* vloc, char* vfunc, char* ploc, char* pfunc);
 #endif
 
-	void CreateVertexDeclaration(unsigned int id, VertexElement* elm, unsigned int count);
-	VertexDeclaration* GetVertexDeclaration(unsigned int id)
-	{
-		return &this->vertexdeclarations[id];
-	}
+	VertexDeclaration GetVertexDeclaration(VertexElement* elm, unsigned int count);
+	//VertexDeclaration* GetVertexDeclaration(unsigned int id)
+	//{
+	//	return &this->vertexdeclarations[id];
+	//}
 
-	void SetVertexDeclaration(VertexDeclaration* vd)
+	void SetVertexDeclaration(VertexDeclaration vd)
 	{
 		this->input_layout = vd;
 	}

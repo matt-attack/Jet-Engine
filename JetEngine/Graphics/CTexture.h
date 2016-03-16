@@ -13,10 +13,12 @@ class CTexture: public Resource
 
 public:
 	ID3D11ShaderResourceView* texture;
+	ID3D11Texture2D* data;
 
 	CTexture()
 	{
 		texture = 0;
+		data = 0;
 	}
 
 	CTexture(ID3D11ShaderResourceView* tex);
@@ -27,6 +29,8 @@ public:
 	{
 		return this->texture;
 	}
+
+	static CTexture* Create(int xRes, int yRes, DXGI_FORMAT format, const char* data = 0);
 
 	virtual void Reload(ResourceManager* mgr, const std::string& filename);
 

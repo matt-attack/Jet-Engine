@@ -678,6 +678,8 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam)
 	r->context->DrawIndexed(ibuffer.size / 2, 0, 0);
 }
 
+
+extern VertexDeclaration terrain_vd;
 int m_terrainWidth = (float)(2048.0f * TerrainScale);
 int TEXTURE_REPEAT = (int)(50.0f*TerrainScale);
 void TerrainPatch::GenerateVertices(float* heights)
@@ -820,7 +822,7 @@ void TerrainPatch::GenerateVertices(float* heights)
 			v->y = 0;
 	}
 #endif
-	vbuffer.SetVertexDeclaration(renderer->GetVertexDeclaration(10));
+	vbuffer.SetVertexDeclaration(terrain_vd);//renderer->GetVertexDeclaration(10));
 	vbuffer.Data(data, d_size*sizeof(TerrainVertex), sizeof(TerrainVertex));
 
 	delete[] data;

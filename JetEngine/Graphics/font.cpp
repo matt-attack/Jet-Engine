@@ -616,7 +616,9 @@ const int sdf_spacing[] = {
 
 bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 {
-	this->buffer.SetVertexDeclaration(renderer->GetVertexDeclaration(9));
+	VertexElement elm9[] = { { ELEMENT_FLOAT2, USAGE_POSITION },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	this->buffer.SetVertexDeclaration(renderer->GetVertexDeclaration(elm9,2));
 
 	//fill the ib
 
@@ -803,7 +805,7 @@ void Font::DrawText(const char* txt, float x, float y, float sx, float sy, unsig
 	//renderer->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	//fix color 
-	shader->BindIL(buffer.vd);
+	shader->BindIL(&buffer.vd);
 
 	//glBindTexture(GL_TEXTURE_2D, this->fonttexid);
 

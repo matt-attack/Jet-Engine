@@ -4,6 +4,7 @@
 #include "Graphics/CRenderer.h"
 #endif
 #include "BlockModel.h"
+#include "IMaterial.h"
 //#include "Entities/PlayerEntity.h"
 
 #define MODEL_X 32
@@ -550,7 +551,10 @@ void BlockModel::Load(bool fast)//todo, time and optimize, also add smooth torch
 {
 #ifndef MATT_SERVER
 	//heap, the extra 1000 verts prevents going outside the heap
-	this->v_buffer.SetVertexDeclaration(renderer->GetVertexDeclaration(3));
+	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	this->v_buffer.SetVertexDeclaration(renderer->GetVertexDeclaration(elm3, 3));
 
 	this->_solidIndex = 0;
 	this->_waterIndex = 0;

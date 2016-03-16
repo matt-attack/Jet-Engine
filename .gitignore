@@ -1,0 +1,11 @@
+*.tlog
+*.o
+Debug/
+Release/
+GamePackage/
+res/
+*.png
+*.iqm
+*.cfg
+*.bmp
+*.wav

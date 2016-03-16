@@ -69,7 +69,7 @@ void ParticleRenderer::Init()
 	//{ ELEMENT_FLOAT2, USAGE_NORMAL },
 	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
 	{ ELEMENT_COLOR, USAGE_COLOR } };
-	renderer->CreateVertexDeclaration(22, elm9, 5);
+	this->vd = renderer->GetVertexDeclaration(elm9, 5);
 
 	this->shader = new CShader("Content/Shaders/particles.shdr", "vs_main", "Content/Shaders/particles.shdr", "ps_main", 0, 0, "Content/Shaders/particles.shdr", "gs_main");
 }
@@ -149,7 +149,7 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 	// Set IA stage.
 	//
 	renderer->DepthWriteEnable(false);
-	this->shader->BindIL(renderer->GetVertexDeclaration(22));
+	this->shader->BindIL(&this->vd);// GetVertexDeclaration(22));
 	renderer->EnableAlphaBlending(true);
 	renderer->context->GSSetShader(this->shader->gshader, 0, 0);
 	//dc->IASetInputLayout(renderer->GetVertexDeclaration(15));

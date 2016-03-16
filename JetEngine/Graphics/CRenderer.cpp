@@ -8,12 +8,34 @@
 
 int msaa_count = 1;// 2;
 int msaa_quality = 0;
-void CRenderer::CreateVertexDeclaration(unsigned int id, VertexElement* elm, unsigned int count)
+VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned int count)
 {
-	if (this->vertexdeclarations[id].elements)
-		throw 7;
+	int key = 0;
+	for (int i = 0; i < count; i++)
+	{
+		key += (elm[i].type + elm[i].usage)*i * 23;
+	}
+
+	//look for a matching key
+	for (int i = 0; i < this->vaos.size(); i++)
+	{
+		if (vaos[i].key == key && count == vaos[i].size && vaos[i].data[0].type == elm[0].type)
+		{
+			//double check it
+			return vaos[i].vd;
+		}
+	}
+	//ok, so go through and make some sort of hash and use a multimap to store it
+	//if we already have it, just return that, else create it, cache, and return
+	//rename this to GetVertexDeclaration and remove the other function
+	//if (this->vertexdeclarations[id].elements)
+	//	throw 7;
 
 	auto elements = new D3D11_INPUT_ELEMENT_DESC[count];
+
+	//copy the setup data
+	auto elmcopy = new VertexElement[count];
+	memcpy(elmcopy, elm, sizeof(VertexElement)*count);
 
 	unsigned int currentpos = 0;
 	for (int i = 0; i < count; i++)
@@ -69,9 +91,14 @@ void CRenderer::CreateVertexDeclaration(unsigned int id, VertexElement* elm, uns
 		}
 	}
 
-	this->vertexdeclarations[id].elements = elements;
-	this->vertexdeclarations[id].size = count;
 
+	//todo: make copy of elements
+	this->vaos.push_back({ elmcopy, count, key, { elements, count } });
+
+	//this->vertexdeclarations[id].elements = elements;
+	//this->vertexdeclarations[id].size = count;
+
+	return{ elements, count };
 	/*polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -133,9 +160,6 @@ CRenderer::CRenderer()
 	this->shader = 0;
 	for (int i = 0; i < 25; i++)
 		this->shaders[i] = 0;
-
-	for (int i = 0; i < 25; i++)
-		this->vertexdeclarations[i].elements = 0;
 }
 
 CRenderer::~CRenderer()
@@ -715,6 +739,11 @@ void CRenderer::Init(int scrx, int scry)
 	renderer->CreateShader(16, "Shaders/guitexture.txt");
 	renderer->CreateShader(15, "Shaders/gui.txt");
 
+	VertexElement elm8[] = { { ELEMENT_FLOAT4, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(elm8, 3));
+
 
 	//use 32 bit depth stencil
 #ifndef USEOPENGL
@@ -1156,7 +1185,7 @@ void CRenderer::DrawPrimitive(enum PrimitiveType mode, unsigned int offset, unsi
 	else
 		stats.triangles += vertices / 3;//oh well, not accurate
 
-	this->shader->BindIL(this->input_layout);
+	this->shader->BindIL(&this->input_layout);
 
 	this->SetPrimitiveType(mode);
 
@@ -1216,7 +1245,7 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 	glDrawElements((int)mode, primitives, GL_UNSIGNED_SHORT, (GLvoid*)(startindex*sizeof(unsigned short)));//glDrawArrays( (int)mode, offset, vertices );
 #else
 
-	this->shader->BindIL(this->input_layout);
+	this->shader->BindIL(&this->input_layout);
 	//if (mode == PT_TRIANGLELIST)
 	//primitives /= 3;
 
@@ -1373,7 +1402,7 @@ void CRenderer::DrawRect(Rect* rct, COLOR vertexColor, bool setShader)
 	vertices[3].u = 1.0f;
 	vertices[3].v = 1.0f;
 
-	this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
+	//this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
 	this->rectangle_v_buffer.Data(vertices, sizeof(vertices), sizeof(TLVERTEX));
 
 	//D3DXMATRIX matIdentity;
@@ -1450,7 +1479,7 @@ void CRenderer::DrawFullScreenQuad()
 	vertices[3].u = 1.0f;
 	vertices[3].v = 1.0f;
 
-	this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
+	//this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
 	this->rectangle_v_buffer.Data(vertices, sizeof(vertices), sizeof(TLVERTEX));
 
 	//D3DXMATRIX matIdentity;
@@ -1590,7 +1619,7 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 	else
 		this->SetShader(16);
 
-	this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
+	//this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
 	this->rectangle_v_buffer.Bind();
 
 	//Draw image
@@ -1783,7 +1812,6 @@ void CRenderer::DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom
 	else
 		this->SetShader(16);
 
-	this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
 	this->rectangle_v_buffer.Bind();
 
 	//Draw image
@@ -2237,16 +2265,22 @@ void CRenderer::DrawNormals(Vec3 pos, Vec3 x, Vec3 y, Vec3 z)
 
 	CVertexBuffer vb;
 	vb.Data(p, sizeof(p[0]) * 6, sizeof(p[0]));
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
+	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR } };
+
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2, 2));
 	this->SetShader(passthrough);
 	vb.Bind();
 
 	//set constant buffer
 	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
 	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
 
-	this->shader->BindIL(vb.vd);
+	//VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	//{ ELEMENT_COLOR, USAGE_COLOR } };
+	//vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2, 2));
+
+	this->shader->BindIL(&vb.vd);
 	this->current_pt = PT_LINES;
 	this->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	this->context->Draw(6, 0);
@@ -2458,9 +2492,12 @@ void CRenderer::DrawBoundingBox(const OBB bb, COLOR color)//Vec3* ObjectBound)//
 	vb.Data(ObjectBound, 16 * 8, 16);
 	ib.Data((void*)index, 12 * 2 * 2, 0);
 
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
+	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR } };
 
-	this->shader->BindIL(vb.vd);
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2,2));
+
+	this->shader->BindIL(&vb.vd);
 
 	vb.Bind();
 	ib.Bind();
@@ -2468,7 +2505,10 @@ void CRenderer::DrawBoundingBox(const OBB bb, COLOR color)//Vec3* ObjectBound)//
 	//set constant buffer
 	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
 	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
+	//VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	//{ ELEMENT_COLOR, USAGE_COLOR } };
+
+	//vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2,2));
 
 
 	//this->SetCullmode(CULL_NONE);
@@ -2525,9 +2565,11 @@ void CRenderer::DrawBoundingBox(const Vec3 min, const Vec3 max)//Vec3* ObjectBou
 	vb.Data(ObjectBound, 16 * 8, 16);
 	ib.Data((void*)index, 12 * 2 * 2, 0);
 
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
+	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR } };
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2,2));
 
-	this->shader->BindIL(vb.vd);
+	this->shader->BindIL(&vb.vd);
 
 	vb.Bind();
 	ib.Bind();
@@ -2535,8 +2577,6 @@ void CRenderer::DrawBoundingBox(const Vec3 min, const Vec3 max)//Vec3* ObjectBou
 	//set constant buffer
 	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
 	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(2));
-
 
 	//this->SetCullmode(CULL_NONE);
 	this->SetDepthRange(0, 0);
@@ -2610,9 +2650,12 @@ void CRenderer::DrawBeams()
 	//	this->SetShader(this->passthrough);
 	this->EnableAlphaBlending(true);
 	CVertexBuffer vb;
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(3/*2*/));
+	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm3, 3/*2*/));
 
-	this->shader->BindIL(vb.vd);
+	//this->shader->BindIL(vb.vd);
 
 	this->SetCullmode(CULL_NONE);
 
@@ -2716,16 +2759,20 @@ void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float
 	this->EnableAlphaBlending(true);
 	CVertexBuffer vb;
 	vb.Data(ObjectBound, 24 * 4, 24);
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(3/*2*/));
+	// vb.SetVertexDeclaration(this->GetVertexDeclaration(3/*2*/));
 
-	this->shader->BindIL(vb.vd);
+	this->shader->BindIL(&vb.vd);
 
 	vb.Bind();
 
 	//set constant buffer
 	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
 	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(3));
+	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm3,3));
 
 	this->SetCullmode(CULL_NONE);
 

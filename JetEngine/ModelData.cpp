@@ -4,6 +4,7 @@
 #include "Graphics\IModel.h"
 #include "Graphics\Models\ObjModel.h"
 #include "Graphics\CTexture.h"
+#include "IMaterial.h"
 
 ModelData::~ModelData()
 {
@@ -134,7 +135,12 @@ void ModelData::BuildModelFromObjModel(ModelData* out, ModelData* mdl)
 	out->num_frames = out->num_joints = 0;
 
 #ifndef MATT_SERVER
-	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(5));
+	VertexElement elm5[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_FLOAT3, USAGE_NORMAL },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
+	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
+	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
+	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(elm5,5));
 	out->vb.Data(verts, mdl->NumTriangle * 3 * sizeof(MdlVert), sizeof(MdlVert));
 #endif
 
@@ -213,11 +219,23 @@ void ModelData::BuildModelFromIqmModel(ModelData* out, ModelData* mdl)
 
 #ifndef MATT_SERVER
 	out->vbt = CVertexBuffer(VertexBufferUsage::Static);
-	out->vbt.SetVertexDeclaration(renderer->GetVertexDeclaration(7));
+	VertexElement elm7[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_FLOAT3, USAGE_NORMAL },
+	{ ELEMENT_FLOAT3, USAGE_TANGENT },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
+	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
+	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
+
+	out->vbt.SetVertexDeclaration(renderer->GetVertexDeclaration(elm7,6));
 	out->vbt.Data(verts2, mdl->NumVertex*sizeof(MdlVert2), sizeof(MdlVert2));
 
 	out->vb = CVertexBuffer(VertexBufferUsage::Static);
-	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(5));
+	VertexElement elm5[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_FLOAT3, USAGE_NORMAL },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
+	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
+	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
+	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(elm5, 5));
 	out->vb.Data(verts, mdl->NumVertex*sizeof(MdlVert), sizeof(MdlVert));
 #endif
 
