@@ -1,14 +1,9 @@
-
 #ifndef OBB_HEADER
 #define OBB_HEADER
 
-#ifndef _WIN32
-#include "Math/geom.h"
-#include "Math/AABB.h"
-#else
 #include "geom.h"
 #include "AABB.h"
-#endif
+
 class OBB
 {
 

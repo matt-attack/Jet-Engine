@@ -60,20 +60,20 @@ public:
 	void SetPreviousState(CGameState* state)
 	{
 		this->previous_state = state;
-	};
+	}
 
 	void AbortLoad()
 	{
 		this->thread_data->finished = true;
-	};
+	}
 	void SetProgress(float p)
 	{
 		this->progress.setProgress(p);
-	};
+	}
 	void SetStatus(char* str)
 	{
 		this->progress.settext(str);
-	};
+	}
 };
 #endif
 

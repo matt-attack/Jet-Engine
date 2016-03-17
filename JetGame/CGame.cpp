@@ -5,26 +5,19 @@
 #include <JetGame/gui/gui_settings.h>
 #endif
 #include <JetEngine/Sound/SoundObject.h>
-#include "CGameState.h"
-//#include <JetEngine/Graphics/Renderable.h>
 #include <JetEngine/Graphics/Renderer.h>
 #include <JetEngine/ResourceManager.h>
-
 #include <JetEngine/Util/Profile.h>
 
+#include "CGameState.h"
 #include "Window.h"
-
 
 #ifdef _WIN32
 #include <Psapi.h>
 #endif
 
-
 #ifndef MATT_SERVER
 #include <AL\al.h>
-
-//globals local to this file
-//CInput* input;
 
 void initKeyboard(HWND han_Window)//should be setup input
 {
@@ -57,6 +50,7 @@ void CGame::Init(Window* window)
 	for (int i = 0; i < 256; i++)
 		this->keyboard[i] = false;
 
+	//	maybe make these static? so they can be placed anywhere
 	log("Registering CVars\n");
 	this->RegisterCVar("cl_shadows", 1);
 	this->RegisterCVar("cl_vsync", 0);
@@ -64,85 +58,21 @@ void CGame::Init(Window* window)
 	this->RegisterCVar("cl_shadow_dist", 150);
 	this->RegisterCVar("cl_volume", 50);
 	this->RegisterCVar("cl_controller", 1);
-	//	maybe make these static? so they can be placed anywhere
-
+	
 	//need to start making map with mission like thing
 	//improve mech config
-
-	//fix texture class
-	//	fix render texture class a bit
-
-	//	eventually fix vertex formats to not need to remember an integer
-
+	
 	log("Initializing Sound Manager\n");
 	SoundManager::GetInstance()->Initialize("hello", false);
 	SoundManager::GetInstance()->Enable();
 	SoundManager::GetInstance()->SetMasterVolume(0.5f);
-	//SoundManager::GetInstance()->AddSound("Sounds/test.wav", "test");
-
+	
 	//maybe integrate sounds into the resource manager?
 
 	SoundManager::GetInstance()->AddSound("Content/Sounds/select.wav", "select");
 	SoundManager::GetInstance()->Update();
 
 	resources.init();
-
-	//also fix the fonts
-	/*VertexElement elm[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_COLOR, USAGE_COLOR },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
-	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
-	{ ELEMENT_FLOAT, USAGE_BLENDINDICES } };
-	renderer->CreateVertexDeclaration(1, elm, 5);
-
-	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_COLOR, USAGE_COLOR } };
-	renderer->CreateVertexDeclaration(2, elm2, 2);
-
-	VertexElement elm3[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_COLOR, USAGE_COLOR },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(3, elm3, 3);
-
-	VertexElement elm4[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_FLOAT3, USAGE_NORMAL },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
-	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
-	{ ELEMENT_FLOAT, USAGE_BLENDINDICES } };
-	renderer->CreateVertexDeclaration(4, elm4, 5);
-
-	//add an id to this function
-	VertexElement elm5[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_FLOAT3, USAGE_NORMAL },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
-	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
-	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
-	renderer->CreateVertexDeclaration(5, elm5, 5);
-
-	VertexElement elm7[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_FLOAT3, USAGE_NORMAL },
-	{ ELEMENT_FLOAT3, USAGE_TANGENT },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
-	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
-	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
-	renderer->CreateVertexDeclaration(7, elm7, 6);
-
-	VertexElement elm6[] = { { ELEMENT_FLOAT2, USAGE_POSITION },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(6, elm6, 2);
-
-	VertexElement elm8[] = { { ELEMENT_FLOAT4, USAGE_POSITION },
-	{ ELEMENT_COLOR, USAGE_COLOR },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(8, elm8, 3);
-
-	VertexElement elm9[] = { { ELEMENT_FLOAT2, USAGE_POSITION },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(9, elm9, 2);
-
-	VertexElement elm10[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
-	renderer->CreateVertexDeclaration(14, elm10, 2);*/
 
 	r.Init(renderer);//initialize the pipeline
 
@@ -374,7 +304,6 @@ void CGame::Draw()
 		states.back()->Draw(this, elapsedtime);
 	}
 
-	//todo: put rendersystem call here
 	renderer->FlushDebug();
 
 	//draw stuff like message boxes
@@ -402,10 +331,6 @@ void CGame::Draw()
 		if (showdebug >= 2)
 			ProfilesDraw();
 	}
-
-	//renderer->SetFont("t", 180);
-	//renderer->DrawText(200,200,"TEsting HAwoiand 138974521", 0xFFFFFFFF);
-	//renderer->SetFont("t", 20);
 
 	renderer->ResetStats();
 

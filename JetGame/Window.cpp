@@ -251,9 +251,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	}
 	case WM_DESTROY:
 	{
-		//game.Quit();
 		PostQuitMessage(0);
-		//keepalive = false;
 		game->Quit();
 
 		return 0;

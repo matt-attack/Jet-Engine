@@ -5,21 +5,6 @@
 #include <cstdlib>
 #include "geom.h"
 
-class CBox3Dt
-{
-public:
-	//float xmin, xmax, ymin, ymax, zmin, zmax;
-	Vec3 min;
-	Vec3 max;
-	CBox3Dt(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax);
-	CBox3Dt();
-
-	void CreateFromPoints(Vec3* a, int count);
-
-	Vec3 GetVertexP(Vec3 normal);
-	Vec3 GetVertexN(Vec3 normal);
-};
-
 class AABB
 {
 public:
@@ -106,7 +91,7 @@ public:
 		return true;
 	}
 
-	Vec3 minimumTranslationB(const AABB& other)
+	Vec3 MinimumTranslationB(const AABB& other)
 	{
 		Vec3 amin = this->min;
 		Vec3 amax = this->max;
@@ -250,7 +235,7 @@ public:
 		max = Vec3( maxB[0], maxB[1], maxB[2] );
 	}
 
-	Vec3 minimumTranslation(const AABB& other)
+	Vec3 MinimumTranslation(const AABB& other)
 	{
 		Vec3 amin = this->min;
 		Vec3 amax = this->max;

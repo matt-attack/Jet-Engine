@@ -2,7 +2,6 @@
 *.o
 Debug/
 Release/
-GamePackage/
 res/
 *.png
 *.iqm

@@ -19,12 +19,10 @@ public:
 		float fM41, float fM42, float fM43, float fM44 );
 	Matrix4f Inverse() const;
 
-	Matrix4f lookAt
-		(
+	Matrix4f lookAt(
 		Vec3 const & eye,
 		Vec3 const & center,
-		Vec3 const & up
-		)
+		Vec3 const & up)
 	{
 		Vec3 zaxis = (center - eye).getnormal();
 		Vec3 xaxis = up.cross(zaxis).getnormal();
@@ -36,18 +34,18 @@ public:
 		//u = s.cross(f);//cross(s, f);
 
 		Matrix4f Result;
-		Result[m11] = xaxis.x;//s.x;
-		Result[m21] = xaxis.y;//s.y;
-		Result[m31] = xaxis.z;//s.z;
-		Result[m12] = yaxis.x;//u.x;
-		Result[m22] = yaxis.y;//u.y;
-		Result[m32] = yaxis.z;//u.z;
-		Result[m13] = zaxis.x;//-f.x;
-		Result[m23] = zaxis.y;//-f.y;
-		Result[m33] = zaxis.z;//-f.z;
-		Result[m41] = -xaxis.dot(eye);//-s.dot(eye);//dot(s, eye);
-		Result[m42] = -yaxis.dot(eye);//-u.dot(eye);//dot(u, eye);
-		Result[m43] = -zaxis.dot(eye);//f.dot(eye);//dot(f, eye);
+		Result[0] = xaxis.x;//s.x;
+		Result[4] = xaxis.y;//s.y;
+		Result[8] = xaxis.z;//s.z;
+		Result[1] = yaxis.x;//u.x;
+		Result[5] = yaxis.y;//u.y;
+		Result[9] = yaxis.z;//u.z;
+		Result[2] = zaxis.x;//-f.x;
+		Result[6] = zaxis.y;//-f.y;
+		Result[10] = zaxis.z;//-f.z;
+		Result[12] = -xaxis.dot(eye);//-s.dot(eye);//dot(s, eye);
+		Result[13] = -yaxis.dot(eye);//-u.dot(eye);//dot(u, eye);
+		Result[14] = -zaxis.dot(eye);//f.dot(eye);//dot(f, eye);
 		return Result;
 	}
 
@@ -71,8 +69,6 @@ public:
 	Matrix4f Perspective( float fovy, float aspect, float near2, float far2 )
 	{
 		float w,h,Q;
-		//w = tan(
-
 
 		h = tan(fovy*0.5f);
 		w = 1.0f/(h*aspect);
@@ -84,11 +80,11 @@ public:
 		//memset(&ret, 0, sizeof(ret));
 		ret.MakeIdentity();
 
-		ret[m11] = w;
-		ret[m22] = h;
-		ret[m33] = Q;
-		ret[m43] = -Q*near2;
-		ret[m34] = 1.0f;
+		ret[0] = w;
+		ret[5] = h;
+		ret[10] = Q;
+		ret[14] = -Q*near2;
+		ret[11] = 1.0f;
 		return ret;
 
 		//return Frustum( -right, right, -top, top, near2, far2 );
@@ -99,15 +95,15 @@ public:
 
 		//v.normalize();//D3DXVec3Normalize(&v,pv);
 		this->MakeIdentity();//D3DXMatrixIdentity(pout);
-		pout->m_afEntry[m11] = (1.0f - cos(angle)) * v.x * v.x + cos(angle);
-		pout->m_afEntry[m21] = (1.0f - cos(angle)) * v.x * v.y - sin(angle) * v.z;
-		pout->m_afEntry[m31] = (1.0f - cos(angle)) * v.x * v.z + sin(angle) * v.y;
-		pout->m_afEntry[m12] = (1.0f - cos(angle)) * v.y * v.x + sin(angle) * v.z;
-		pout->m_afEntry[m22] = (1.0f - cos(angle)) * v.y * v.y + cos(angle);
-		pout->m_afEntry[m32] = (1.0f - cos(angle)) * v.y * v.z - sin(angle) * v.x;
-		pout->m_afEntry[m13] = (1.0f - cos(angle)) * v.z * v.x - sin(angle) * v.y;
-		pout->m_afEntry[m23] = (1.0f - cos(angle)) * v.z * v.y + sin(angle) * v.x;
-		pout->m_afEntry[m33] = (1.0f - cos(angle)) * v.z * v.z + cos(angle);
+		pout->m_afEntry[0] = (1.0f - cos(angle)) * v.x * v.x + cos(angle);
+		pout->m_afEntry[4] = (1.0f - cos(angle)) * v.x * v.y - sin(angle) * v.z;
+		pout->m_afEntry[8] = (1.0f - cos(angle)) * v.x * v.z + sin(angle) * v.y;
+		pout->m_afEntry[1] = (1.0f - cos(angle)) * v.y * v.x + sin(angle) * v.z;
+		pout->m_afEntry[5] = (1.0f - cos(angle)) * v.y * v.y + cos(angle);
+		pout->m_afEntry[9] = (1.0f - cos(angle)) * v.y * v.z - sin(angle) * v.x;
+		pout->m_afEntry[2] = (1.0f - cos(angle)) * v.z * v.x - sin(angle) * v.y;
+		pout->m_afEntry[6] = (1.0f - cos(angle)) * v.z * v.y + sin(angle) * v.x;
+		pout->m_afEntry[10] = (1.0f - cos(angle)) * v.z * v.z + cos(angle);
 		//return pout;
 	}
 
@@ -218,27 +214,6 @@ public:
 	Vec4 operator* ( const Vec4& V ) const;  // M * v
 	Vec3 operator* ( const Vec3& V ) const;
 
-	static const int m11 = 0;
-	static const int m12 = 1;
-	static const int m13 = 2;
-	static const int m14 = 3;
-
-	static const int m21 = 4;
-	static const int m22 = 5;
-	static const int m23 = 6;
-	static const int m24 = 7;
-
-	static const int m31 = 8;
-	static const int m32 = 9;
-	static const int m33 = 10;
-	static const int m34 = 11;
-
-	static const int m41 = 12;
-	static const int m42 = 13;
-	static const int m43 = 14;
-	static const int m44 = 15;
-
-	//protected:
 	union
 	{
 		float m_afEntry[4*4];
@@ -246,8 +221,5 @@ public:
 		float _m44[4][4];
 	};
 };
-
-//void TransformArray(Vec3* boxCorners, _countof(boxCorners), view);
-				
 
 #endif

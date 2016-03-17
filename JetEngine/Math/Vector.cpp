@@ -36,7 +36,7 @@ Vec3* Vec3TransformCoord(Vec3 *pout, const  Vec3 *pv, const Matrix4f *pm)
 	return pout;
 }
 
-Vec3 Vec3::toscreen(/*D3DXVECTOR3 *pout, */const Vec3 *pv, const Viewport *pviewport, const Matrix4f *pprojection, const Matrix4f *pview, const Matrix4f *pworld)
+Vec3 Vec3::toscreen(const Vec3 *pv, const Viewport *pviewport, const Matrix4f *pprojection, const Matrix4f *pview, const Matrix4f *pworld)
 {
 	Matrix4f m1, m2;
 	Vec3 vec;

@@ -6,7 +6,6 @@
 #include <map>
 
 class IMaterial;
-//extern std::map<std::string, IMaterial*> materials;
 
 //each mesh will have one of these
 class IMaterial
@@ -18,10 +17,9 @@ public:
 	bool depthhack;//use this for first person weapons views
 	FilterMode filter;
 	Texture texture;
-	//shader builder here?
+	
 	CShader* shader_ptr;//use this instead
 
-	//int shader;
 	CullMode cullmode;
 
 	//not used during runtime
@@ -43,18 +41,12 @@ public:
 
 	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, char* normal, CullMode cmode, bool alpha, bool weaponhack = false);
 
-
 	virtual void Apply(CRenderer* renderer);
 
 	//updates internal data, called when a resource changes
 	//or when settings are changed
 	//this should load the correct shader pointer
 	virtual void Update(CRenderer* renderer);
-
-	static IMaterial* QuickMaterial(char* name, char* texture)
-	{
-
-	}
 
 	static std::map<std::string, IMaterial*>& GetList()
 	{

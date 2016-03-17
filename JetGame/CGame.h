@@ -91,7 +91,10 @@ extern CRenderer* renderer;
 //your game should derive this and override the virtuals
 class CGame
 {
+	//the time since the last frame started, used for dt
 	float elapsedtime;
+
+	//the window that this game is running in
 	Window* window;
 public:
 	void Init(Window* window);
@@ -114,8 +117,7 @@ public:
 	void Update();
 	virtual void onUpdate() = 0;
 
-	//implement and use these
-	//connected players
+	//connected players/controllers
 #undef min
 	int GetPlayerCount()
 	{
@@ -126,6 +128,7 @@ public:
 		return num_players > 4 ? 4 : num_players;
 	}
 
+	//gets the controller id for a given player number
 	int GetPlayerControllerId(int player)
 	{
 		return this->input.first_player_controller ? player + 1 : player;
@@ -335,14 +338,13 @@ public:
 
 	CInput* GetInput();
 
-	CTimer timer;
-
 	bool keyboard[256];
 
 private:
 	// the stack of states
 	Vector<CGameState*> states;
 
+	//used for a latch to make sure theres an update before a render
 	CGameState* last;
 
 	//the input manager
@@ -350,6 +352,9 @@ private:
 
 	//overarching gui_manager for messageboxes
 	gui_window base_gui;
+
+	//timer for calculating dt and framerate
+	CTimer timer;
 
 	bool m_running;
 	bool m_fullscreen;
