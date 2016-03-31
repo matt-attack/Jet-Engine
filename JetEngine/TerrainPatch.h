@@ -1,7 +1,8 @@
 #pragma once
-#include "Graphics\CRenderer.h"
-#include "Graphics\CVertexBuffer.h"
-#include "Graphics\CIndexBuffer.h"
+#include "Graphics/CRenderer.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/CVertexBuffer.h"
+#include "Graphics/CIndexBuffer.h"
 
 const float TerrainScale = 1.0;
 
@@ -18,7 +19,6 @@ struct TerrainVertex
 {
 	float x,y,z;
 	float u, v;
-	//float nx, ny, nz;
 };
 
 class TerrainPatch
@@ -92,5 +92,6 @@ public:
 	void GenerateIndices(int lod, bool xi, bool xd, bool yi, bool yd);
 
 	void Render(CRenderer* r, CCamera* cam);
+	void Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>* queue);
 };
 

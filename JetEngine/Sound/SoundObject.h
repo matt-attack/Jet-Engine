@@ -1,6 +1,10 @@
 #ifndef SOUND_OBJECT_H
 #define SOUND_OBJECT_H
 
+//This sound library is a modified version of that by Martin Prantl released under this license
+//http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
+//http://www.gamedev.net/page/resources/_/technical/game-programming/basic-openal-sound-manager-for-your-project-r3791
+
 struct SoundSource;
 struct SoundBuffer;
 class ISoundFileWrapper;

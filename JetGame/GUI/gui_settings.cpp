@@ -1,9 +1,11 @@
 #include "gui_settings.h"
 
-gui_settings::gui_settings() 
+gui_settings::gui_settings(CGame* game)
 {
 	this->tabs.setsize(400,310);
 	auto gtab = this->tabs.AddTab("Graphics"); 
+
+	this->game = game;
 	//gui_button* button = new gui_button;
 	//button->setpos(50,50);
 	//button->setsize(100,40);
@@ -36,7 +38,7 @@ gui_settings::gui_settings()
 	controller->setsize(100, 40);
 	controller->AddItem("On");
 	controller->AddItem("Off");
-	controller->callback = [](gui_dropbox* box)
+	controller->callback = [game](gui_dropbox* box)
 	{
 		if (box->GetSelected() == "Off")
 			game->ProcessCommand("cl_controller 0");
@@ -67,7 +69,7 @@ gui_settings::gui_settings()
 	box->AddItem("On");
 	box->AddItem("Off");
 	box->settext("Shadows");
-	box->callback = [](gui_dropbox* box)
+	box->callback = [game](gui_dropbox* box)
 	{
 		if (box->GetSelected() == "Off")
 			game->ProcessCommand("cl_shadows 0");
@@ -85,7 +87,7 @@ gui_settings::gui_settings()
 	box->AddItem("On");
 	box->AddItem("Off");
 	box->settext("Vsync");
-	box->callback = [](gui_dropbox* box)
+	box->callback = [game](gui_dropbox* box)
 	{
 		if (box->GetSelected() == "Off")
 			game->ProcessCommand("cl_vsync 0");
@@ -106,7 +108,7 @@ gui_settings::gui_settings()
 	this->volume.setsize(150,30);
 	this->volume.SetRange(100);
 	this->volume.position = SoundManager::GetInstance()->GetMasterVolume()*100.0f;
-	this->volume.callback = [](int volume)
+	this->volume.callback = [game](int volume)
 	{
 		std::string command = "cl_volume " + std::to_string(volume);
 		game->ProcessCommand(command.c_str());
@@ -124,7 +126,7 @@ gui_settings::gui_settings()
 	this->shadowdist.setsize(150,30);
 	this->shadowdist.SetRange(300);
 	this->shadowdist.position = game->GetSettingFloat("cl_shadow_dist");
-	this->shadowdist.callback = [](int volume)
+	this->shadowdist.callback = [game](int volume)
 	{
 		std::string command = "cl_shadow_dist " + std::to_string(volume);
 		game->ProcessCommand(command.c_str());
@@ -138,6 +140,6 @@ gui_settings::gui_settings()
 	this->button.setpos(0,10);
 	this->button.setsize(100,40);
 	this->button.settext("Ok");
-	this->button.callback = [](){ game->SaveSettings(); log("hit ok button\n");};
+	this->button.callback = [game](){ game->SaveSettings(); log("hit ok button\n");};
 	this->AddWindow(&this->button);
 }

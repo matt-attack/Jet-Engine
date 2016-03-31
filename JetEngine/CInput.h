@@ -376,7 +376,6 @@ public:
 			else
 			{
 				//not connected
-
 			}
 		}
 		if (oldsize != controllers.size())

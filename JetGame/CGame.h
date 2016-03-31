@@ -1,36 +1,15 @@
 #ifndef GAME_HEADER
 #define GAME_HEADER
 
-#ifndef MATT_SERVER
 #include "../JetEngine/gui/gui_window.h"
-#endif
-#include "../JetEngine/Util/vector.h"
 #include "../JetEngine/CInput.h"
 #include "../JetEngine/Util/CTimer.h"
-#include "../JetEngine/Util/Map.h"
 #include "../JetEngine/Sound/SoundManager.h"
-
 #include "../JetEngine/Defines.h"
 
 #include <vector>
 #include <map>
 #include <string.h>
-
-//android only
-#ifndef _WIN32
-typedef int HWND;
-typedef int LPDIRECT3DDEVICE9;
-typedef int LPD3DXFONT;
-typedef int LPDIRECT3DVERTEXBUFFER9;
-
-extern void log(char* str,...);
-//#define PRINT(str) log(str)
-#else
-#define PRINT(string) OutputDebugString(string)
-
-extern void log(char* o);
-#include <dinput.h>
-#endif
 
 #include "../JetEngine/DbgNew.h"
 
@@ -141,7 +120,7 @@ public:
 	bool Running() { return m_running; }
 	void Quit() { m_running = false; }
 
-	MyMap<int, Setting> settings;
+	std::map<int, Setting> settings;
 	void LoadSettings()
 	{
 #ifndef ANDROID
@@ -342,7 +321,8 @@ public:
 
 private:
 	// the stack of states
-	Vector<CGameState*> states;
+	std::vector<CGameState*> states;
+	std::vector<CGameState*> to_delete;
 
 	//used for a latch to make sure theres an update before a render
 	CGameState* last;

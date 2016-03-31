@@ -31,7 +31,8 @@ void CRenderTexture::Clear(float a, float r, float g, float b)
 	float color[4] = { r, g, b, a };
 	if (this->color)
 		renderer->context->ClearRenderTargetView(this->color, color);
-	renderer->context->ClearDepthStencilView(this->depth, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	if (this->depth)
+		renderer->context->ClearDepthStencilView(this->depth, D3D11_CLEAR_DEPTH, 1.0f, 0);
 #endif
 }
 

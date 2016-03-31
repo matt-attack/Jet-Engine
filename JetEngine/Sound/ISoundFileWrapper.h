@@ -1,6 +1,10 @@
 #ifndef I_SOUND_WRAPPER_H
 #define I_SOUND_WRAPPER_H
 
+//This sound library is a modified version of that by Martin Prantl released under this license
+//http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
+//http://www.gamedev.net/page/resources/_/technical/game-programming/basic-openal-sound-manager-for-your-project-r3791
+
 struct SoundInfo;
 
 #include <vector>

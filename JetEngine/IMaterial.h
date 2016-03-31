@@ -7,22 +7,36 @@
 
 class IMaterial;
 
+enum ShaderFeatures
+{
+	SKINNING = 1,
+	NORMAL_MAP = 2,
+	POINT_LIGHTS = 4,
+};
+
 //each mesh will have one of these
 class IMaterial
 {
+	friend class Renderer;
+
 public:
 	int key;//generated from properties of material, used for sorting
 	bool alpha;
 	bool alphatest;
 	bool depthhack;//use this for first person weapons views
+private:
+	bool needs_tangent = false;
+public:
 	FilterMode filter;
 	Texture texture;
-	
-	CShader* shader_ptr;//use this instead
+	Texture normal_map;
 
 	CullMode cullmode;
 
-	//not used during runtime
+	CShader* shader_ptr;//use this instead
+	CShader* shader_lit_ptr = 0;
+
+	//not used during rendering
 	std::string name;
 	std::string diffuse;
 	std::string normal;

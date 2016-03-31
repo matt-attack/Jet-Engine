@@ -2,12 +2,12 @@
 #ifndef GUIDROPBOX_HEADER
 #define GUIDROPBOX_HEADER
 
+#include <functional>
+
 #include "gui_window.h"
 #include "../Sound/SoundObject.h"
 #include "../Graphics/CRenderer.h"
 
-extern CRenderer* renderer;
-extern void log3(char* var);
 
 class gui_dropbox: public gui_window
 {
@@ -21,7 +21,7 @@ public:
 		this->open = false;
 		this->text = 0;
 		this->setsize(100,40);
-		this->callback = 0;
+		//this->callback = 0;
 	};
 
 	~gui_dropbox()
@@ -69,7 +69,8 @@ public:
 		this->items.clear();
 	}
 
-	void (*callback)(gui_dropbox*);
+	//void (*callback)(gui_dropbox*);
+	std::function<void(gui_dropbox*)> callback;
 
 	virtual int wm_paint(coord x, coord y, coord mx, coord my, bool mouseover)
 	{

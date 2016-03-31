@@ -1,20 +1,8 @@
-
-
 #ifdef _WIN32
 #include <d3dx9.h>
-#else
-#include "../jni/glm/gtc/matrix_transform.hpp"
-#include "../jni/glm/gtx/matrix_operation.hpp"
-#include "../jni/glm/glm.hpp"
-#include "../jni/glm/core/func_matrix.hpp"
-#include "../jni/glm/gtc/matrix_transform.hpp"
-#include "../jni/glm/gtc/type_ptr.hpp"
 #endif
 
 #include "camera.h"
-#ifndef MATT_SERVER
-#include "Graphics/CRenderer.h"
-#endif
 #include "Math/Quaternion.h"
 
 CCamera::CCamera()
@@ -26,15 +14,15 @@ CCamera::CCamera()
 	_near = 0.1f;
 	_far = 2000.0f;
 	this->quat = Quaternion::IDENTITY;//.FromAngleAxis(0.0f, Vec3(1,0,0));
-	this->_lookAt = Vec3(0,1,0);
-	this->_right = Vec3(0,0,1);
-	this->_upDir = Vec3(1,0,0);
+	this->_lookAt = Vec3(0, 1, 0);
+	this->_right = Vec3(0, 0, 1);
+	this->_upDir = Vec3(1, 0, 0);
 };
 
 void CCamera::orthoProjection(float l, float r, float b, float t, float n, float f)
 {
 	this->perspective = false;
-	this->_projectionMatrix = Matrix4::OrthographicOffCenterLHMatrix(l,r,b,t,n,f);
+	this->_projectionMatrix = Matrix4::OrthographicOffCenterLHMatrix(l, r, b, t, n, f);
 }
 
 void CCamera::setPos(const Vec3 pos)//temporary fix
@@ -155,20 +143,9 @@ void CCamera::doMatrixNoRot()
 	this->_matrix = newv;
 
 	BuildViewFrustum();
-};
+}
 
-void CCamera::applyCam()//kinda pointless to do all the time, but its pretty cheap :/
-{
-#ifndef MATT_SERVER
-	if (renderer)
-	{
-		renderer->SetMatrix(VIEW_MATRIX, &this->_matrix);
-		renderer->SetMatrix(PROJECTION_MATRIX, &this->_projectionMatrix);
-	}
-#endif
-};
-
-bool CCamera::SphereInFrustum( Vec3* pPosition, float radius )
+bool CCamera::SphereInFrustum(Vec3* pPosition, float radius)
 {
 	for (int i = 0; i < 6; i++)
 	{
@@ -187,7 +164,7 @@ bool CCamera::BoxInFrustum(const AABB &b)
 	Vec3 P;
 	Vec3 Q;
 	//for each plane do ...
-	for(int i=0; i < 6; i++) {
+	for (int i = 0; i < 6; i++) {
 		//      N  *Q                    *P
 		//      | /                     /
 		//      |/                     /
@@ -204,10 +181,10 @@ bool CCamera::BoxInFrustum(const AABB &b)
 		// that is most aligned with the plane normal).  Then test if the box
 		// is in front of the plane or not.
 
-		for(int j = 0; j < 3; ++j)
+		for (int j = 0; j < 3; ++j)
 		{
 			// Make PQ point in the same direction as the plane normal on this axis.
-			if( m_frustum[i][j] >= 0.0f )
+			if (m_frustum[i][j] >= 0.0f)
 			{
 				P[j] = b.min[j];
 				Q[j] = b.max[j];
@@ -223,7 +200,7 @@ bool CCamera::BoxInFrustum(const AABB &b)
 		// outside the frustum.  Note that because PQ points roughly in the direction of the
 		// plane normal, we can deduce that if Q is outside then P is also outside--thus we
 		// only need to test Q.
-		if( m_frustum[i].Dot(Q) < 0.0f)//D3DXPlaneDotCoord(&m_frustum[i], (D3DXVECTOR3*)&Q) < 0.0f ) // outside
+		if (m_frustum[i].Dot(Q) < 0.0f)//D3DXPlaneDotCoord(&m_frustum[i], (D3DXVECTOR3*)&Q) < 0.0f ) // outside
 			return false;
 	}
 	return true;
@@ -231,23 +208,23 @@ bool CCamera::BoxInFrustum(const AABB &b)
 
 AABB CCamera::GetFrustumAABB()
 {
-	float yfar = this->_far*tan(this->_fov/2.0f);
+	float yfar = this->_far*tan(this->_fov / 2.0f);
 	float xfar = yfar*this->_aspectRatio;
 	float ztotal = this->_far - this->_near;
-	float ynear = this->_near*tan(this->_fov/2.0f);
+	float ynear = this->_near*tan(this->_fov / 2.0f);
 	float xnear = ynear*this->_aspectRatio;
 
 	Vec3 boxCorners[8];
-	boxCorners[0] = this->_pos+this->_right*xnear+this->_upDir*ynear+this->_lookAt*this->_near;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-	boxCorners[1] = this->_pos+this->_right*xnear-this->_upDir*ynear+this->_lookAt*this->_near;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-	boxCorners[2] = this->_pos+this->_right*xfar+this->_upDir*yfar+this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[3] = this->_pos-this->_right*xnear-this->_upDir*ynear+this->_lookAt*this->_near;//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-	boxCorners[4] = this->_pos-this->_right*xnear+this->_upDir*ynear+this->_lookAt*this->_near;//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-	boxCorners[5] = this->_pos+this->_right*xfar-this->_upDir*yfar+this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[6] = this->_pos-this->_right*xfar+this->_upDir*yfar+this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[7] = this->_pos-this->_right*xfar-this->_upDir*yfar+this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[0] = this->_pos + this->_right*xnear + this->_upDir*ynear + this->_lookAt*this->_near;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+	boxCorners[1] = this->_pos + this->_right*xnear - this->_upDir*ynear + this->_lookAt*this->_near;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+	boxCorners[2] = this->_pos + this->_right*xfar + this->_upDir*yfar + this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[3] = this->_pos - this->_right*xnear - this->_upDir*ynear + this->_lookAt*this->_near;//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
+	boxCorners[4] = this->_pos - this->_right*xnear + this->_upDir*ynear + this->_lookAt*this->_near;//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
+	boxCorners[5] = this->_pos + this->_right*xfar - this->_upDir*yfar + this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[6] = this->_pos - this->_right*xfar + this->_upDir*yfar + this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[7] = this->_pos - this->_right*xfar - this->_upDir*yfar + this->_lookAt*this->_far;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
 
-	AABB bb(0,0,0,0,0,0);
+	AABB bb(0, 0, 0, 0, 0, 0);
 	for (int i = 0; i < 8; i++)
 	{
 		bb.FitPoint(boxCorners[i]);
@@ -260,7 +237,7 @@ bool CCamera::BoxInFrustumSidesAndFar(const AABB &b)
 	Vec3 P;
 	Vec3 Q;
 	//for each plane do ...
-	for(int i = 1; i < 6; i++) {
+	for (int i = 1; i < 6; i++) {
 		//      N  *Q                    *P
 		//      | /                     /
 		//      |/                     /
@@ -277,10 +254,10 @@ bool CCamera::BoxInFrustumSidesAndFar(const AABB &b)
 		// that is most aligned with the plane normal).  Then test if the box
 		// is in front of the plane or not.
 
-		for(int j = 0; j < 3; ++j)
+		for (int j = 0; j < 3; ++j)
 		{
 			// Make PQ point in the same direction as the plane normal on this axis.
-			if(m_frustum[i][j] >= 0.0f)
+			if (m_frustum[i][j] >= 0.0f)
 			{
 				P[j] = b.min[j];
 				Q[j] = b.max[j];
@@ -307,7 +284,7 @@ bool CCamera::BoxInFrustumSides(const AABB &b)
 	Vec3 P;
 	Vec3 Q;
 	//for each plane do ...
-	for(int i=2; i < 6; i++) {
+	for (int i = 2; i < 6; i++) {
 		//      N  *Q                    *P
 		//      | /                     /
 		//      |/                     /
@@ -324,10 +301,10 @@ bool CCamera::BoxInFrustumSides(const AABB &b)
 		// that is most aligned with the plane normal).  Then test if the box
 		// is in front of the plane or not.
 
-		for(int j = 0; j < 3; ++j)
+		for (int j = 0; j < 3; ++j)
 		{
 			// Make PQ point in the same direction as the plane normal on this axis.
-			if( m_frustum[i][j] >= 0.0f )
+			if (m_frustum[i][j] >= 0.0f)
 			{
 				P[j] = b.min[j];
 				Q[j] = b.max[j];
@@ -343,7 +320,7 @@ bool CCamera::BoxInFrustumSides(const AABB &b)
 		// outside the frustum.  Note that because PQ points roughly in the direction of the
 		// plane normal, we can deduce that if Q is outside then P is also outside--thus we
 		// only need to test Q.
-		if( m_frustum[i].Dot(Q) < 0.0f)//D3DXPlaneDotCoord(&m_frustum[i], (D3DXVECTOR3*)&Q) < 0.0f ) // outside
+		if (m_frustum[i].Dot(Q) < 0.0f)//D3DXPlaneDotCoord(&m_frustum[i], (D3DXVECTOR3*)&Q) < 0.0f ) // outside
 			return false;
 	}
 	return true;
@@ -355,7 +332,7 @@ void CCamera::BuildViewFrustum()
 	if (this->perspective)
 	{
 		D3DXMATRIX viewProjection;
-		D3DXMatrixMultiply( &viewProjection, (D3DXMATRIX*)&_matrix, (D3DXMATRIX*)&_projectionMatrix );
+		D3DXMatrixMultiply(&viewProjection, (D3DXMATRIX*)&_matrix, (D3DXMATRIX*)&_projectionMatrix);
 
 		// Left plane
 		m_frustum[2].a = viewProjection._14 + viewProjection._11;//normal x
@@ -394,7 +371,7 @@ void CCamera::BuildViewFrustum()
 		m_frustum[1].d = viewProjection._44 - viewProjection._43;
 
 		// Normalize planes
-		for ( int i = 0; i < 6; i++ )
+		for (int i = 0; i < 6; i++)
 		{
 			m_frustum[i].Normalize();//D3DXPlaneNormalize( &m_frustum[i], &m_frustum[i] );
 		}
@@ -402,32 +379,32 @@ void CCamera::BuildViewFrustum()
 	else
 	{
 		const Matrix4& proj = this->_projectionMatrix;
-		float width = 2.0/proj.m_afEntry[0];
-		float hight = 2.0/proj.m_afEntry[5];
+		float width = 2.0 / proj.m_afEntry[0];
+		float hight = 2.0 / proj.m_afEntry[5];
 
 		//if (proj.m_afEntry[15] == 0)
 		//throw 7;
 
-		float znear = -proj.m_afEntry[11]/proj.m_afEntry[10];//14/10
-		float zfar = 1.0f/proj.m_afEntry[10] + znear;
+		float znear = -proj.m_afEntry[11] / proj.m_afEntry[10];//14/10
+		float zfar = 1.0f / proj.m_afEntry[10] + znear;
 
 		float a = proj.m_afEntry[5];
 		float b = proj.m_afEntry[7];
-		float top = (1.0f-b)/a;//(1.0f/a - 1.0f)*b;
-		float bottom = -(b+1.0)/a;//-2.0f*b-top;
+		float top = (1.0f - b) / a;//(1.0f/a - 1.0f)*b;
+		float bottom = -(b + 1.0) / a;//-2.0f*b-top;
 		if (b <= 0.00001f && b >= -0.00001f)
 		{
-			top = 1.0f/a;
+			top = 1.0f / a;
 			bottom = -top;
 		}
 
 		a = proj.m_afEntry[0];
 		b = proj.m_afEntry[3];
-		float right = (1.0f-b)/a;//(1.0f/a - 1.0f)*b;
-		float left = -(b+1.0f)/a;//-2.0f*b-right;
+		float right = (1.0f - b) / a;//(1.0f/a - 1.0f)*b;
+		float left = -(b + 1.0f) / a;//-2.0f*b-right;
 		if (b <= 0.00001f && b >= -0.00001f)
 		{
-			right = 1.0f/a;
+			right = 1.0f / a;
 			left = -right;
 		}
 
@@ -436,37 +413,37 @@ void CCamera::BuildViewFrustum()
 
 		//left plane
 		pos = Vec3(left, bottom, znear);
-		dir = Vec3(1,0,0);
+		dir = Vec3(1, 0, 0);
 		pos = v*pos; dir = v*dir;
 		m_frustum[2] = Plane(pos, dir);
 
 		//right plane
 		pos = Vec3(right, bottom, znear);
-		dir = Vec3(-1,0,0);
+		dir = Vec3(-1, 0, 0);
 		pos = v*pos; dir = v*dir;
 		m_frustum[3] = Plane(pos, dir);
 
 		//top plane
 		pos = Vec3(right, top, znear);
-		dir = Vec3(0,-1,0);
+		dir = Vec3(0, -1, 0);
 		pos = v*pos; dir = v*dir;
 		m_frustum[4] = Plane(pos, dir);
 
 		//bottom plane
 		pos = Vec3(right, bottom, znear);
-		dir = Vec3(0,1,0);
+		dir = Vec3(0, 1, 0);
 		pos = v*pos; dir = v*dir;
 		m_frustum[5] = Plane(pos, dir);
 
 		//near plane
 		pos = Vec3(right, bottom, znear);
-		dir = Vec3(0,0,1);
+		dir = Vec3(0, 0, 1);
 		pos = v*pos; dir = v*dir;
 		m_frustum[0] = Plane(pos, dir);
 
 		//far plane
 		pos = Vec3(right, bottom, zfar);
-		dir = Vec3(0,0,-1);
+		dir = Vec3(0, 0, -1);
 		pos = v*pos; dir = v*dir;
 		m_frustum[1] = Plane(pos, dir);
 	}

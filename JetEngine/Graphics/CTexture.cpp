@@ -7,6 +7,8 @@ extern JNIEnv* javaEnv;
 extern jobject mattcraftrenderer;
 #endif
 
+extern ID3D11ShaderResourceView* missing_texture;
+
 CTexture::CTexture(ID3D11ShaderResourceView* tex)
 {
 	texture = tex;
@@ -16,7 +18,7 @@ CTexture::CTexture(ID3D11ShaderResourceView* tex)
 
 CTexture::~CTexture()
 {
-	if (this->texture && this->texture != renderer->missing_texture)
+	if (this->texture && this->texture != missing_texture)
 	{
 		texture->Release();
 		renderer->stats.textures--;
@@ -65,7 +67,7 @@ CTexture* CTexture::load_as_resource(const std::string &path, CTexture* res)
 		printf("texture loading failed\n");
 
 		//insert dummy
-		res->texture = renderer->missing_texture;
+		res->texture = missing_texture;
 	}
 	else
 	{

@@ -160,7 +160,11 @@ void ResourceManager::push()
 
 void ResourceManager::pop()
 {
+	if (m_stack.size() == 0)
+		return;//cant pop
+
 	log("[ResourceManager] Popping!\n");
+
 	std::map<std::string, Resource *> &v = m_stack[m_stack.size() - 1];
 	std::map<std::string, Resource *>::reverse_iterator iter;
 	for (iter = v.rbegin(); iter != v.rend(); iter++)//need to iterate through backwards

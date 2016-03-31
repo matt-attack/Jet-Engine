@@ -1,26 +1,12 @@
 #include "Renderable.h"
-//#include "Models\ObjModel.h"
-//#include "../ModelData.h"
-//#include "Renderer.h"
 #include "../IMaterial.h"
 #include "CVertexBuffer.h"
-//#include "RenderTexture.h"
 
 IMaterial chunk_material("chunk", "Shaders/world.shdr", Point, "texture.png", CULL_CW, false);
 IMaterial achunk_material("alphachunk", "Shaders/world.shdr", Point, "texture.png", CULL_CW, true);
 
 
-//#include <JetContext.h>
-//#pragma comment (lib, "JetLang.lib")
-
-//#include <istream>
-//#include <fstream>
-//#include <algorithm>
-
-//#include "../Util/Profile.h"
-
-
-void ChunkRenderable::Render(CCamera* cam, std::vector<RenderCommand>* queue)//void Render(CRenderer* render)
+void ChunkRenderable::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	if (this->vb->GetSize() > 0)
 	{

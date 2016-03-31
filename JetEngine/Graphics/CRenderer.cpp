@@ -6,6 +6,9 @@
 #include "font.h"
 #include <D3D11.h>
 
+ID3D11ShaderResourceView* missing_texture = 0;
+
+
 int msaa_count = 1;// 2;
 int msaa_quality = 0;
 VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned int count)
@@ -774,7 +777,7 @@ void CRenderer::Init(int scrx, int scry)
 	NULL,
 	NULL,
 	&terrain_texture);*/
-	this->missing_texture = resources.get<CTexture>("missing.png")->texture;
+	missing_texture = resources.get<CTexture>("missing.png")->texture;
 
 	this->passthrough = new CShader("Content/Shaders/passthrough.shdr", "vs_main", "Content/Shaders/passthrough.shdr", "ps_main");
 	this->unlit_textured = new CShader("Content/Shaders/unlit_texture.shdr", "vs_main", "Content/Shaders/unlit_texture.shdr", "ps_main");
@@ -1244,15 +1247,12 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (GLvoid*)0);
 	glDrawElements((int)mode, primitives, GL_UNSIGNED_SHORT, (GLvoid*)(startindex*sizeof(unsigned short)));//glDrawArrays( (int)mode, offset, vertices );
 #else
-
+	//this is sloooow, cache me
 	this->shader->BindIL(&this->input_layout);
-	//if (mode == PT_TRIANGLELIST)
-	//primitives /= 3;
 
 	this->SetPrimitiveType(mode);
 
 	context->DrawIndexed(numindices, minvertexindex, startindex);
-	//d3ddev->DrawIndexedPrimitive((D3DPRIMITIVETYPE)mode,0,minvertexindex,vertices,startindex,primitives);
 #endif
 }
 
@@ -1276,14 +1276,7 @@ void CRenderer::CreateShader(int id, const char* vs, const char* ps)
 #include "RenderTexture.h"
 void CRenderer::SetRenderTarget(int id, const CRenderTexture* rt)
 {
-	//d3ddev->EndScene();
 	context->OMSetRenderTargets(1, &rt->color, rt->depth);
-	//d3ddev->SetRenderTarget(id, rt->color);
-	//if (id == 0)
-	//{
-	//d3ddev->SetDepthStencilSurface(rt->depth);
-	//}
-	//d3ddev->BeginScene();
 }
 
 CRenderTexture CRenderer::GetRenderTarget(int id)
@@ -2170,7 +2163,7 @@ bool CRenderer::WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p
 	Matrix4f worl;
 	Viewport viewport;
 	worl.MakeIdentity();
-	cam->applyCam();
+	renderer->ApplyCam(cam);// cam->applyCam();
 	this->GetViewport(&viewport);
 	if (cam != 0)
 	{
@@ -2629,6 +2622,9 @@ struct Beam
 std::vector<Beam> beams;
 void CRenderer::DrawBeams()
 {
+	if (beams.size() == 0)
+		return;
+
 	renderer->SetPixelTexture(0, resources.get<CTexture>("Laser.png"));
 	struct vertz
 	{
@@ -2655,7 +2651,7 @@ void CRenderer::DrawBeams()
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
 	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm3, 3/*2*/));
 
-	//this->shader->BindIL(vb.vd);
+	this->shader->BindIL(&vb.vd);
 
 	this->SetCullmode(CULL_NONE);
 
@@ -2680,8 +2676,8 @@ void CRenderer::DrawBeams()
 
 		//Vec3 dir = (beam.start - beam.end).getnormal();
 		//Vec3 right = beam.cam->_lookAt.cross(dir).getnormal();
-		if (abs(beam.cam->_upDir.dot(right)) > 0.99f)
-			right = beam.cam->_right;
+		//if (abs(beam.cam->_upDir.dot(right)) > 0.99f)
+			//right = beam.cam->_right;
 
 		//Vec3 diff = beam.cam->_pos - beam.start;
 		//right = dir.cross(diff).getnormal();
@@ -2811,4 +2807,10 @@ void CRenderer::SetPrimitiveType(enum PrimitiveType mode)
 			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		this->current_pt = mode;
 	}
+}
+
+void CRenderer::ApplyCam(CCamera* cam)//kinda pointless to do all the time, but its pretty cheap :/
+{
+	this->SetMatrix(VIEW_MATRIX, &cam->_matrix);
+	this->SetMatrix(PROJECTION_MATRIX, &cam->_projectionMatrix);
 }

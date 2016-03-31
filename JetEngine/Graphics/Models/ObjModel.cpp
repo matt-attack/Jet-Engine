@@ -2,6 +2,7 @@
 #include "../../ModelData.h"
 #include "../Renderable.h"
 #include "../Shader.h"
+#include "../../IMaterial.h"
 
 #ifndef MATT_SERVER
 #include "../CRenderer.h"
@@ -433,7 +434,10 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.OutFrames = this->OutFrames;
 	else
 		rc.mesh.OutFrames = 0;
-	rc.mesh.vb = &this->t->vb;
+	//if (this->material->normal_map)
+		rc.mesh.vb = &this->t->vbt;// vb;
+	//else
+	//	rc.mesh.vb = &this->t->vb;
 
 	for (int i = 0; i < t->num_meshes; i++)
 	{

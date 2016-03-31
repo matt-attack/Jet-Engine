@@ -1,3 +1,7 @@
+//This sound library is a modified version of that by Martin Prantl released under this license
+//http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
+//http://www.gamedev.net/page/resources/_/technical/game-programming/basic-openal-sound-manager-for-your-project-r3791
+
 #include "SoundManager.h"
 #include "SoundObject.h"
 
@@ -404,9 +408,8 @@ void SoundManager::PlaySound(const std::string& name, Vec3 pos, bool relative)
 		for (int i = 0; i < PRELOAD_BUFFERS_COUNT; i++)
 		{		
 			if (snd->buffers[i] == NULL)
-			{
 				continue;
-			}
+			
 			AL_CHECK( alSourceQueueBuffers(source->refID, 1, &snd->buffers[i]->refID) );
 			usedBuffersCount++;
 		}

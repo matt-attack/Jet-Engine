@@ -68,6 +68,7 @@ public:
 		Vec3 position;
 		Vec3 color;
 		float radius;
+		float lifetime;
 	};
 	std::vector<Light> lights;
 
@@ -139,7 +140,7 @@ private:
 
 	void ProcessQueue(const std::vector<RenderCommand>& renderqueue);
 
-	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed);
+	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed, const Light* lights);
 
 	inline void CalculateLighting();
 };

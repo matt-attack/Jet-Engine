@@ -11,8 +11,6 @@
 #include "Models/ObjModel.h"
 
 #include "../ModelData.h"
-//a class for using ubershaders
-
 
 Renderer r;
 
@@ -189,8 +187,7 @@ void Renderer::Init(CRenderer* renderer)
 	// UI option to enable/disable filtering so you can see the difference
 	// in quality and speed.
 
-	auto res =
-		renderer->device->CreateSamplerState(
+	auto res = renderer->device->CreateSamplerState(
 		&comparisonSamplerDesc,
 		&shadowSampler
 		);
@@ -199,13 +196,8 @@ void Renderer::Init(CRenderer* renderer)
 
 	comparisonSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 
-	// Point filtered shadows can be faster, and may be a good choice when
-	// rendering on hardware with lower feature levels. This sample has a
-	// UI option to enable/disable filtering so you can see the difference
-	// in quality and speed.
 
-	res =
-		renderer->device->CreateSamplerState(
+	res = renderer->device->CreateSamplerState(
 		&comparisonSamplerDesc,
 		&shadowSampler_linear
 		);
@@ -606,7 +598,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	todo_lock.unlock();//unlock
 
 
-	cam->applyCam();
+	renderer->ApplyCam(cam);
 
 	this->rcount = this->renderables.size();
 
@@ -840,6 +832,16 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		renderer->context->Unmap(this->shadow_buffer, 0);
 	}
 
+	//removing old lights
+	for (int i = 0; i < this->lights.size(); i++)
+	{
+		if (this->lights[i].lifetime > 0)
+		{
+			this->lights[i].lifetime -= 0.01;//hack
+			if (this->lights[i].lifetime < 0)
+				this->lights.erase(this->lights.begin() + i--);
+		}
+	}
 
 	/* 4. RENDER OBJECTS */
 	GPUPROFILE2("Execute Commands");
@@ -853,7 +855,8 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		//lets fill this with all the data we need, so we dont need
 		//to go back to the source
 
-		if (last != rc.source->parent)//do I need to change the current view matrix?
+		//goodbye to you
+		/*if (last != rc.source->parent)//do I need to change the current view matrix?
 		{
 			if (rc.source->parent == parent)//object has same parent as the camera
 			{
@@ -872,7 +875,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 				render->SetMatrix(VIEW_MATRIX, &globalview);
 			}
 			last = rc.source->parent;
-		}
+		}*/
 
 		//apply material settings
 		bool shaderchange = false;
@@ -883,20 +886,40 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			shaderchange = true;
 		}
 
-		for (int li = 0; li < shadowSplits; li++)
-			renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
+		//todo: find applicable lights then set'em up
+		int num_lights = 0;
+		Light found_lights[3];//max per pixel
 
+		//hack for the moment 
+		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
+		const float radius = rc.source ? 10 : rc.radius;
 		for (auto light : this->lights)
 		{
-			if (light.position.distsqr(rc.source->matrix.GetTranslation()) < light.radius + 10/*entity radius needs to go here*/)
+			if (num_lights < 3 && light.position.dist(position) < light.radius + radius/*entity radius needs to go here*/)
 			{
 				//apply it
+				found_lights[num_lights++] = light;
 			}
 		}
-		//	todo: find applicable lights then set'em up
+		
+		//need to get right shader for right number of lights
+		if (num_lights > 0 && rc.material->shader_builder)
+		{
+			//select right shader from material
+			renderer->SetShader(rc.material->shader_lit_ptr);
+			shaderchange = true;
 
-		//ok, pick right shader for number of lights
+			lastm = 0;
+		}
+		else
+		{
+			for (int i = 0; i < 3; i++)
+				found_lights[i].radius = 0;
+		}
 
+		//for (int li = 0; li < shadowSplits; li++)
+		//	renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
+		
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
@@ -905,14 +928,13 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		CShader* shader = renderer->shader;
 		//normal mapping, sup
 		//try and bring world shader into the normal shader system
-
-		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange);
+		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
 
 		//todo: improve the speed of these
 		//		shouldnt always be setting input layout
-		//	and primitive topology
+		//	    and primitive topology
 		if (rc.mesh.ib == 0)
 			renderer->DrawPrimitive(PT_TRIANGLELIST, 0, rc.mesh.primitives);
 		else
@@ -930,7 +952,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		mv[SHADOW_MAP_MAX_CASCADE_COUNT * 2] = cam->_matrix;
 	if (showdebug > 1)
 	{
-		cam->applyCam();
+		renderer->ApplyCam(cam);
 
 		for (int cascade_i = 0; cascade_i < shadowSplits; cascade_i++)
 		{
@@ -952,10 +974,37 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 }
 
-void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed)
+void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed, const Light* light_list)
 {
+	//dirty hack
+	if (shader->cbuffers.find("Terrain") != shader->cbuffers.end())
+	{
+		auto buffer = shader->cbuffers.find("Terrain")->second;
+
+		D3D11_MAPPED_SUBRESOURCE cb;
+		renderer->context->Map(buffer.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
+		struct mdata
+		{
+			Matrix4 world;
+			Matrix4 view;
+			Matrix4 projection;
+			Matrix4 wvp;
+		};
+		auto data = (mdata*)cb.pData;
+		data->view = renderer->view;// _matrix;
+		data->projection = renderer->projection;// cam->_projectionMatrix;
+		data->world = Matrix4::Identity();
+		auto wVP = Matrix4::Identity()*renderer->view*renderer->projection;
+		wVP.MakeTranspose();
+		data->wvp = wVP;
+		renderer->context->Unmap(buffer.buffer, 0);
+
+		renderer->context->VSSetConstantBuffers(buffer.vsslot, 1, &buffer.buffer);
+		if (buffer.psslot >= 0)
+			renderer->context->PSSetConstantBuffers(buffer.psslot, 1, &buffer.buffer);
+	}
+
 	//clean this up ok
-	Matrix4 world = rc->source->matrix;
 	if (shader->buffers.matrices.buffer)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
@@ -968,10 +1017,10 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		data->world = world.Transpose();
+		data->world = rc->source->matrix.Transpose();
 		data->view = renderer->view.Transpose();
 		data->projection = renderer->projection.Transpose();
-		auto wVP = world*renderer->view*renderer->projection;
+		auto wVP = rc->source->matrix*renderer->view*renderer->projection;
 		wVP.MakeTranspose();
 		data->wvp = wVP;
 
@@ -991,7 +1040,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		auto wVP = world*renderer->view*renderer->projection;
+		auto wVP = rc->source->matrix*renderer->view*renderer->projection;
 		wVP.MakeTranspose();
 		data->wvp = wVP;
 		renderer->context->Unmap(shader->buffers.wvp.buffer, 0);
@@ -1038,17 +1087,32 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		//	dir = this->dirToLight;
 		D3D11_MAPPED_SUBRESOURCE cb;
 		renderer->context->Map(shader->buffers.lighting.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
+#pragma pack(push)
+#pragma pack(16)
+		struct pl
+		{
+			Vec4 pos;
+			Vec4 color;
+			Vec4 radius;
+		};
 		struct mdata
 		{
-			Vec3 direction;
-			float ambient;
-			float daylight;
+			Vec4 direction;
+			Vec4 ambient;
+			Vec4 daylight;
+			pl lights[3];
 		};
+#pragma pack(pop)
 		auto data = (mdata*)cb.pData;
-		data->direction = dir;
-		data->ambient = 0.2175f;//rc->source->ambientlight;
-		data->daylight = 0.9f;//rc->source->daylight;
-
+		data->direction.xyz = dir;
+		data->ambient = Vec4(0.2175f,0.2175,0.2175,0.2175);//rc->source->ambientlight;
+		data->daylight = Vec4(0.9f, 0.9, 0.9, 0.9);;//rc->source->daylight;
+		for (int i = 0; i < 3; i++)
+		{
+			data->lights[i].pos.xyz = light_list[i].position;
+			data->lights[i].color.xyz = light_list[i].color;
+			data->lights[i].radius.x = 30;// light_list[i].radius;
+		}
 		renderer->context->Unmap(shader->buffers.lighting.buffer, 0);
 
 		if (shader_changed)
@@ -1082,9 +1146,6 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 
 void Renderer::Render(CCamera* cam, Renderable* r)
 {
-	//auto shaders = resources.get<ShaderBuilder>("Shaders/generic.txt");
-	//auto shaders_s = resources.get<ShaderBuilder>("Shaders/shadowed.txt");
-
 	/* 4. RENDER OBJECTS */
 	//renderer->SetMatrix(VIEW_MATRIX, &globalview);
 	//Parent* last = 0;//keeps track of what view matix is active
@@ -1093,7 +1154,7 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 
 	r->Render(cam, &renderqueue);
 
-	cam->applyCam();
+	renderer->ApplyCam(cam);
 
 	this->ProcessQueue(renderqueue);
 }
@@ -1123,8 +1184,8 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		CShader* shader = renderer->shader;
 		//normal mapping, sup
 		//try and bring world shader into the normal shader system
-
-		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shader_changed);
+		Light found_lights[3];//max per pixel
+		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shader_changed, found_lights);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
 

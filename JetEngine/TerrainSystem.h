@@ -29,10 +29,12 @@ struct XYP
 	XYP() {}
 	XYP(int x, int y) : x(x), y(y) {};
 };
-
+class TerrainMaterial;
 class QuadTree;
-class HeightmapTerrainSystem: public ITerrainSystem
+class HeightmapTerrainSystem : public ITerrainSystem, Renderable
 {
+	int temp_player;//used for when waiting to be rendered to
+
 	int world_size;//heightmap size
 	int patch_size;//patchsize
 	QuadTree** grid[2];
@@ -48,7 +50,10 @@ class HeightmapTerrainSystem: public ITerrainSystem
 	//ok, lets have a LOD Tree
 	float* heights;
 
+	bool done = false;
 	bool need_to_reload_normals;
+
+	TerrainMaterial* my_material;
 public:
 
 	HeightmapTerrainSystem();
@@ -62,6 +67,7 @@ public:
 	void GenerateNormals();
 
 	virtual void Render(CCamera* cam, int player);
+	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue);
 
 	void SetHeight(int x, int y, float z);
 

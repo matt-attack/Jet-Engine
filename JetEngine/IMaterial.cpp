@@ -1,34 +1,52 @@
 #include "IMaterial.h"
-#include "Graphics\CTexture.h"
-#include "Graphics\Shader.h"
-#include "Graphics\Renderer.h"
+#include "Graphics/CTexture.h"
+#include "Graphics/Shader.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/Renderable.h"
+#include "ResourceManager.h"
 
 std::map<std::string, IMaterial*> materials;
 
+#define AddShader3(a,b,c) char* p##a##b##c[] = { #a, #b, #c }; *this->shaders[a|b|c] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b##c, 3)
+#define AddShader2(a,b) char* p##a##b[] = { #a, #b }; *this->shaders[a|b] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b, 2)
+#define AddShader1(a) char* p##a[] = { #a }; *this->shaders[a] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a, 1)
+#define AddShader0() *this->shaders[0] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0)
+
+#define Add1Shader3(a,b,c) case a|b|c:  {char* p##a##b##c[] = { #a, #b, #c }; *this->shaders[a|b|c] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b##c, 3); break;}
+#define Add1Shader2(a,b) case a|b: {char* p##a##b[] = { #a, #b }; *this->shaders[a|b] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b, 2); break;}
+#define Add1Shader1(a) case a: {char* p##a[] = { #a }; *this->shaders[a] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a, 1); break;}
+#define Add1Shader0() case 0: {*this->shaders[0] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0); break;}
+
 class ShaderBuilder : public Resource
 {
+	std::string path;
+
 public:
-	CShader* skinned = 0;
-	CShader* normal = 0;
+	CShader* shaders[8];
 
 	ShaderBuilder()
 	{
+		for (int i = 0; i < 8; i++)
+			shaders[i] = 0;
 	}
+
 	~ShaderBuilder()
 	{
+		for (int i = 0; i < 8; i++)
+			delete shaders[i];
 	}
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)
 	{
-		char* p[] = { "SKINNING" };
-		if (this->skinned)
+		if (this->path.length())//shaders[0])
 		{
-			*this->skinned = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p, 1);
-			*this->normal = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main");
+			for (int i = 0; i < 8; i++)
+				if (this->shaders[i])
+					this->LoadShader(i);
+
 			return;
 		}
-		this->skinned = new CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p, 1);
-		this->normal = new CShader(path.c_str(), "vs_main", path.c_str(), "ps_main");
+		this->path = path;
 	}
 
 	static ShaderBuilder* load_as_resource(const std::string &path, ShaderBuilder* res)
@@ -42,6 +60,37 @@ public:
 		//have a table with opengl, dx, and various settings
 
 		return d;
+	}
+
+	CShader* GetShader(int id)
+	{
+		if (this->shaders[id])
+			return this->shaders[id];
+
+		this->LoadShader(id);
+
+		return this->shaders[id];
+	}
+
+	void LoadShader(int id)
+	{
+		if (this->shaders[id] == 0)
+			this->shaders[id] = new CShader;
+
+		char* list[3];
+		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS" };
+		//build the list
+		int size = 0;
+		for (int i = 0; i < 3; i++)
+			if (id & (1 << i))
+				list[size++] = options[i];
+		
+		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, size);
+
+		if (shader.vshader == 0 || shader.pshader == 0)
+			return;//epic fail
+
+		*this->shaders[id] = shader;
 	}
 };
 
@@ -83,28 +132,6 @@ IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, 
 	GetList()[name] = this;
 }
 
-/*IMaterial::IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, char* normal, CullMode cmode, bool alpha, bool weaponhack)
-{
-	//this->shader = shader;
-	this->filter = fmode;
-	this->cullmode = cmode;
-	this->alpha = alpha;
-	this->alphatest = false;
-	this->depthhack = weaponhack;
-
-	//add normal mapping
-	//name and textures
-	this->name = name;
-	this->diffuse = diffuse ? diffuse : "";
-	this->normal = normal ? normal : "";
-
-	//need to update here if possible
-	if (renderer->rectangle_v_buffer.GetSize() > 0)//HAX lel
-		this->Update(renderer);
-
-	GetList()[name] = this;
-}*/
-
 void IMaterial::Apply(CRenderer* renderer)
 {
 	//make me smarter at some point and not just blindly set everything, implement this in the renderer class
@@ -112,28 +139,22 @@ void IMaterial::Apply(CRenderer* renderer)
 
 	renderer->SetPixelTexture(0, this->texture);
 
+	if (this->normal_map)
+		renderer->SetPixelTexture(10, this->normal_map);
+
 	renderer->EnableAlphaBlending(alpha);
 	renderer->SetFilter(0, this->filter);
 
-	//if (shader)
-		//renderer->SetShader(shader);//o shoot, we were already doing this here?
-
 	//if (this->shader_ptr)
-		renderer->SetShader(shader_ptr);
-
-	//figure out shader setup, where should what go?
-	//need skinned/unskinned versions
-
+	renderer->SetShader(shader_ptr);
 
 	//also textures need to be moved to materials
 	if (this->depthhack)
-		renderer->SetDepthRange(0,0.1f);
+		renderer->SetDepthRange(0, 0.1f);
 	else
-		renderer->SetDepthRange(0,1);
+		renderer->SetDepthRange(0, 1);
 }
 
-#include "Graphics\Renderable.h"
-#include "ResourceManager.h"
 void IMaterial::Update(CRenderer* renderer)
 {
 	//updates internal data like shaders/textures
@@ -150,6 +171,19 @@ void IMaterial::Update(CRenderer* renderer)
 		this->texture = 0;
 	}
 
+	if (this->normal.length() > 0)
+	{
+		auto tex = resources.get<CTexture>(normal);
+		if (tex && tex->texture)
+			this->normal_map = tex->texture;
+
+		if (this->shader_builder)
+			this->needs_tangent = true;
+	}
+	else
+	{
+		this->normal_map = 0;
+	}
 	if (this->shader_builder)
 	{
 		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
@@ -158,10 +192,12 @@ void IMaterial::Update(CRenderer* renderer)
 		if (r._shadows)
 			shaders = shaders_s;
 
-		if (this->skinned)
-			this->shader_ptr = shaders->skinned;
-		else
-			this->shader_ptr = shaders->normal;
+		int id = (this->normal_map ? NORMAL_MAP : 0) |
+			(this->skinned ? SKINNING : 0) |
+			0;// (POINT_LIGHTS);
+
+		this->shader_ptr = shaders->GetShader(id);
+		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);
 	}
 	else
 	{

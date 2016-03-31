@@ -1,3 +1,8 @@
+//This sound library is a modified version of that by Martin Prantl released under this license
+//http://www.gamedev.net/page/resources/_/gdnethelp/gamedevnet-open-license-r2956
+//http://www.gamedev.net/page/resources/_/technical/game-programming/basic-openal-sound-manager-for-your-project-r3791
+
+
 #include "SoundObject.h"
 #include "ISoundFileWrapper.h"
 
@@ -8,6 +13,8 @@
 
 #include "OpenAL.h"
 
+#include <fstream>
+#include <Windows.h>
 
 SoundObject::SoundObject(const std::string & fileName, const std::string & name)
 {
@@ -206,8 +213,6 @@ void SoundObject::GetRawData(std::vector<char> * rawData)
 	this->soundFileWrapper->DecompressAll(*rawData);
 }
 
-#include <fstream>
-#include <Windows.h>
 void SoundObject::LoadData()
 {
 	for (int i = 0; i < PRELOAD_BUFFERS_COUNT; i++)

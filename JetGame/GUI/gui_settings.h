@@ -11,18 +11,17 @@
 #include <JetEngine/GUI/gui_label.h>
 #include "../CGame.h"
 
-extern CGame* game;
-extern CRenderer* renderer;
-
 class gui_settings: public gui_window
 {
 	gui_button button;
 	gui_tabbox tabs;
 	gui_slider volume;
 	gui_slider shadowdist;
+
+	CGame* game;
 public:
 
-	gui_settings();
+	gui_settings(CGame* game);
 
 	~gui_settings() {}
 

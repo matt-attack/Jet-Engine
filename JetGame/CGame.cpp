@@ -105,6 +105,8 @@ void CGame::Cleanup()
 
 	SoundManager::Destroy();
 
+	ProfileExit();
+
 	printf("CGameEngine Cleanup\n");
 }
 
@@ -113,6 +115,9 @@ void CGame::ChangeState(CGameState* state)
 	// cleanup the current state
 	if (!states.empty()) {
 		states.back()->Cleanup();
+		//queue it to delete on next update
+		to_delete.push_back(states.back());
+
 		states.pop_back();
 	}
 
@@ -239,6 +244,11 @@ void CGame::Update()
 	ProfileStartFrame();
 	PROFILE("FrameTime");
 	GPUPROFILE("FrameTime");
+	
+	//delete old states
+	for (int i = 0; i < this->to_delete.size(); i++)
+		delete this->to_delete[i];
+	this->to_delete.clear();
 
 	this->window->ProcessMessages();
 

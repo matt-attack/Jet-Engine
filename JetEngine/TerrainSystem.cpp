@@ -1,14 +1,48 @@
 #include "TerrainSystem.h"
-#include "Util\Profile.h"
+#include "Util/Profile.h"
 #include "camera.h"
 
-#include "Graphics\CRenderer.h"
-#include "Graphics\Renderable.h"
-#include "Graphics\Renderer.h"
-#include "Graphics\CTexture.h"
-#include "Graphics\Shader.h"
+#include "Graphics/CRenderer.h"
+#include "Graphics/Renderable.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/CTexture.h"
+#include "Graphics/Shader.h"
+#include "Graphics/RenderTexture.h"
 
-//represents a terrain chunk
+#include <fstream>
+#include <ostream>
+
+#include "IMaterial.h"
+class TerrainMaterial : public IMaterial
+{
+	
+public:
+	ID3D11SamplerState* sampler, *textureSampler;
+	CTexture *nmap, *grass, *rock;
+	TerrainMaterial() : IMaterial("Terrain")
+	{
+
+	}
+
+	virtual void Apply(CRenderer* renderer)
+	{
+		IMaterial::Apply(renderer);
+
+		renderer->SetCullmode(CULL_CW);
+
+		renderer->context->VSSetSamplers(0, 1, &this->sampler);
+		renderer->context->PSSetSamplers(0, 1, &this->sampler);
+		renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
+		renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
+		renderer->context->PSSetShaderResources(6, 1, &grass->texture);
+		renderer->context->PSSetShaderResources(7, 1, &rock->texture);
+
+		renderer->SetPrimitiveType(PT_TRIANGLELIST);
+		renderer->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		renderer->EnableAlphaBlending(false);
+	}
+};
 
 static inline float GetDistanceToBox(float x, float y, float size,
 	float vx, float vz)
@@ -25,6 +59,8 @@ static inline float GetDistanceToBox(float x, float y, float size,
 	return sqrt(fdX*fdX + fdZ*fdZ);//D3DXVec3Length( &RangeVec );
 }
 
+
+//represents a terrain chunk
 class QuadTreeNode
 {
 	friend class HeightmapTerrainSystem;
@@ -143,9 +179,9 @@ public:
 		lod = 0;*/
 
 		//if (this->patch->maxy - this->patch->miny > 30 && dist < 4000)//showdebug > 1)
-			//lod += 4;
+		//lod += 4;
 		//else if (this->patch->maxy - this->patch->miny > 30)
-			//lod += 2;
+		//lod += 2;
 
 		return lod;
 	}
@@ -213,6 +249,44 @@ public:
 			//return;
 			//render myself
 			this->patch->Render(renderer, 0);
+		}
+	}
+
+	void Render(float* heights, CCamera* cam, std::vector<RenderCommand>* queue, int p = 0)
+	{
+		//frustum cull
+		//if (cam->BoxInFrustum(this->aabb) == false)
+		//	return;
+
+		//renderer->DrawBoundingBox(this->aabb.min, this->aabb.max);
+
+		//recurse down if we can
+		if (northeast)
+		{
+			northeast->Render(heights, cam, queue, 1);
+			northwest->Render(heights, cam, queue, 0);
+			southwest->Render(heights, cam, queue, 2);
+			southeast->Render(heights, cam, queue, 3);
+		}
+		else
+		{
+			if (this->patch == 0)
+			{
+				//allocate
+				this->patch = new TerrainPatch(x, y, size);
+				this->patch->GenerateVertices(heights);
+				this->aabb.min.y = this->patch->miny;
+				this->aabb.max.y = this->patch->maxy;
+
+				//this is bad, but oh well
+				int lod = this->GetLOD(cam);
+
+				this->patch->GenerateIndices(lod, true, true, true, true);
+			}
+			//if (this->patch->level == 8)
+			//return;
+			//render myself
+			this->patch->Render(renderer, 0, queue);
 		}
 	}
 
@@ -291,7 +365,6 @@ public:
 				int v = rd;// density*size; / TerrainScale;
 				//ok translate v->lod
 
-
 				//9 = 32
 				//lod of 8 = 16 verts 6 = 8, 4 = 4, 2 = 2, 0 = 1
 				//log2(verts)*2 = lod
@@ -334,7 +407,6 @@ public:
 				lets just use the ambient cube
 				make me distance based*/
 
-
 				//if (lod > PatchMaxLOD)
 				//lod = PatchMaxLOD;
 
@@ -343,6 +415,7 @@ public:
 				if (lod >= 11/*rd >= (PatchSize + PatchSize / 2)*/ && this->size > PatchSize)
 					this->Subdivide();
 				else if (this->parent && lod < PatchMaxLOD - 2)
+				{
 					//the lower this is, the smaller the vertex count, but the greater the drawcalls
 					//1 is a good minimum
 					//2 makes the distribution more uniform between visisted/nonvisited
@@ -375,6 +448,7 @@ public:
 						this->patch->GenerateIndices(lod, true, true, true, true);
 						//this->patch->GenerateIndices(lod, false, false, false, false);
 					}
+				}
 			}
 		}
 	}
@@ -409,14 +483,14 @@ ITerrainSystem::ITerrainSystem(void)
 {
 }
 
-
 ITerrainSystem::~ITerrainSystem(void)
 {
 }
 
-
 HeightmapTerrainSystem::HeightmapTerrainSystem()
 {
+	this->castsShadows = false;
+	
 	grass = 0;
 	hmapt = 0;
 	hmapv = 0;
@@ -437,10 +511,8 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 		}
 	}
 
-	//this->hmap = 0;
 	this->heights = 0;
 }
-
 
 HeightmapTerrainSystem::~HeightmapTerrainSystem()
 {
@@ -464,14 +536,30 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 }
 
 std::function<void()> render;
-
-bool done = false;
-ID3D11ShaderResourceView* rtview = 0;
 int flipper = 0;
+void HeightmapTerrainSystem::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+{
+	//submit for each structure
+	auto grid = this->grid[this->temp_player];
+	for (int x = 0; x < world_size / patch_size; x++)
+	{
+		for (int y = 0; y < world_size / patch_size; y++)
+		{
+			//if (cam->SphereInFrustum(//todo, cull patches
+			//if (flipper++ % 2)//only updates half each frame
+			//	grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
+			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
+			grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam, queue);
+		}
+	}
+}
+
 void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 {
 	PROFILE("Terrian Render");
 	GPUPROFILE("Terrain Render");
+
+	this->temp_player = player;
 
 	//generate normals if not done
 	if (!done)
@@ -485,6 +573,26 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 		this->need_to_reload_normals = false;
 		render();
 	}
+
+	this->my_material->nmap = this->nmap;
+
+
+	r.AddRenderable(this);
+
+	flipper++;// = 0;
+
+	auto grid = this->grid[player];
+	for (int x = 0; x < world_size / patch_size; x++)
+	{
+		for (int y = 0; y < world_size / patch_size; y++)
+		{
+			if (flipper++ % 2)//only updates half each frame
+				grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
+			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
+		}
+	}
+
+	return;
 
 	//set shader and upload cbuffer
 	CShader* shader;
@@ -572,7 +680,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 	renderer->context->PSSetSamplers(0, 1, &this->sampler);
 	renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
 	//renderer->context->VSSetShaderResources(5, 1, &hmap->texture);
-	renderer->context->VSSetShaderResources(0, 1, &nmap->texture);
+	//renderer->context->VSSetShaderResources(0, 1, &nmap->texture);
 	renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
 	renderer->context->PSSetShaderResources(6, 1, &grass->texture);
 	renderer->context->PSSetShaderResources(7, 1, &rock->texture);
@@ -587,7 +695,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 
 	flipper++;// = 0;
 
-	auto grid = this->grid[player];
+	/*auto grid = this->grid[player];
 	for (int x = 0; x < world_size / patch_size; x++)
 	{
 		for (int y = 0; y < world_size / patch_size; y++)
@@ -597,7 +705,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 				grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
 			grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
 		}
-	}
+	}*/
 
 	//renderer->EnableAlphaBlending(true);
 	//renderer->SetTexture(0, rtview);
@@ -774,8 +882,6 @@ bool R16HeightMapLoad(char* filename, HeightMapInfo &hminfo)
 	return true;
 }
 
-#include <fstream>
-#include <ostream>
 void HeightmapTerrainSystem::SaveHeightmap(const char* file)
 {
 	//arbitrary scale will be....
@@ -792,11 +898,21 @@ void HeightmapTerrainSystem::SaveHeightmap(const char* file)
 }
 
 VertexDeclaration terrain_vd;
+IMaterial* terrain_mat;
 void HeightmapTerrainSystem::Load()
 {
-	shader = renderer->CreateShader(18, "Shaders/terrain.shdr");
-	shader_s = renderer->CreateShader(24, "Shaders/terrain_shadow.shdr");
+	//create material
+	TerrainMaterial* mt = new TerrainMaterial;
+	this->material = mt;// IMaterial("terrain");
+	this->material->skinned = false;
+	this->material->alpha = false;
+	this->material->alphatest = false;
+	this->material->shader_name = "Shaders/terrain_shadow.shdr";
+	//this->material->shader_ptr = shader_s;
+	this->material->cullmode = CULL_CW;
+	this->my_material = mt;
 
+	terrain_mat = this->material;
 	bool loaded = this->grass ? true : false;
 
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
@@ -804,24 +920,19 @@ void HeightmapTerrainSystem::Load()
 	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
 	terrain_vd = this->vertex_declaration;
 
-	grass = resources.get<CTexture>("snow.jpg");// grass.jpg");
+	grass = resources.get<CTexture>("snow.jpg");
 	rock = resources.get<CTexture>("rock.png");
 	//implement teh texturing
-
 	if (loaded == false)
 	{
 		HeightMapInfo info;
 		R16HeightMapLoad("Content/heightmap.r16", info);
 
-
 		this->heights = info.heightMap;
 		this->world_size = info.terrainHeight;
-
-		//this->GenerateNormals();
-		//this->SaveHeightmap("heightmap.r16");
 	}
 
-	nmap = 0;// resources.get<CTexture>("normals.png");
+	nmap = 0;
 
 	if (loaded == false)
 	{
@@ -881,6 +992,11 @@ void HeightmapTerrainSystem::Load()
 		if (FAILED(res))
 			throw 7;
 	}
+
+	mt->grass = grass;
+	mt->rock = rock;
+	mt->sampler = this->sampler;
+	mt->textureSampler = this->textureSampler;
 }
 
 inline float linearInterpolation(float x0, float x1, float t)
@@ -917,7 +1033,6 @@ float HeightmapTerrainSystem::GetHeight(float x, float y)
 
 	return 0;
 }
-
 
 float HeightmapTerrainSystem::GetHeightAndNormal(float x, float y, Vec3& normal)
 {
@@ -1009,8 +1124,6 @@ void HeightmapTerrainSystem::UpdateHeights()
 	}
 }
 
-#include "Graphics/RenderTexture.h"
-//CRenderTexture* myrt = 0;
 void HeightmapTerrainSystem::GenerateNormals()
 {
 	//first: make floating point texture with heights

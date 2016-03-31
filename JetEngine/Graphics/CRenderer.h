@@ -98,7 +98,7 @@ typedef unsigned long COLOR;
 #endif
 #define COLOR_RGBA(r,g,b,a) COLOR_ARGB(a,r,g,b)
 #define COLOR_XRGB(r,g,b)   COLOR_ARGB(0xff,r,g,b)
-
+#define COLOR_TO_FLOAT(i) Vec4(((float)(((i)>>16)&0xff))/256.0f,((float)(((i)>>8)&0xff))/256.0f,((float)((i)&0xff))/256.0f,((float)(((i)>>24)&0xff))/256.0f)
 
 typedef enum PrimitiveType
 {
@@ -264,8 +264,6 @@ class CRenderer
 
 	std::vector<VertexElementCache> vaos;
 public:
-
-	ID3D11ShaderResourceView* missing_texture;
 
 #ifndef USEOPENGL
 	ID3D11Device* device;
@@ -462,6 +460,8 @@ public:
 
 
 	void DrawIcon(int x, int y, int size, int id, COLOR color = COLOR_ARGB(255, 255, 255, 255));
+
+	void ApplyCam(CCamera* cam);
 
 #ifndef USEOPENGL
 	void DrawBoundingBox(const OBB bb, COLOR color = COLOR_ARGB(255, 255, 255, 255));

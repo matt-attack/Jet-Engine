@@ -40,7 +40,6 @@ public:
 	void setPos(Vec3 pos);
 	void setUp(Vec3 pos);
 	void setLookAt(Vec3 pos);
-	void applyCam();
 
 	bool SphereInFrustum(Vec3* pPosition, float radius);
 	bool BoxInFrustum(const AABB &b);

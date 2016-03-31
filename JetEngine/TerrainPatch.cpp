@@ -669,6 +669,7 @@ void TerrainPatch::GenerateIndices(int lod, bool xi, bool xd, bool yi, bool yd)
 
 void TerrainPatch::Render(CRenderer* r, CCamera* cam)
 {
+	//ok, add shader selection here
 	ibuffer.Bind();
 	vbuffer.Bind();
 
@@ -678,6 +679,24 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam)
 	r->context->DrawIndexed(ibuffer.size / 2, 0, 0);
 }
 
+extern IMaterial* terrain_mat;
+void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>* queue)
+{
+	RenderCommand rc;
+	rc.mesh.ib = &this->ibuffer;
+	rc.mesh.vb = &this->vbuffer;
+	rc.mesh.OutFrames = 0;
+	rc.mesh.num_indices = ibuffer.size / 2;
+	rc.mesh.primitives = ibuffer.size / 6;
+	rc.material = terrain_mat;
+	rc.alpha = false;
+	rc.source = 0;
+	rc.material_instance.extra = 0;
+	rc.position = Vec3(this->wx + PatchSize / 2, (this->maxy + this->miny) / 2, this->wy + PatchSize / 2);
+	rc.radius = max(this->maxy - this->miny, PatchSize/2);
+	
+	queue->push_back(rc);
+}
 
 extern VertexDeclaration terrain_vd;
 int m_terrainWidth = (float)(2048.0f * TerrainScale);

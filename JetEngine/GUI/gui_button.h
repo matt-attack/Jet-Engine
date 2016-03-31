@@ -6,9 +6,9 @@
 #include "../Sound/SoundObject.h"
 #include "../Sound/SoundManager.h"
 #include "../Graphics/CRenderer.h"
+#include <functional>
 
 extern CRenderer* renderer;
-extern void log3(char* var);
 
 class gui_button: public gui_window
 {
@@ -16,7 +16,7 @@ public:
 	gui_button()
 	{
 		this->text = 0;
-		this->callback = 0;
+		//this->callback = 0;
 	}
 
 	~gui_button()
@@ -43,7 +43,8 @@ public:
 	}
 
 	//virtual void callback() = 0;
-	void (*callback)();
+	//void (*callback)();
+	std::function<void()> callback;
 
 	virtual int wm_paint(coord x, coord y, coord mx, coord my, bool mouseover)
 	{

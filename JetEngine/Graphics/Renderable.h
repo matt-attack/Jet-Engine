@@ -81,6 +81,10 @@ struct RenderCommand
 	Renderable* source;//used to get positioning data
 	bool alpha;//use this for flags
 	float dist;//for sorting
+
+	//for lighting, a bit o a hack
+	Vec3 position;
+	float radius;
 };
 
 class CEntity;

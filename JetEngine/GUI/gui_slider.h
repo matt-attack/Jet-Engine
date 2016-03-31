@@ -1,6 +1,7 @@
 #ifndef _SLIDER_HEADER
 #define _SLIDER_HEADER
 
+#include <functional>
 #include "gui_window.h"
 //finish me
 class gui_slider: public gui_window
@@ -12,7 +13,6 @@ public:
 		this->position = 0;
 		this->max = 100;
 		this->setsize(150,40);
-		this->callback = 0;
 	}
 
 	~gui_slider()
@@ -31,7 +31,8 @@ public:
 		max = range;
 	}
 
-	void (*callback)(int pos);
+	//void (*callback)(int pos);
+	std::function<void(int)> callback;
 
 	virtual int wm_paint(coord x, coord y, coord mx, coord my, bool mouseover);
 
