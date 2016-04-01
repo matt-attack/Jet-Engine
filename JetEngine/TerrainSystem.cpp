@@ -38,8 +38,7 @@ public:
 		renderer->context->PSSetShaderResources(7, 1, &rock->texture);
 
 		renderer->SetPrimitiveType(PT_TRIANGLELIST);
-		renderer->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
+		
 		renderer->EnableAlphaBlending(false);
 	}
 };
@@ -545,10 +544,6 @@ void HeightmapTerrainSystem::Render(CCamera* cam, std::vector<RenderCommand>* qu
 	{
 		for (int y = 0; y < world_size / patch_size; y++)
 		{
-			//if (cam->SphereInFrustum(//todo, cull patches
-			//if (flipper++ % 2)//only updates half each frame
-			//	grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
-			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
 			grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam, queue);
 		}
 	}
@@ -591,121 +586,6 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
 		}
 	}
-
-	return;
-
-	//set shader and upload cbuffer
-	CShader* shader;
-	if (r._shadows)
-		shader = renderer->SetShader(this->shader_s);
-	else
-		shader = renderer->SetShader(this->shader);
-	auto buffer = shader->cbuffers["Terrain"];
-
-	if (shader->buffers.lighting.buffer)
-	{
-		Vec3 dir = r.GetLightDirection();
-
-		D3D11_MAPPED_SUBRESOURCE cb;
-		renderer->context->Map(shader->buffers.lighting.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
-		struct mdata
-		{
-			Vec3 direction;
-			float ambient;
-			float daylight;
-		};
-		auto data = (mdata*)cb.pData;
-		data->direction = dir;
-		data->ambient = 0.47f;//rc->source->ambientlight;
-		data->daylight = 0.9f;//rc->source->daylight;
-
-		renderer->context->Unmap(shader->buffers.lighting.buffer, 0);
-
-		if (shader->buffers.lighting.psslot >= 0)
-			renderer->context->PSSetConstantBuffers(shader->buffers.lighting.psslot, 1, &shader->buffers.lighting.buffer);
-		if (shader->buffers.lighting.vsslot >= 0)
-			renderer->context->VSSetConstantBuffers(shader->buffers.lighting.vsslot, 1, &shader->buffers.lighting.buffer);
-	}
-
-	if (shader->buffers.shadow.buffer)
-	{
-		for (int i = 0; i < 3; i++)
-			renderer->SetPixelTexture(i + 1, r.shadowMapViews[i]);
-
-		D3D11_MAPPED_SUBRESOURCE cb;
-		renderer->context->Map(shader->buffers.shadow.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
-		struct mdata
-		{
-			Vec4 splits;
-			Matrix4 matrices[3];
-		};
-		auto data = (mdata*)cb.pData;
-		data->splits = Vec4(r.shadowMappingSplitDepths);
-		data->matrices[0] = r.shadowMapTexXforms[0];
-		data->matrices[1] = r.shadowMapTexXforms[1];
-		data->matrices[2] = r.shadowMapTexXforms[2];
-
-		renderer->context->Unmap(shader->buffers.shadow.buffer, 0);
-
-		renderer->context->PSSetConstantBuffers(shader->buffers.shadow.psslot, 1, &shader->buffers.shadow.buffer);
-	}
-
-	D3D11_MAPPED_SUBRESOURCE cb;
-	renderer->context->Map(buffer.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
-	struct mdata
-	{
-		Matrix4 world;
-		Matrix4 view;
-		Matrix4 projection;
-		Matrix4 wvp;
-	};
-	auto data = (mdata*)cb.pData;
-	data->view = cam->_matrix;
-	data->projection = cam->_projectionMatrix;
-	data->world = Matrix4::Identity();
-	auto wVP = Matrix4::Identity()*cam->_matrix*cam->_projectionMatrix;
-	wVP.MakeTranspose();
-	data->wvp = wVP;
-	renderer->context->Unmap(buffer.buffer, 0);
-
-	renderer->context->VSSetConstantBuffers(buffer.vsslot, 1, &buffer.buffer);
-	if (buffer.psslot >= 0)
-		renderer->context->PSSetConstantBuffers(buffer.psslot, 1, &buffer.buffer);
-
-	renderer->SetCullmode(CULL_CW);
-
-	shader->BindIL(&this->vertex_declaration);// renderer->GetVertexDeclaration(10));
-
-	renderer->context->VSSetSamplers(0, 1, &this->sampler);
-	renderer->context->PSSetSamplers(0, 1, &this->sampler);
-	renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
-	//renderer->context->VSSetShaderResources(5, 1, &hmap->texture);
-	//renderer->context->VSSetShaderResources(0, 1, &nmap->texture);
-	renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
-	renderer->context->PSSetShaderResources(6, 1, &grass->texture);
-	renderer->context->PSSetShaderResources(7, 1, &rock->texture);
-
-	renderer->SetPrimitiveType(PT_TRIANGLELIST);
-	renderer->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	renderer->EnableAlphaBlending(false);
-
-	//if (player == 0)
-	//	flipper++;
-
-	flipper++;// = 0;
-
-	/*auto grid = this->grid[player];
-	for (int x = 0; x < world_size / patch_size; x++)
-	{
-		for (int y = 0; y < world_size / patch_size; y++)
-		{
-			//if (cam->SphereInFrustum(//todo, cull patches
-			if (flipper++ % 2)//only updates half each frame
-				grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
-			grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
-		}
-	}*/
 
 	//renderer->EnableAlphaBlending(true);
 	//renderer->SetTexture(0, rtview);
@@ -908,6 +788,7 @@ void HeightmapTerrainSystem::Load()
 	this->material->alpha = false;
 	this->material->alphatest = false;
 	this->material->shader_name = "Shaders/terrain_shadow.shdr";
+	this->material->shader_builder = true;
 	//this->material->shader_ptr = shader_s;
 	this->material->cullmode = CULL_CW;
 	this->my_material = mt;

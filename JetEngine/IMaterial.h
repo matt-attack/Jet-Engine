@@ -12,6 +12,7 @@ enum ShaderFeatures
 	SKINNING = 1,
 	NORMAL_MAP = 2,
 	POINT_LIGHTS = 4,
+	SHADOWS = 8,
 };
 
 //each mesh will have one of these

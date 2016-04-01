@@ -22,17 +22,17 @@ class ShaderBuilder : public Resource
 	std::string path;
 
 public:
-	CShader* shaders[8];
+	CShader* shaders[16];
 
 	ShaderBuilder()
 	{
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 16; i++)
 			shaders[i] = 0;
 	}
 
 	~ShaderBuilder()
 	{
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 16; i++)
 			delete shaders[i];
 	}
 
@@ -40,7 +40,7 @@ public:
 	{
 		if (this->path.length())//shaders[0])
 		{
-			for (int i = 0; i < 8; i++)
+			for (int i = 0; i < 16; i++)
 				if (this->shaders[i])
 					this->LoadShader(i);
 
@@ -77,11 +77,11 @@ public:
 		if (this->shaders[id] == 0)
 			this->shaders[id] = new CShader;
 
-		char* list[3];
-		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS" };
+		char* list[4];
+		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS" };
 		//build the list
 		int size = 0;
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < 4; i++)
 			if (id & (1 << i))
 				list[size++] = options[i];
 		
@@ -187,14 +187,16 @@ void IMaterial::Update(CRenderer* renderer)
 	if (this->shader_builder)
 	{
 		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
-		auto shaders_s = resources.get<ShaderBuilder>("Shaders/shadowed.txt");
-
-		if (r._shadows)
-			shaders = shaders_s;
+		//auto shaders_s = resources.get<ShaderBuilder>("Shaders/shadowed.txt");
+		//if (r._shadows)
+		//	shaders = shaders_s;
 
 		int id = (this->normal_map ? NORMAL_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
 			0;// (POINT_LIGHTS);
+
+		if (r._shadows)
+			id |= SHADOWS;
 
 		this->shader_ptr = shaders->GetShader(id);
 		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);

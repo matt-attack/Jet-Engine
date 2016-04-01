@@ -524,7 +524,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				mname = mname + ".tga";
 			}
 			mat->skinned = true;
-			mat->shader_name = "Shaders/generic.txt";
+			mat->shader_name = "Shaders/shadowed.txt";// "Shaders/generic.txt";
 			//mat->normal = "brick.jpg";
 			mat->shader_builder = true;
 			mat->diffuse = mname;
