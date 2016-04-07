@@ -12,6 +12,7 @@
 
 ObjModel::ObjModel()
 {
+	this->decals = 0;
 	this->entity = 0;
 	this->animation = 0;
 	this->name = 0;
@@ -81,7 +82,9 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 			if (frames == 0)
 			{
 				this->OutFrames = new Matrix3x4[t->num_joints];
-				this->_external = false;
+				for (int i = 0; i < t->num_joints; i++)
+					this->OutFrames[i] = Matrix3x4::Identity();
+ 				this->_external = false;
 			}
 			else
 			{

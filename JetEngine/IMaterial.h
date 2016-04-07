@@ -70,6 +70,11 @@ public:
 	}
 };
 
+
+//ok, todo: SURFACE SHADERS
+
+//a shader will be made up of a few components
+//position / normal generator + tangent system(optional) + surface shader + lighting + shadow
 class DamageableMaterial : public IMaterial
 {
 public:

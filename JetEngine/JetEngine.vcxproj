@@ -83,6 +83,7 @@
   <ItemGroup>
     <ClCompile Include="BlockModel.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CInput.cpp" />
     <ClCompile Include="DbgNew.cpp" />
     <ClCompile Include="Decals.cpp" />
     <ClCompile Include="Defines.cpp" />

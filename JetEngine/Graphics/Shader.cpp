@@ -520,22 +520,52 @@ void CShader::SetupUniforms(ID3D10Blob* vsBuf, ID3D10Blob* psBuf, ID3D10Blob* gs
 	printf("shader loaded\n");
 }
 
+#include <fstream>
 CShader* CShader::load_as_resource(const std::string &path, CShader* res)
 {
 	CShader* d = res;//new ModelData;
 
+	std::ifstream file(path.c_str());
+
+	char in[50];
+	file.read(in, 23);
+	in[23] = 0;
+
+	if (strcmp(in, "#define geometry_shader") == 0)
+		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, path.c_str(), "gs_main");
+	//ok, here I need to load the first bit of the shader text and see what it says to determine what shader type it is
 	//make a copy of uniforms
-	*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main");
+	else
+		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main");
+
+	//new CShader("Content/Shaders/tree_billboards.shdr", "vs_main", "Content/Shaders/tree_billboards.shdr", "ps_main", 0, 0, "Content/Shaders/tree_billboards.shdr", "gs_main");
 
 	return d;
 }
 
-void CShader::Reload(ResourceManager* mgr, const std::string& filename)
+void CShader::Reload(ResourceManager* mgr, const std::string& path)
 {
 #ifndef USEOPENGL
+
+	CShader newshader;
+
+	std::ifstream file(path.c_str());
+
+	char in[50];
+	file.read(in, 23);
+	in[23] = 0;
+
+	bool needs_gs = strcmp(in, "#define geometry_shader") == 0;
+	if (needs_gs)
+		newshader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, path.c_str(), "gs_main");
+	//ok, here I need to load the first bit of the shader text and see what it says to determine what shader type it is
+	//make a copy of uniforms
+	else
+		newshader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main");
+
 	//need to handle errors
-	auto newshader = CShader(filename.c_str(), "vs_main", filename.c_str(), "ps_main");
-	if (newshader.vshader && newshader.pshader)//makes sure that the new shader is valid
+	//auto newshader = CShader(filename.c_str(), "vs_main", filename.c_str(), "ps_main");
+	if (newshader.vshader && newshader.pshader && (needs_gs == false || newshader.gshader))//makes sure that the new shader is valid
 	{
 		this->~CShader();//destruct me
 

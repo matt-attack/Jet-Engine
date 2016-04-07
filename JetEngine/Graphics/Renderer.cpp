@@ -28,6 +28,7 @@ Renderer::Renderer()
 	this->shadowMapDepthBias = 0.0f;
 	this->shadowMaxDist = 150;//350
 	this->shadowSplitLogFactor = 0.9f;
+	this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
 	this->_shadows = true;//should default to false eventually
 }
 
@@ -118,8 +119,8 @@ void Renderer::Init(CRenderer* renderer)
 		shadowMapDesc.ArraySize = 1;
 		shadowMapDesc.SampleDesc.Count = 1;
 		shadowMapDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
-		shadowMapDesc.Height = static_cast<UINT>(1024);
-		shadowMapDesc.Width = static_cast<UINT>(1024);
+		shadowMapDesc.Height = SHADOW_MAP_SIZE;
+		shadowMapDesc.Width = SHADOW_MAP_SIZE;
 
 		HRESULT hr = renderer->device->CreateTexture2D(
 			&shadowMapDesc,
@@ -206,9 +207,7 @@ void Renderer::Init(CRenderer* renderer)
 
 	//load material textures here I guess
 	for (auto ii : IMaterial::GetList())
-	{
 		ii.second->Update(renderer);
-	}
 }
 
 void Renderer::Cleanup()
@@ -405,7 +404,7 @@ void Renderer::CalcShadowMapMatrices(
 	outShadowMapTexXform = viewportToTex.Transpose() * outViewProj;
 }
 
-#include "RenderTexture.h"
+
 void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Matrix4& viewProj)
 {
 	renderer->EnableAlphaBlending(false);
@@ -575,7 +574,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 //go iron man style
 //make it appear to curve like a helmet's face would
 
-#include "../IMaterial.h"
+
 //1. add air supplies
 //2. show helmet damage
 //3. indicators on hud, danger warnigns that blink!!!
@@ -815,9 +814,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	//ok, lets be dumb and update materials here
 	for (auto ii : IMaterial::GetList())
-	{
 		ii.second->Update(renderer);
-	}
 
 	//update common constant buffers
 	{
@@ -832,19 +829,10 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		renderer->context->Unmap(this->shadow_buffer, 0);
 	}
 
-	//removing old lights
-	for (int i = 0; i < this->lights.size(); i++)
-	{
-		if (this->lights[i].lifetime > 0)
-		{
-			this->lights[i].lifetime -= 0.01;//hack
-			if (this->lights[i].lifetime < 0)
-				this->lights.erase(this->lights.begin() + i--);
-		}
-	}
-
 	/* 4. RENDER OBJECTS */
 	GPUPROFILE2("Execute Commands");
+
+	renderer->SetFilter(10, FilterMode::Point);
 
 	render->SetMatrix(VIEW_MATRIX, &globalview);
 	Parent* last = 0;//keeps track of what view matix is active
@@ -895,12 +883,14 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		const float radius = rc.source ? 10 : rc.radius;
 		for (auto light : this->lights)
 		{
-			if (num_lights < 3 && light.position.dist(position) < light.radius + radius/*entity radius needs to go here*/)
+			if (num_lights < 3 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
 			{
 				//apply it
 				found_lights[num_lights++] = light;
 			}
 		}
+		
+		//do shader LOD here
 		
 		//need to get right shader for right number of lights
 		if (num_lights > 0 && rc.material->shader_builder)
@@ -908,6 +898,9 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			//select right shader from material
 			renderer->SetShader(rc.material->shader_lit_ptr);
 			shaderchange = true;
+
+			//for (int i = num_lights; i < 3; i++)
+			//	found_lights[i].radius = 0;
 
 			lastm = 0;
 		}
@@ -917,17 +910,12 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 				found_lights[i].radius = 0;
 		}
 
-		//for (int li = 0; li < shadowSplits; li++)
-		//	renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
-		
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
 
 		/* execute render command */
 		CShader* shader = renderer->shader;
-		//normal mapping, sup
-		//try and bring world shader into the normal shader system
 		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
@@ -945,6 +933,18 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		}
 
 		this->rdrawn++;
+	}
+
+
+	//removing old lights
+	for (int i = 0; i < this->lights.size(); i++)
+	{
+		if (this->lights[i].lifetime > 0)
+		{
+			this->lights[i].lifetime -= 0.01;//hack
+			if (this->lights[i].lifetime < 0)
+				this->lights.erase(this->lights.begin() + i--);
+		}
 	}
 
 	//debug draw shadow frustums
@@ -977,7 +977,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed, const Light* light_list)
 {
 	//dirty hack
-	if (shader->cbuffers.find("Terrain") != shader->cbuffers.end())
+	if (shader_changed && shader->cbuffers.find("Terrain") != shader->cbuffers.end())
 	{
 		auto buffer = shader->cbuffers.find("Terrain")->second;
 
@@ -991,8 +991,8 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		data->view = renderer->view;// _matrix;
-		data->projection = renderer->projection;// cam->_projectionMatrix;
+		data->view = renderer->view;
+		data->projection = renderer->projection;
 		data->world = Matrix4::Identity();
 		auto wVP = Matrix4::Identity()*renderer->view*renderer->projection;
 		wVP.MakeTranspose();
@@ -1058,33 +1058,9 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		renderer->context->PSSetConstantBuffers(shader->buffers.shadow.psslot, 1, &this->shadow_buffer);// shader->buffers.shadow.buffer);
 	}
 
-	//calculate lighting
-	//Vec3 lightdir = Vec3(0, 0, 0);
-	/*if (rc->mesh.ib)
-	{
-	Vec3 pos = world.GetTranslation();
-	if (rc->source->parent)
-	{
-	pos = rc->source->parent->LocalToWorld(pos);
-	pos = (Vec3)(rc->source->parent->mat*Vec4(-pos.getnormal(), 0));
-	lightdir = pos;
-	}
-	else
-	{
-	lightdir = -pos.getnormal();
-	}
-	lightdir = this->dirToLight;
-	//set day and ambient lights
-
-	//NEED TO FIX UP AMBIENT LIGHTING
-	}*/
-	//send a constant ambient/lighting value when shadows are on
-
 	if (shader->buffers.lighting.buffer)
 	{
-		Vec3 dir = this->dirToLight;// lightdir;
-		//if (rc->source->parent)
-		//	dir = this->dirToLight;
+		Vec3 dir = this->dirToLight;
 		D3D11_MAPPED_SUBRESOURCE cb;
 		renderer->context->Map(shader->buffers.lighting.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
 #pragma pack(push)
@@ -1093,7 +1069,6 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		{
 			Vec4 pos;
 			Vec4 color;
-			Vec4 radius;
 		};
 		struct mdata
 		{
@@ -1105,13 +1080,13 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 #pragma pack(pop)
 		auto data = (mdata*)cb.pData;
 		data->direction.xyz = dir;
-		data->ambient = Vec4(0.2175f,0.2175,0.2175,0.2175);//rc->source->ambientlight;
-		data->daylight = Vec4(0.9f, 0.9, 0.9, 0.9);;//rc->source->daylight;
+		data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
+		data->daylight = Vec4(0.9f, 0.9, 0.9, 0.9);//rc->source->daylight;
 		for (int i = 0; i < 3; i++)
 		{
 			data->lights[i].pos.xyz = light_list[i].position;
 			data->lights[i].color.xyz = light_list[i].color;
-			data->lights[i].radius.x = 30;// light_list[i].radius;
+			data->lights[i].pos.w = light_list[i].radius;
 		}
 		renderer->context->Unmap(shader->buffers.lighting.buffer, 0);
 
@@ -1150,6 +1125,11 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 	//renderer->SetMatrix(VIEW_MATRIX, &globalview);
 	//Parent* last = 0;//keeps track of what view matix is active
 	//IMaterial* lastm = (IMaterial*)-1;
+	//todo: only do this once per frame
+	//ok, lets be dumb and update materials here
+	for (auto ii : IMaterial::GetList())
+		ii.second->Update(renderer);
+
 	std::vector<RenderCommand> renderqueue;
 
 	r->Render(cam, &renderqueue);
@@ -1163,7 +1143,8 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 {
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
-
+	
+	//todo: match this up with the loop above to fix bugs
 	for (int i = 0; i < renderqueue.size(); i++)
 	{
 		const RenderCommand& rc = renderqueue[i];
@@ -1186,6 +1167,11 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		//try and bring world shader into the normal shader system
 		Light found_lights[3];//max per pixel
 		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shader_changed, found_lights);
+		renderer->SetShader(shader);
+		renderer->SetPixelTexture(0, rc.material->texture);
+		//only need to do this for shader builder shaders
+		if (rc.material_instance.extra)
+			renderer->SetPixelTexture(9, rc.material_instance.extra);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
 

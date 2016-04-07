@@ -548,15 +548,6 @@ Matrix4f Matrix4f::PerspectiveFovLHMatrix( float fovy, float aspect, float zn, f
 	if ( 0.0f == aspect ) aspect = 0.001f;
 	float xScale = yScale / aspect;
 
-	//directx
-	//float dn = 0.0f;
-	//float df = 1.0f;
-
-	//opengl
-	float dn = -1.0f;
-	float df = 1.0f;
-
-
 	ret.m_afEntry[ 0] = xScale;//2*zn/xscale //2*zn/right-left
 	ret.m_afEntry[ 1] = 0.0f;
 	ret.m_afEntry[ 2] = 0.0f;
@@ -753,11 +744,11 @@ Matrix4f Matrix4f::OrthographicOffCenterLHMatrix( float left, float right, float
 	ret.m_afEntry[ 8] = 0.0f;
 	ret.m_afEntry[ 9] = 0.0f;
 	ret.m_afEntry[10] = 1.0f / ( zfar-znear );
-	ret.m_afEntry[11] = znear/(znear-zfar);//0.0f;
+	ret.m_afEntry[11] = znear / (znear - zfar);//0.0f;
 
 	ret.m_afEntry[12] = 0.0f;
 	ret.m_afEntry[13] = 0.0f;
-	ret.m_afEntry[14] = 0.0f;//zn / ( zn-zf );
+	ret.m_afEntry[14] = 0.0f;// znear / (znear - zfar); //0.0f;//zn / ( zn-zf );
 	ret.m_afEntry[15] = 1.0f;
 
 	return( ret );

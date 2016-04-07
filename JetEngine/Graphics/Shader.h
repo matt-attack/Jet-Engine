@@ -5,8 +5,6 @@
 #include <map>
 #include <string>
 
-
-
 struct Uniform
 {
 	int type;
@@ -46,18 +44,10 @@ struct UniformBuffers
 	CBuffer shadow;
 	CBuffer wvp;
 	CBuffer matrices;
-
-	//int viewMatInv, viewProjMatInv, viewerPos;
-	//int worldNormalMat;
-	//int skinMatRows;
-	//int lightPos;
 };
 
 struct D3D11_INPUT_ELEMENT_DESC;
-//struct D3D10_SHADER_MACRO;
-//struct D3D_SHADER_MACRO;
 
-//struct _D3D_SHADER_MACRO;
 //need to make sure to handle if vertex shader has these as well, check if id's are different
 class CShader: public Resource
 {

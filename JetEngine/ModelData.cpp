@@ -140,7 +140,7 @@ void ModelData::BuildModelFromObjModel(ModelData* out, ModelData* mdl)
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD },
 	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
 	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
-	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(elm5,5));
+	out->vb.SetVertexDeclaration(renderer->GetVertexDeclaration(elm5, 5));
 	out->vb.Data(verts, mdl->NumTriangle * 3 * sizeof(MdlVert), sizeof(MdlVert));
 #endif
 
@@ -226,7 +226,7 @@ void ModelData::BuildModelFromIqmModel(ModelData* out, ModelData* mdl)
 	{ ELEMENT_UBYTE4, USAGE_BLENDWEIGHT },
 	{ ELEMENT_UBYTE4, USAGE_BLENDINDICES } };
 
-	out->vbt.SetVertexDeclaration(renderer->GetVertexDeclaration(elm7,6));
+	out->vbt.SetVertexDeclaration(renderer->GetVertexDeclaration(elm7, 6));
 	out->vbt.Data(verts2, mdl->NumVertex*sizeof(MdlVert2), sizeof(MdlVert2));
 
 	out->vb = CVertexBuffer(VertexBufferUsage::Static);
@@ -515,22 +515,27 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 			nm->name = name;
 
 			//generate material
-			IMaterial* mat = new IMaterial(material);
-			mat->alpha = false;
-			//ok, this is eww, but fine for now
-			std::string mname = material;
-			if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
+			//ok, lets not duplicate...
+			if (IMaterial::GetList().find(material) != IMaterial::GetList().end())
+				nm->material = IMaterial::GetList()[material];
+			else
 			{
-				mname = mname + ".tga";
+				IMaterial* mat = new IMaterial(material);
+				mat->alpha = false;
+				//ok, this is eww, but fine for now
+				std::string mname = material;
+				if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
+				{
+					mname = mname + ".tga";
+				}
+				mat->skinned = true;
+				mat->shader_name = "Shaders/shadowed.txt";// "Shaders/generic.txt";
+				mat->normal = "brick.jpg";
+				mat->shader_builder = true;
+				mat->diffuse = mname;
+				mat->Update(renderer);//load any associated textures
+				nm->material = mat;
 			}
-			mat->skinned = true;
-			mat->shader_name = "Shaders/shadowed.txt";// "Shaders/generic.txt";
-			//mat->normal = "brick.jpg";
-			mat->shader_builder = true;
-			mat->diffuse = mname;
-			mat->Update(renderer);//load any associated textures
-
-			nm->material = mat;
 
 			nm->first_triangle = m->first_triangle;
 			nm->num_triangles = m->num_triangles;
@@ -649,7 +654,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 		m->frames = frames;
 		m->num_anims = header.num_anims;
 		m->anims = new Animation[header.num_anims];
-		logf("Frames: %i, Anims: ",header.num_frames);
+		logf("Frames: %i, Anims: ", header.num_frames);
 		for (int i = 0; i < header.num_anims; i++)
 		{
 			Animation* a = &m->anims[i];
@@ -723,7 +728,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 		//}
 		//log("\n");
 
-		
+
 		unsigned short *framedata = (unsigned short*)framesd;
 
 		m->poses = new Pose[header.num_frames*header.num_poses];

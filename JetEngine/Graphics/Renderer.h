@@ -35,6 +35,8 @@ class Renderer
 
 	CShader *shader_s, *shader_ss;
 public:
+	Vec3 ambient, sun_light;
+
 	ID3D11SamplerState* shadowSampler;
 	ID3D11SamplerState* shadowSampler_linear;
 

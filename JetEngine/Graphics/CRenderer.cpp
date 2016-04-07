@@ -292,9 +292,11 @@ void CRenderer::SetFilter(int stage, FilterMode mode)
 {
 #ifndef USEOPENGL
 	if (mode == FilterMode::Linear)
-		context->PSSetSamplers(0, 1, &linear_sampler);
+		context->PSSetSamplers(stage, 1, &linear_sampler);
+	//else if (mode == FilterMode::Anisotropic)
+	//context->PSSetSamplers()
 	else
-		context->PSSetSamplers(0, 1, &point_sampler);
+		context->PSSetSamplers(stage, 1, &point_sampler);
 	//this->d3ddev->SetSamplerState(0, D3DSAMP_MAGFILTER, (DWORD)mode);
 #else
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mode);
@@ -1283,8 +1285,10 @@ CRenderTexture CRenderer::GetRenderTarget(int id)
 {
 	CRenderTexture tex;
 	context->OMGetRenderTargets(1, &tex.color, &tex.depth);
-	tex.color->Release();
-	tex.depth->Release();
+	if (tex.color)
+		tex.color->Release();
+	if (tex.depth)
+		tex.depth->Release();
 	return tex;
 }
 
@@ -1690,7 +1694,7 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 	}
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	glBindBuffer( GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
 }
 
@@ -2488,7 +2492,7 @@ void CRenderer::DrawBoundingBox(const OBB bb, COLOR color)//Vec3* ObjectBound)//
 	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_COLOR, USAGE_COLOR } };
 
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2,2));
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2, 2));
 
 	this->shader->BindIL(&vb.vd);
 
@@ -2560,7 +2564,7 @@ void CRenderer::DrawBoundingBox(const Vec3 min, const Vec3 max)//Vec3* ObjectBou
 
 	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_COLOR, USAGE_COLOR } };
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2,2));
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm2, 2));
 
 	this->shader->BindIL(&vb.vd);
 
@@ -2677,7 +2681,7 @@ void CRenderer::DrawBeams()
 		//Vec3 dir = (beam.start - beam.end).getnormal();
 		//Vec3 right = beam.cam->_lookAt.cross(dir).getnormal();
 		//if (abs(beam.cam->_upDir.dot(right)) > 0.99f)
-			//right = beam.cam->_right;
+		//right = beam.cam->_right;
 
 		//Vec3 diff = beam.cam->_pos - beam.start;
 		//right = dir.cross(diff).getnormal();
@@ -2768,7 +2772,7 @@ void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float
 	{ ELEMENT_COLOR, USAGE_COLOR },
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
 
-	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm3,3));
+	vb.SetVertexDeclaration(this->GetVertexDeclaration(elm3, 3));
 
 	this->SetCullmode(CULL_NONE);
 
@@ -2803,6 +2807,8 @@ void CRenderer::SetPrimitiveType(enum PrimitiveType mode)
 	{
 		if (mode == PT_TRIANGLELIST)
 			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		else if (mode == PT_POINTS)
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
 		else
 			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		this->current_pt = mode;

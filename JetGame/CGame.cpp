@@ -78,13 +78,13 @@ void CGame::Init(Window* window)
 
 	this->timer.Start();
 
-	this->LoadSettings();
-
 #ifdef _WIN32
 	this->input.window = (HWND)window->GetOSHandle();
 #endif
 
 	this->onInit();
+
+	this->LoadSettings();//load after on init so new cvars load properly
 
 	this->m_running = true;
 
@@ -144,7 +144,9 @@ void CGame::PopState()
 	if (!states.empty()) {
 		states.back()->Cleanup();
 		//then delete it!
-		delete states.back();
+		this->to_delete.push_back(states.back());
+
+		//delete states.back();
 		states.pop_back();
 	}
 
@@ -194,7 +196,7 @@ void CGame::MouseEvent(int x, int y, int eventId)
 	}
 
 	states.back()->MouseEvent(this, x, y, eventId);
-};
+}
 
 void CGame::TouchEvent(int eventType, float x, float y, float dx, float dy)
 {
@@ -238,7 +240,6 @@ void CGame::Resume()
 		states.back()->Resume();
 }
 
-
 void CGame::Update()
 {
 	ProfileStartFrame();
@@ -252,10 +253,12 @@ void CGame::Update()
 
 	this->window->ProcessMessages();
 
+	//update input stuff
 	this->input.UpdateControllers();
 	auto state = states.back();
 	this->input.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
 	this->input.first_player_controller = this->GetSettingBool("cl_controller");
+	
 	SoundManager::GetInstance()->Update();
 
 	//was using LINEAR_DISTANCE_CLAMPED

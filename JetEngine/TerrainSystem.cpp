@@ -1045,6 +1045,8 @@ void HeightmapTerrainSystem::GenerateNormals()
 
 		renderer->SetPixelTexture(0, this->hmapv);
 
+		renderer->EnableAlphaBlending(false);
+
 		//ok, lets adjust the viewport
 		Viewport vp;
 		Viewport oldvp;

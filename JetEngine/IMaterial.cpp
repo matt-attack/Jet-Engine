@@ -7,32 +7,23 @@
 
 std::map<std::string, IMaterial*> materials;
 
-#define AddShader3(a,b,c) char* p##a##b##c[] = { #a, #b, #c }; *this->shaders[a|b|c] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b##c, 3)
-#define AddShader2(a,b) char* p##a##b[] = { #a, #b }; *this->shaders[a|b] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b, 2)
-#define AddShader1(a) char* p##a[] = { #a }; *this->shaders[a] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a, 1)
-#define AddShader0() *this->shaders[0] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0)
-
-#define Add1Shader3(a,b,c) case a|b|c:  {char* p##a##b##c[] = { #a, #b, #c }; *this->shaders[a|b|c] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b##c, 3); break;}
-#define Add1Shader2(a,b) case a|b: {char* p##a##b[] = { #a, #b }; *this->shaders[a|b] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a##b, 2); break;}
-#define Add1Shader1(a) case a: {char* p##a[] = { #a }; *this->shaders[a] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", p##a, 1); break;}
-#define Add1Shader0() case 0: {*this->shaders[0] = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0); break;}
-
+const int num_builder_options = 4;
 class ShaderBuilder : public Resource
 {
 	std::string path;
 
 public:
-	CShader* shaders[16];
+	CShader* shaders[1 << num_builder_options];
 
 	ShaderBuilder()
 	{
-		for (int i = 0; i < 16; i++)
+		for (int i = 0; i < (1 << num_builder_options); i++)
 			shaders[i] = 0;
 	}
 
 	~ShaderBuilder()
 	{
-		for (int i = 0; i < 16; i++)
+		for (int i = 0; i < (1 << num_builder_options); i++)
 			delete shaders[i];
 	}
 
@@ -40,7 +31,7 @@ public:
 	{
 		if (this->path.length())//shaders[0])
 		{
-			for (int i = 0; i < 16; i++)
+			for (int i = 0; i < (1 << num_builder_options); i++)
 				if (this->shaders[i])
 					this->LoadShader(i);
 
@@ -77,11 +68,11 @@ public:
 		if (this->shaders[id] == 0)
 			this->shaders[id] = new CShader;
 
-		char* list[4];
+		char* list[num_builder_options];
 		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS" };
 		//build the list
 		int size = 0;
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < num_builder_options; i++)
 			if (id & (1 << i))
 				list[size++] = options[i];
 		
@@ -145,7 +136,8 @@ void IMaterial::Apply(CRenderer* renderer)
 	renderer->EnableAlphaBlending(alpha);
 	renderer->SetFilter(0, this->filter);
 
-	//if (this->shader_ptr)
+	//todo: dont set shader here, need to be able to get the right shader
+	//for the job later based on lighting
 	renderer->SetShader(shader_ptr);
 
 	//also textures need to be moved to materials
@@ -187,10 +179,7 @@ void IMaterial::Update(CRenderer* renderer)
 	if (this->shader_builder)
 	{
 		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
-		//auto shaders_s = resources.get<ShaderBuilder>("Shaders/shadowed.txt");
-		//if (r._shadows)
-		//	shaders = shaders_s;
-
+		
 		int id = (this->normal_map ? NORMAL_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
 			0;// (POINT_LIGHTS);
