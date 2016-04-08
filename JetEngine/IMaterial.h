@@ -13,6 +13,7 @@ enum ShaderFeatures
 	NORMAL_MAP = 2,
 	POINT_LIGHTS = 4,
 	SHADOWS = 8,
+	ALPHA_TEST = 16,
 };
 
 //each mesh will have one of these
@@ -34,8 +35,11 @@ public:
 
 	CullMode cullmode;
 
+	//this is stupid, but oh well
 	CShader* shader_ptr;//use this instead
 	CShader* shader_lit_ptr = 0;
+	CShader* shader_lit_unskinned_ptr = 0;
+	CShader* shader_unskinned_ptr = 0;
 
 	//not used during rendering
 	std::string name;
@@ -51,12 +55,14 @@ public:
 	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
 	IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
-	
+
 	//IMaterial(char* name, char* shader, bool shader_builder, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
 	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, char* normal, CullMode cmode, bool alpha, bool weaponhack = false);
 
 	virtual void Apply(CRenderer* renderer);
+
+	void ApplyShader(bool skinned, bool lit);
 
 	//updates internal data, called when a resource changes
 	//or when settings are changed

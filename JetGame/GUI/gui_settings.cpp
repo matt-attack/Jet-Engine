@@ -98,6 +98,26 @@ gui_settings::gui_settings(CGame* game)
 	box->SetSelected(game->GetSettingBool("cl_vsync") ? 0 : 1);
 	gtab->AddWindow(box);
 
+	box = new gui_dropbox;
+	box->setpos(150, 160);
+	box->setsize(100, 40);
+	box->AddItem("Off");
+	box->AddItem("2xMSAA");
+	box->AddItem("4xMSAA");
+	box->settext("AA");
+	box->callback = [game](gui_dropbox* box)
+	{
+		if (box->GetSelected() == "Off")
+			game->ProcessCommand("cl_aa_samples 1");
+		else if (box->GetSelected() == "2xMSAA")
+			game->ProcessCommand("cl_aa_samples 2");
+		else
+			game->ProcessCommand("cl_aa_samples 4");
+		printf("Selected: %s\n", box->GetSelected().c_str());
+	};
+	box->SetSelected(game->GetSettingBool("cl_aa_samples") ? 0 : 1);
+	gtab->AddWindow(box);
+
 	label = new gui_label;
 	label->setsize(80,40);
 	label->setpos(20,40);
@@ -118,11 +138,11 @@ gui_settings::gui_settings(CGame* game)
 
 	label = new gui_label;
 	label->setsize(120,40);
-	label->setpos(25,150);
+	label->setpos(25,120);
 	label->settext("Shadow Dist");
 	label->AlignRight(false);
 	gtab->AddWindow(label);
-	this->shadowdist.setpos(180,150);
+	this->shadowdist.setpos(180,120);
 	this->shadowdist.setsize(150,30);
 	this->shadowdist.SetRange(300);
 	this->shadowdist.position = game->GetSettingFloat("cl_shadow_dist");
@@ -132,6 +152,8 @@ gui_settings::gui_settings(CGame* game)
 		game->ProcessCommand(command.c_str());
 	};
 	gtab->AddWindow(&this->shadowdist);
+
+
 
 	//add volume settings
 	//investigate chat box auto scroll

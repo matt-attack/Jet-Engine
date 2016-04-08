@@ -9,8 +9,8 @@
 ID3D11ShaderResourceView* missing_texture = 0;
 
 
-int msaa_count = 1;// 2;
-int msaa_quality = 0;
+//int msaa_count = 2;
+//int msaa_quality = 0;
 VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned int count)
 {
 	int key = 0;
@@ -159,7 +159,6 @@ CRenderer::CRenderer()
 	}
 
 	this->Override = false;
-	this->_wvpDirty = false;
 	this->shader = 0;
 	for (int i = 0; i < 25; i++)
 		this->shaders[i] = 0;
@@ -444,6 +443,146 @@ CShader* CRenderer::CreateShader(int id, const char* name)
 	return this->shaders[id];
 }
 
+
+void CRenderer::SetAALevel(int samples)
+{
+	if (samples < 1)
+		samples = 1;
+	if (samples > 4)
+		samples = 4;
+	if (this->current_aa_level == samples)
+		return;
+
+	this->current_aa_level = samples;
+	DXGI_SWAP_CHAIN_DESC swapdesc;
+	swapdesc.Windowed = true;
+	swapdesc.Flags = 0;
+	swapdesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapdesc.BufferCount = 1;
+	//swapdesc.OutputWindow = 
+	swapdesc.OutputWindow = wnd;
+	//this->factory->GetWindowAssociation(&swapdesc.OutputWindow) ;
+	swapdesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+	//MSAA
+	swapdesc.SampleDesc.Count = samples;// msaa_count;// 1;
+	swapdesc.SampleDesc.Quality = 0;// msaa_quality;// 0;
+
+
+	swapdesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+	swapdesc.BufferDesc.Height = this->yres;
+	swapdesc.BufferDesc.Width = this->xres;
+	swapdesc.BufferDesc.RefreshRate.Numerator = 60;//??
+	swapdesc.BufferDesc.RefreshRate.Denominator = 1;
+	swapdesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	swapdesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+
+	//swapdesc.SampleDesc.Quality = 0;
+	//swapdesc.SampleDesc.Count = samples;
+
+	IDXGISwapChain* swap;
+	auto hres = factory->CreateSwapChain(device, &swapdesc, &swap);
+	if (FAILED(hres))
+		throw 7;
+
+	if (this->chain)
+		this->chain->Release();
+	this->chain = swap;
+
+	// Get the pointer to the back buffer.
+	ID3D11Resource* backBufferPtr;
+	chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferPtr);
+
+	if (this->renderTargetView)
+		this->renderTargetView->Release();
+
+	// Create the render target view with the back buffer pointer.
+	//ID3D11RenderTargetView* renderTargetView;
+	HRESULT result = device->CreateRenderTargetView(backBufferPtr, NULL, &renderTargetView);
+	if (FAILED(result))
+		throw 7;
+
+	// Release pointer to the back buffer as we no longer need it.
+	if (backBufferPtr)
+		backBufferPtr->Release();
+	backBufferPtr = 0;
+
+	//now setup depth buffer view and stuff
+
+	//create depth buffer
+	D3D11_TEXTURE2D_DESC depthBufferDesc;
+	ZeroMemory((void*)&depthBufferDesc, sizeof(depthBufferDesc));
+	depthBufferDesc.Width = this->xres;
+	depthBufferDesc.Height = this->yres;
+	depthBufferDesc.MipLevels = 1;
+	depthBufferDesc.ArraySize = 1;
+	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthBufferDesc.SampleDesc.Count = samples;
+	depthBufferDesc.SampleDesc.Quality = 0;
+	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	depthBufferDesc.CPUAccessFlags = 0;
+	depthBufferDesc.MiscFlags = 0;
+	ID3D11Texture2D* depthStencilBuffer;
+	result = device->CreateTexture2D(&depthBufferDesc, 0, &depthStencilBuffer);
+	if (FAILED(result))
+		throw 7;
+
+	//then create view for depth
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
+	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilViewDesc.ViewDimension = samples > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.Texture2D.MipSlice = 0;
+
+	result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
+	if (FAILED(result))
+		throw 7;
+
+	depthStencilBuffer->Release();
+
+	context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
+
+	// Setup the raster description which will determine how and what polygons will be drawn.
+	D3D11_RASTERIZER_DESC rasterDesc;
+	rasterDesc.AntialiasedLineEnable = false;
+	rasterDesc.CullMode = D3D11_CULL_NONE;//D3D11_CULL_BACK;
+	rasterDesc.DepthBias = 0;
+	rasterDesc.DepthBiasClamp = 0.0f;
+	rasterDesc.DepthClipEnable = false;
+	rasterDesc.FillMode = D3D11_FILL_SOLID;
+	rasterDesc.FrontCounterClockwise = true;
+	rasterDesc.MultisampleEnable = samples > 1 ? true : false;
+	rasterDesc.ScissorEnable = false;
+	rasterDesc.SlopeScaledDepthBias = 0.0f;
+
+	// Create the rasterizer state from the description we just filled out.
+	ID3D11RasterizerState* rasterState;
+	result = device->CreateRasterizerState(&rasterDesc, &rs_none);
+	if (FAILED(result))
+		throw 7;
+
+	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+	result = device->CreateRasterizerState(&rasterDesc, &rs_wireframe);
+	if (FAILED(result))
+		throw 7;
+
+	rasterDesc.FillMode = D3D11_FILL_SOLID;
+	rasterDesc.CullMode = D3D11_CULL_BACK;
+	result = device->CreateRasterizerState(&rasterDesc, &rs_cw);
+	if (FAILED(result))
+		throw 7;
+
+	rasterDesc.CullMode = D3D11_CULL_BACK;
+	rasterDesc.FrontCounterClockwise = false;
+	result = device->CreateRasterizerState(&rasterDesc, &rs_ccw);
+	if (FAILED(result))
+		throw 7;
+
+	// Now set the rasterizer state.
+	context->RSSetState(rs_none);
+}
+
 #ifdef _WIN32
 void CRenderer::Init(HWND hWnd, int scrx, int scry)
 #else
@@ -460,10 +599,10 @@ void CRenderer::Init(int scrx, int scry)
 	swapdesc.BufferCount = 1;
 	swapdesc.OutputWindow = hWnd;
 	swapdesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
+	wnd = hWnd;
 	//MSAA
-	swapdesc.SampleDesc.Count = msaa_count;// 1;
-	swapdesc.SampleDesc.Quality = msaa_quality;// 0;
+	swapdesc.SampleDesc.Count = 1;// 1;
+	swapdesc.SampleDesc.Quality = 0;// 0;
 
 
 	swapdesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
@@ -474,7 +613,6 @@ void CRenderer::Init(int scrx, int scry)
 	swapdesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	swapdesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-	IDXGIFactory* factory;
 	CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
 
 	factory->MakeWindowAssociation(hWnd, 0);
@@ -540,10 +678,10 @@ void CRenderer::Init(int scrx, int scry)
 		printf("DX11 Initialization Failed\n");
 	}
 
-	if (msaa_count > 1)
+	//if (msaa_count > 1)
 	{
-		UINT a;
-		device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 2, &a);
+		//UINT a;
+		//device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 2, &a);
 	}
 
 	D3D11_VIEWPORT viewport;
@@ -554,8 +692,11 @@ void CRenderer::Init(int scrx, int scry)
 	viewport.TopLeftX = viewport.TopLeftY = 0;
 	context->RSSetViewports(1, &viewport);
 
+	this->SetAALevel(1);
+
+
 	// Get the pointer to the back buffer.
-	ID3D11Resource* backBufferPtr;
+	/*ID3D11Resource* backBufferPtr;
 	chain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferPtr);
 
 	// Create the render target view with the back buffer pointer.
@@ -585,7 +726,7 @@ void CRenderer::Init(int scrx, int scry)
 	ID3D11Texture2D* depthStencilBuffer;
 	result = device->CreateTexture2D(&depthBufferDesc, 0, &depthStencilBuffer);
 	if (FAILED(result))
-		throw 7;
+		throw 7;*/
 
 	//create the view
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
@@ -611,7 +752,7 @@ void CRenderer::Init(int scrx, int scry)
 	depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
 	//ID3D11DepthStencilState* depthStencilState;
-	result = device->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
+	auto result = device->CreateDepthStencilState(&depthStencilDesc, &depthStencilState);
 	if (FAILED(result))
 		throw 7;
 
@@ -623,7 +764,7 @@ void CRenderer::Init(int scrx, int scry)
 		throw 7;
 
 	//then create view for depth
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+	/*D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
 	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	depthStencilViewDesc.ViewDimension = msaa_count > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
@@ -635,10 +776,10 @@ void CRenderer::Init(int scrx, int scry)
 
 	depthStencilBuffer->Release();
 
-	context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
+	context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);*/
 
 
-	// Setup the raster description which will determine how and what polygons will be drawn.
+	/*// Setup the raster description which will determine how and what polygons will be drawn.
 	D3D11_RASTERIZER_DESC rasterDesc;
 	rasterDesc.AntialiasedLineEnable = false;
 	rasterDesc.CullMode = D3D11_CULL_NONE;//D3D11_CULL_BACK;
@@ -675,7 +816,7 @@ void CRenderer::Init(int scrx, int scry)
 		throw 7;
 
 	// Now set the rasterizer state.
-	context->RSSetState(rs_none);
+	context->RSSetState(rs_none);*/
 
 	D3D11_BLEND_DESC blendStateDescription;
 	ZeroMemory(&blendStateDescription, sizeof(D3D11_BLEND_DESC));
@@ -1044,8 +1185,8 @@ void CRenderer::Resize(int xres, int yres)
 	depthBufferDesc.MipLevels = 1;
 	depthBufferDesc.ArraySize = 1;
 	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthBufferDesc.SampleDesc.Count = msaa_count;// 4;// 1;
-	depthBufferDesc.SampleDesc.Quality = msaa_quality;// 1;//;
+	depthBufferDesc.SampleDesc.Count = this->current_aa_level;// msaa_count;// 4;// 1;
+	depthBufferDesc.SampleDesc.Quality = 0;// msaa_quality;// 1;//;
 	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 	depthBufferDesc.CPUAccessFlags = 0;
@@ -1059,7 +1200,7 @@ void CRenderer::Resize(int xres, int yres)
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
 	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthStencilViewDesc.ViewDimension = msaa_count > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.ViewDimension = this->current_aa_level > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 	result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
@@ -1308,7 +1449,6 @@ void CRenderer::SetMatrix(int type, const Matrix4* mat)
 	{
 		this->projection = *mat;
 	}
-	this->_wvpDirty = true;
 }
 
 CShader* CRenderer::SetShader(int id)//todo, add caching of last set shader

@@ -58,6 +58,7 @@ void CGame::Init(Window* window)
 	this->RegisterCVar("cl_shadow_dist", 150);
 	this->RegisterCVar("cl_volume", 50);
 	this->RegisterCVar("cl_controller", 1);
+	this->RegisterCVar("cl_aa_samples", 1);
 	
 	//need to start making map with mission like thing
 	//improve mech config
@@ -302,11 +303,9 @@ void CGame::Draw()
 	renderer->shader = 0;//makes shader reloading work
 
 	//update settings
-	if (this->GetSettingBool("cl_shadows"))
-		r._shadows = true;
-	else
-		r._shadows = false;
-
+	r._shadows = this->GetSettingBool("cl_shadows");
+	float samples = this->GetSettingFloat("cl_aa_samples");
+	renderer->SetAALevel(samples);
 	renderer->EnableVsync(this->GetSettingBool("cl_vsync"));
 	r.SetMaxShadowDist(this->GetSettingFloat("cl_shadow_dist"));
 	SoundManager::GetInstance()->SetMasterVolume(this->GetSettingFloat("cl_volume") / 100.0f);

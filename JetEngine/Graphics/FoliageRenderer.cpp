@@ -2,6 +2,15 @@
 #include "RenderTexture.h"
 #include "Models/ObjModel.h"
 #include "../ModelData.h"
+#include "ParticleRenderer.h"
+
+#include <D3D11.h>
+
+#include "Shader.h"
+#include "CRenderer.h"
+#include "../ResourceManager.h"
+#include "CTexture.h"
+#include "../Util/Profile.h"
 
 FoliageRenderer::FoliageRenderer()
 {
@@ -14,15 +23,6 @@ FoliageRenderer::FoliageRenderer()
 FoliageRenderer::~FoliageRenderer()
 {
 }
-
-#include "ParticleRenderer.h"
-
-#include <D3D11.h>
-
-#include "Shader.h"
-#include "CRenderer.h"
-#include "../ResourceManager.h"
-#include "CTexture.h"
 
 Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 {
@@ -70,7 +70,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	if (this->shader)
 		return;//already loaded
 	
-	this->AddModel("tree.iqm");
+	//this->AddModel("tree.iqm");
 	this->AddModel("tree2.iqm");
 	//this->dimensions = this->GetImpostorSize("tree.iqm");
 
@@ -90,7 +90,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//ZeroMemory(&p, sizeof(Particle));
 	//p.Age = 0.0f;
 	//p.Type = 0;
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < 100; i++)
 	{
 		int model = rand() % this->tree_models.size();
 		data[i].position = Vec3::random(2048, 0, 2048);// +Vec3(512, 0, 512);
@@ -138,7 +138,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//this->shader = new CShader("Content/Shaders/tree_billboards.shdr", "vs_main", "Content/Shaders/tree_billboards.shdr", "ps_main", 0, 0, "Content/Shaders/tree_billboards.shdr", "gs_main");
 }
 
-#include "../Util/Profile.h"
+
 /*void ParticleRenderer::Update(float dt)
 {
 PROFILE("particle update");
@@ -168,7 +168,7 @@ renderer->context->Unmap(mStreamOutVB, 0);
 void FoliageRenderer::AddModel(const char* name)
 {
 	ObjModel* model = new ObjModel;
-	model->Load(name);// mech2.iqm");
+	model->Load(name);
 	model->animate = true;//uses keyframe number for bounds
 	model->aabb = model->t->joints[0].bb;
 	this->tree_models.push_back({ this->GetImpostorSize(model), model });
@@ -184,17 +184,48 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 	//ok, now lets be super dumb
 	//ok, lets speed this up considerably
+	int count[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	if (renderer->current_aa_level == 2)
+		return;//showdebug > 1)
 	for (int i = 0; i < this->num_billboards; i++)
 	{
 		if (this->data[i].position.distsqr(cam._pos) < 100 * 100)
 		{ 
-			auto model = this->tree_models[this->data[i].type];
+			int type = this->data[i].type;
+			auto model = this->tree_models[type];
 
-			need to render just an instance of it, not do this jazz
+			//make trees use the alpha test material
+			//get available model
+			ObjModel* rm = 0;
+			//rm = model.model;
+			if (render_models[type].size() <= count[type])
+			{
+				//allocate new one
+				auto tmp = new ObjModel;
+				tmp->Load(model.model->name);
+				render_models[type].push_back(tmp);
+				rm = tmp;
+				count[type]++;
+			}
+			else
+			{
+				rm = render_models[type][count[type]++];
+			}
+			//need to render just an instance of it, not do this jazz
+			//	needs to go into normal renderer, NOT be drawn immediately
+			//	that way I can have shadows, and culling too
+
 			//render it bitches
-			model.model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f/2.0f)*Matrix4::TranslationMatrix(this->data[i].position - Vec3(0,model.dimensions.y/2,0));
-			r.Render((CCamera*)&cam, model.model);
-			//r.AddRenderable(model)
+			Vec3 offset = this->data[i].position - Vec3(0, model.dimensions.y / 2, 0);
+			rm->aabb = rm->t->joints[0].bb;
+			rm->aabb.min *= 2;
+			rm->aabb.max *= 2;
+			rm->aabb.max += offset;
+			rm->aabb.min += offset;
+			rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+			//r.Render((CCamera*)&cam, model.model);
+			r.AddRenderable(rm);
+				//break;
 		}
 	}
 

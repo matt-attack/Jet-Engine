@@ -30,6 +30,7 @@ Renderer::Renderer()
 	this->shadowSplitLogFactor = 0.9f;
 	this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
 	this->_shadows = true;//should default to false eventually
+	this->SetAmbient(Vec3(0.4, 0.4, 0.54), Vec3(0.2, 0.2, 0.2));
 }
 
 void Renderer::Init(CRenderer* renderer)
@@ -869,11 +870,15 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		bool shaderchange = false;
 		if (lastm != rc.material)
 		{
-			rc.material->Apply(renderer);
+			rc.material->Apply(renderer);//make apply not apply the shader
 			lastm = rc.material;
 			shaderchange = true;
 		}
 
+		//if no outframes, its not skinned, so use nonskinned shader
+		//	also take into account lights for applying the shader
+		//if (rc.mesh.)
+			
 		//todo: find applicable lights then set'em up
 		int num_lights = 0;
 		Light found_lights[3];//max per pixel
@@ -896,20 +901,26 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		if (num_lights > 0 && rc.material->shader_builder)
 		{
 			//select right shader from material
-			renderer->SetShader(rc.material->shader_lit_ptr);
-			shaderchange = true;
+			//renderer->SetShader(rc.material->shader_lit_ptr);
+			//shaderchange = true;
 
 			//for (int i = num_lights; i < 3; i++)
 			//	found_lights[i].radius = 0;
 
-			lastm = 0;
+			//lastm = 0;
 		}
 		else
 		{
 			for (int i = 0; i < 3; i++)
 				found_lights[i].radius = 0;
 		}
+		auto oldshdr = renderer->shader;
 
+		//ok, need to select right shader for skinned / nonskinned
+		//todo: also do shader LOD
+		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights > 0);
+		shaderchange = (oldshdr != renderer->shader);
+		
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
@@ -972,6 +983,12 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			renderer->DrawFrustum(mv[6], tmpCamera._projectionMatrix, colors[i]);
 		}
 	}
+}
+
+
+void Renderer::SetupMaterials(const RenderCommand* rc)
+{
+
 }
 
 void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed, const Light* light_list)
@@ -1073,14 +1090,17 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		struct mdata
 		{
 			Vec4 direction;
-			Vec4 ambient;
 			Vec4 daylight;
+			Vec4 ambient_down;
+			Vec4 ambient_range;
 			pl lights[3];
 		};
 #pragma pack(pop)
 		auto data = (mdata*)cb.pData;
 		data->direction.xyz = dir;
-		data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
+		data->ambient_down.xyz = this->ambient_bottom;
+		data->ambient_range.xyz = this->ambient_range;
+		//data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
 		data->daylight = Vec4(0.9f, 0.9, 0.9, 0.9);//rc->source->daylight;
 		for (int i = 0; i < 3; i++)
 		{
@@ -1160,6 +1180,12 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 			shader_changed = true;
 		}
 
+		auto oldshdr = renderer->shader;
+		//ok, need to select right shader for skinned / nonskinned
+		rc.material->ApplyShader(rc.mesh.OutFrames, false);//num_lights > 0);
+		//shaderchange = (oldshdr != renderer->shader);
+
+
 		//improve this, make it more static
 		/* execute render command */
 		CShader* shader = renderer->shader;
@@ -1169,6 +1195,8 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shader_changed, found_lights);
 		renderer->SetShader(shader);
 		renderer->SetPixelTexture(0, rc.material->texture);
+
+		
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);

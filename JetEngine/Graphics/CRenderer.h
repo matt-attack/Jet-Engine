@@ -221,7 +221,7 @@ typedef int D3DCOLOR;
 typedef unsigned int Texture;
 #endif
 #undef DrawText
-
+class IDXGIFactory;
 class CRenderer
 {
 	friend class Renderable;
@@ -251,6 +251,7 @@ class CRenderer
 	ID3D11DepthStencilState* depthStencilStateNoWrite, *depthStencilState;
 
 	bool wireframe;
+	bool vsync;
 
 	PrimitiveType current_pt = PrimitiveType::PT_NONE;
 
@@ -261,41 +262,36 @@ class CRenderer
 		int key;
 		VertexDeclaration vd;
 	};
-
 	std::vector<VertexElementCache> vaos;
-public:
 
-#ifndef USEOPENGL
-	ID3D11Device* device;
-	ID3D11DeviceContext* context;
-	IDXGISwapChain* chain;
+	HWND wnd;
+
+	IDXGISwapChain* chain = 0;
 
 	CVertexBuffer rectangle_v_buffer;
-#else
-	int texUnif;
-	int colorUnif;
-	int colorUnif2;
+public:
 
-	unsigned int rect_vb;
-#endif
+	ID3D11Device* device;
+	ID3D11DeviceContext* context;
+
+	int current_aa_level = -1;
+	IDXGIFactory* factory;
 
 public:
+
+	void SetAALevel(int samples);
 
 	CShader* shader;
 
 	Matrix4 world, view, projection;
-	Matrix4 wVP;
-	bool _wvpDirty;
+	//Matrix4 wVP;
+	//bool _wvpDirty;
 
-#ifdef USEOPENGL
-	int thread;
-	int starunif;
-#endif
 
 	VertexDeclaration input_layout;
 
-	CShader* passthrough;
-	CShader* unlit_textured;
+	CShader* passthrough = 0;
+	CShader* unlit_textured = 0;
 	CShader* shaders[25];
 	//change shaders to not use magic numbers anymore and name them
 
@@ -322,7 +318,6 @@ public:
 #else
 	void Init(int scrx, int scry);
 #endif
-	bool vsync;
 	void EnableVsync(bool tf)
 	{
 		if (tf != vsync)
@@ -332,6 +327,8 @@ public:
 			this->Resize(renderer->xres, renderer->yres);
 		}
 	}
+	bool Vsync() { return this->vsync; }
+
 	void Resize(int scrx, int scry);
 	void Present();
 
@@ -391,17 +388,13 @@ public:
 #endif
 
 	VertexDeclaration GetVertexDeclaration(VertexElement* elm, unsigned int count);
-	//VertexDeclaration* GetVertexDeclaration(unsigned int id)
-	//{
-	//	return &this->vertexdeclarations[id];
-	//}
 
 	void SetVertexDeclaration(VertexDeclaration vd)
 	{
 		this->input_layout = vd;
 	}
-	ID3D11RenderTargetView* renderTargetView;
-	ID3D11DepthStencilView* depthStencilView;
+	ID3D11RenderTargetView* renderTargetView = 0;
+	ID3D11DepthStencilView* depthStencilView = 0;
 
 	void StencilFunc(unsigned int func, unsigned int ref, unsigned int mask);
 	void StencilOp(int fail, int zfail, int zpass);

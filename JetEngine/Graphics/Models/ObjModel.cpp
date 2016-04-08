@@ -441,7 +441,9 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.vb = &this->t->vbt;// vb;
 	//else
 	//	rc.mesh.vb = &this->t->vb;
-
+		make it select right vb for shader used
+			if it doesnt have normal map
+				dont use vbt
 	for (int i = 0; i < t->num_meshes; i++)
 	{
 		Mesh* mesh = &t->meshes[i];

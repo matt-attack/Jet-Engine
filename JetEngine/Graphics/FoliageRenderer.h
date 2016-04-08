@@ -38,6 +38,7 @@ class FoliageRenderer
 		ObjModel* model;
 	};
 	std::vector<TreeModel> tree_models;
+	std::vector<ObjModel*> render_models[8];//stupid hack
 
 public:
 	FoliageRenderer();

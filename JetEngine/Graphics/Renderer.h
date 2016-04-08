@@ -34,6 +34,8 @@ class Renderer
 	std::vector<Renderable*> renderables;
 
 	CShader *shader_s, *shader_ss;
+	Vec3 ambient_bottom, ambient_range;
+
 public:
 	Vec3 ambient, sun_light;
 
@@ -96,6 +98,12 @@ public:
 		this->renderables.push_back(renderable);
 	}
 
+	void SetAmbient(Vec3 top, Vec3 bottom)
+	{
+		this->ambient_bottom = bottom;
+		this->ambient_range = top - bottom;
+	}
+
 	//this renders all the given renderables from the given view
 	void Render(CCamera* cam, CRenderer* render);
 
@@ -145,6 +153,8 @@ private:
 	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed, const Light* lights);
 
 	inline void CalculateLighting();
+
+	inline void SetupMaterials(const RenderCommand* rc);
 };
 
 extern Renderer r;

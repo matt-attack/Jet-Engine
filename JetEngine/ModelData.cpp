@@ -525,13 +525,19 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				//ok, this is eww, but fine for now
 				std::string mname = material;
 				if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
-				{
-					mname = mname + ".tga";
-				}
+					mname = mname + ".png";//.tga
+				
+				//need to change this to not always be set to skinned, for example for trees
 				mat->skinned = true;
-				mat->shader_name = "Shaders/shadowed.txt";// "Shaders/generic.txt";
-				mat->normal = "brick.jpg";
+				mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
 				mat->shader_builder = true;
+
+				//temporary test values
+				ok, how do I want to set these???
+					also theres a backface culling problem on tree leaves
+				mat->normal = "brick.jpg";
+				mat->alphatest = true;
+				
 				mat->diffuse = mname;
 				mat->Update(renderer);//load any associated textures
 				nm->material = mat;

@@ -66,9 +66,7 @@ void CVertexBuffer::Data(const void* data, size_t length, unsigned int stride)
 		// Now create the vertex buffer.
 		auto result = renderer->device->CreateBuffer(&vertexBufferDesc, &vertexData, &vb);
 		if (FAILED(result))
-		{
 			throw 7;
-		}
 
 		this->size = length;
 

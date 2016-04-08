@@ -7,7 +7,7 @@
 
 std::map<std::string, IMaterial*> materials;
 
-const int num_builder_options = 4;
+const int num_builder_options = 5;
 class ShaderBuilder : public Resource
 {
 	std::string path;
@@ -69,7 +69,7 @@ public:
 			this->shaders[id] = new CShader;
 
 		char* list[num_builder_options];
-		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS" };
+		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
 		//build the list
 		int size = 0;
 		for (int i = 0; i < num_builder_options; i++)
@@ -117,7 +117,7 @@ IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, 
 	this->diffuse = diffuse ? diffuse : "";
 
 	//need to update here if possible
-	if (renderer && renderer->rectangle_v_buffer.GetSize() > 0)//HAX lel
+	if (renderer && renderer->passthrough)//rectangle_v_buffer.GetSize() > 0)//HAX lel
 		this->Update(renderer);
 
 	GetList()[name] = this;
@@ -138,7 +138,7 @@ void IMaterial::Apply(CRenderer* renderer)
 
 	//todo: dont set shader here, need to be able to get the right shader
 	//for the job later based on lighting
-	renderer->SetShader(shader_ptr);
+	//renderer->SetShader(shader_ptr);
 
 	//also textures need to be moved to materials
 	if (this->depthhack)
@@ -180,7 +180,8 @@ void IMaterial::Update(CRenderer* renderer)
 	{
 		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
 		
-		int id = (this->normal_map ? NORMAL_MAP : 0) |
+		int id = (this->alphatest ? ALPHA_TEST : 0) |
+			(this->normal_map ? NORMAL_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
 			0;// (POINT_LIGHTS);
 
@@ -189,9 +190,32 @@ void IMaterial::Update(CRenderer* renderer)
 
 		this->shader_ptr = shaders->GetShader(id);
 		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);
+		this->shader_unskinned_ptr = shaders->GetShader(id ^ SKINNING);
+		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) ^ SKINNING);
+
 	}
 	else
 	{
 		this->shader_ptr = resources.get<CShader>(this->shader_name);
 	}
+}
+
+void IMaterial::ApplyShader(bool skinned, bool lit)
+{
+	if (this->shader_builder == false)
+	{
+		renderer->SetShader(shader_ptr);
+		return;
+	}
+
+	if (skinned)
+		if (lit)
+			renderer->SetShader(shader_lit_ptr);
+		else
+			renderer->SetShader(shader_ptr);
+	else
+		if (lit)
+			renderer->SetShader(shader_lit_unskinned_ptr);
+		else
+			renderer->SetShader(shader_unskinned_ptr);
 }
