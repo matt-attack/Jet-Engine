@@ -1,9 +1,7 @@
 #include "CGame.h"
-#ifndef MATT_SERVER
 #include <JetEngine/Graphics/CRenderer.h>
 #include <JetEngine/gui/gui_messagebox.h>
 #include <JetGame/gui/gui_settings.h>
-#endif
 #include <JetEngine/Sound/SoundObject.h>
 #include <JetEngine/Graphics/Renderer.h>
 #include <JetEngine/ResourceManager.h>
@@ -16,7 +14,6 @@
 #include <Psapi.h>
 #endif
 
-#ifndef MATT_SERVER
 #include <AL\al.h>
 
 void initKeyboard(HWND han_Window)//should be setup input
@@ -370,4 +367,3 @@ void CGame::MessageBox(char* caption, char* text)
 	m->setcaption(caption);
 	this->base_gui.AddWindow(m);
 }
-#endif

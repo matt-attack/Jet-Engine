@@ -74,6 +74,9 @@ public:
 		static std::map<std::string, IMaterial*> materials;
 		return materials;
 	}
+
+	//loads a material from a .mat file
+	static IMaterial* Load(const char* name);
 };
 
 

@@ -155,6 +155,8 @@ private:
 	inline void CalculateLighting();
 
 	inline void SetupMaterials(const RenderCommand* rc);
+
+	inline void RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam);
 };
 
 extern Renderer r;

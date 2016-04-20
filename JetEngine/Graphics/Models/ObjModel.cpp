@@ -4,11 +4,11 @@
 #include "../Shader.h"
 #include "../../IMaterial.h"
 
-#ifndef MATT_SERVER
 #include "../CRenderer.h"
-#endif
 
 #include "../../Util/Profile.h"
+#include "../RenderTexture.h"
+#include "../CTexture.h"
 
 ObjModel::ObjModel()
 {
@@ -30,7 +30,7 @@ ObjModel::ObjModel()
 	this->receivesShadows = 1;
 };
 
-ObjModel::~ObjModel()	
+ObjModel::~ObjModel()
 {
 	if (this->_external == false)
 	{
@@ -84,7 +84,7 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 				this->OutFrames = new Matrix3x4[t->num_joints];
 				for (int i = 0; i < t->num_joints; i++)
 					this->OutFrames[i] = Matrix3x4::Identity();
- 				this->_external = false;
+				this->_external = false;
 			}
 			else
 			{
@@ -98,7 +98,7 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 				for (int i = 0; i < t->num_joints; i++)
 				{
 					this->JointTransforms[i].enabled = false;
-					this->JointTransforms[i].transform = Matrix3x4(Vec4(1,0,0,0),Vec4(0,1,0,0),Vec4(0,0,1,0));//identity matrix
+					this->JointTransforms[i].transform = Matrix3x4(Vec4(1, 0, 0, 0), Vec4(0, 1, 0, 0), Vec4(0, 0, 1, 0));//identity matrix
 				}
 			}
 			else
@@ -124,7 +124,7 @@ int ObjModel::GetBone(const char* name)
 {
 	for (int i = 0; i < t->num_joints; i++)
 	{
-		if (strcmp(name,t->joints[i].name)==0)
+		if (strcmp(name, t->joints[i].name) == 0)
 			return i;
 	}
 	return -1;
@@ -135,18 +135,18 @@ Matrix3x4 ObjModel::GetBoneMat(const char* name)
 	int i = 0;
 	for (; i < t->num_joints; i++)
 	{
-		if (strcmp(name,t->joints[i].name)==0)
+		if (strcmp(name, t->joints[i].name) == 0)
 			break;
 	}
 
 	//compute joint matrix
 	Matrix3x4 out;
 	memcpy(&out, &this->OutFrames[i], sizeof(Matrix3x4));
-	Matrix34Multiply_OnlySetOrigin( (float*)&this->OutFrames[i], (float*)&this->t->joints[i].matrix, (float*)&out );
+	Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&this->t->joints[i].matrix, (float*)&out);
 
 	return out;
 };
-#ifndef MATT_SERVER
+
 void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curframe, Animation* anim2, int oframe1, int oframe2, float curframe2, float blend)//slerps/lerps between anim 1 and anim2
 {
 	PROFILE("Animate");
@@ -177,9 +177,9 @@ void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curf
 		Quaternion q2 = Quaternion::Slerp(oframeoffset, m->poses[oframe1*m->num_joints + i].rotation, m->poses[oframe2*m->num_joints + i].rotation, true);//m->poses[oframe1*m->numjoints + i].rotation;
 		Quaternion out = Quaternion::Slerp(blend, q1, q2, true);
 
-		Vec3 p1 = m->poses[frame1*m->num_joints + i].translation*(1-frameoffset) + m->poses[frame2*m->num_joints + i].translation*frameoffset;
-		Vec3 p2 = m->poses[oframe1*m->num_joints + i].translation*(1-oframeoffset) + m->poses[oframe2*m->num_joints + i].translation*oframeoffset;
-		Vec3 pout = p1*(1-blend) + p2*blend;
+		Vec3 p1 = m->poses[frame1*m->num_joints + i].translation*(1 - frameoffset) + m->poses[frame2*m->num_joints + i].translation*frameoffset;
+		Vec3 p2 = m->poses[oframe1*m->num_joints + i].translation*(1 - oframeoffset) + m->poses[oframe2*m->num_joints + i].translation*oframeoffset;
+		Vec3 pout = p1*(1 - blend) + p2*blend;
 
 		Matrix3x4 mat = Matrix3x4(out, pout);
 
@@ -230,9 +230,9 @@ void ObjModel::BlendAnimate(Animation* anim, float curframe, Animation* anim2, f
 		Quaternion q2 = Quaternion::Slerp(oframeoffset, m->poses[oframe1*m->num_joints + i].rotation, m->poses[oframe2*m->num_joints + i].rotation, true);//m->poses[oframe1*m->numjoints + i].rotation;
 		Quaternion out = Quaternion::Slerp(blend, q1, q2, true);
 
-		Vec3 p1 = m->poses[frame1*m->num_joints + i].translation*(1-frameoffset) + m->poses[frame2*m->num_joints + i].translation*frameoffset;
-		Vec3 p2 = m->poses[oframe1*m->num_joints + i].translation*(1-oframeoffset) + m->poses[oframe2*m->num_joints + i].translation*oframeoffset;
-		Vec3 pout = p1*(1-blend) + p2*blend;
+		Vec3 p1 = m->poses[frame1*m->num_joints + i].translation*(1 - frameoffset) + m->poses[frame2*m->num_joints + i].translation*frameoffset;
+		Vec3 p2 = m->poses[oframe1*m->num_joints + i].translation*(1 - oframeoffset) + m->poses[oframe2*m->num_joints + i].translation*oframeoffset;
+		Vec3 pout = p1*(1 - blend) + p2*blend;
 
 		Matrix3x4 mat = Matrix3x4(out, pout);
 
@@ -276,7 +276,7 @@ void Animate(ModelData* m, JointTransform* JointTransforms, Matrix3x4* OutFrames
 	for (int i = 0; i < m->num_joints; i++)
 	{
 		Quaternion q = Quaternion::Slerp(frameoffset, pose1[i].rotation, pose2[i].rotation, true);//m->poses[frame1*m->numjoints + i].rotation;
-		Vec3 p = pose1[i].translation*(1-frameoffset) + pose2[i].translation*frameoffset;
+		Vec3 p = pose1[i].translation*(1 - frameoffset) + pose2[i].translation*frameoffset;
 
 		Matrix3x4 mat = Matrix3x4(q, p);//oomat1*(1 - blend) + oomat2*blend;
 
@@ -319,7 +319,7 @@ void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 	for (int i = 0; i < m->num_joints; i++)
 	{
 		Quaternion q = Quaternion::Slerp(frameoffset, pose1[i].rotation, pose2[i].rotation, true);//m->poses[frame1*m->numjoints + i].rotation;
-		Vec3 p = pose1[i].translation*(1-frameoffset) + pose2[i].translation*frameoffset;
+		Vec3 p = pose1[i].translation*(1 - frameoffset) + pose2[i].translation*frameoffset;
 
 		Matrix3x4 mat = Matrix3x4(q, p);//oomat1*(1 - blend) + oomat2*blend;
 
@@ -362,7 +362,7 @@ void ObjModel::Animate(Animation* anim, float curframe)
 	for (int i = 0; i < m->num_joints; i++)
 	{
 		Quaternion q = Quaternion::Slerp(frameoffset, pose1[i].rotation, pose2[i].rotation, true);//m->poses[frame1*m->numjoints + i].rotation;
-		Vec3 p = pose1[i].translation*(1-frameoffset) + pose2[i].translation*frameoffset;
+		Vec3 p = pose1[i].translation*(1 - frameoffset) + pose2[i].translation*frameoffset;
 
 		Matrix3x4 mat = Matrix3x4(q, p);//oomat1*(1 - blend) + oomat2*blend;
 		//char o[500];
@@ -396,11 +396,11 @@ void ObjModel::UpdateAnimations()
 		if (old)
 		{
 			float fframe1 = this->frame1;//(((float)(GetTickCount() - anim_start))/1000.0f)*anim->framerate;
-			float fframe2 = this->frame2 + (((float)(GetTickCount() - oldanim_start))/1000.0f)*old->framerate;//todo, get from old frame1
+			float fframe2 = this->frame2 + (((float)(GetTickCount() - oldanim_start)) / 1000.0f)*old->framerate;//todo, get from old frame1
 			if (old->flags != IQM_LOOP)
 				fframe2 = fframe2 < old->num_frames ? fframe2 : (float)old->num_frames - 0.01f;//fmod(fframe2, old->first_frame + old->num_frames);
 
-			float blend = (((float)(GetTickCount() - anim_start))/1000.0f);//blends to new anim over 0.5 seconds, need to make adjustable
+			float blend = (((float)(GetTickCount() - anim_start)) / 1000.0f);//blends to new anim over 0.5 seconds, need to make adjustable
 			if (blend > 1.0f)
 				blend = 1.0f;
 			if (blend != 1.0f)
@@ -415,19 +415,13 @@ void ObjModel::UpdateAnimations()
 	}
 }
 
-//IMaterial oamat("animated object", 6, Linear, 0, CULL_CW, false);
-//IMaterial omat(9, Linear, 0, CULL_CW, false);
-
-#include "../CTexture.h"
-//IMaterial decal("decals", 0/*use default shader*/, Linear, "texture.png", CULL_NONE, false);
-
 void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	if (this->animate)
 		this->type = RenderableType::Skinned;
-	
+
 	//todo: possible future optimization is to cache these, they dont really change
-	//the i dont have to touch tons of memory just to submit
+	//then i dont have to touch tons of memory just to submit
 	RenderCommand rc;
 	rc.material_instance.extra = this->damage_texture;
 	rc.alpha = this->alpha;
@@ -438,17 +432,17 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	else
 		rc.mesh.OutFrames = 0;
 	//if (this->material->normal_map)
-		rc.mesh.vb = &this->t->vbt;// vb;
+	rc.mesh.vb = &this->t->vbt;// vb;
 	//else
 	//	rc.mesh.vb = &this->t->vb;
-		make it select right vb for shader used
-			if it doesnt have normal map
-				dont use vbt
+	//make it select right vb for shader used
+	//	if it doesnt have normal map
+	//		dont use vbt
 	for (int i = 0; i < t->num_meshes; i++)
 	{
 		Mesh* mesh = &t->meshes[i];
 		rc.mesh.ib = mesh->ib;
-		rc.mesh.num_indices = mesh->num_triangles*3;
+		rc.mesh.num_indices = mesh->num_triangles * 3;
 		rc.mesh.primitives = mesh->num_vertexes;
 		//ok, submit the right material for the skinning type
 		//	or maybe have a skinned version for some materials?
@@ -459,8 +453,8 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 
 		queue->push_back(rc);
 	}
-	
-	if (this->decals)
+
+	/*if (this->decals)
 	{
 		throw 7; //broken
 		rc.mesh.ib = 0;
@@ -470,20 +464,20 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		//rc.material = &decal;
 
 		queue->push_back(rc);
-	}
+	}*/
 	//this->DebugRender(render);
 };
 
 void ObjModel::DebugRender(CRenderer* render)
 {
 #ifdef _WIN32
-	renderer->SetDepthRange(0.0f,0.0f);
+	renderer->SetDepthRange(0.0f, 0.0f);
 	//compute joint matrices for rendering debug info
 	Matrix3x4 jointMats[70];//should be ok
-	for (int i = 0; i < t->num_joints; i++ ) 
+	for (int i = 0; i < t->num_joints; i++)
 	{
 		memcpy(&jointMats[i], &this->OutFrames[i], sizeof(Matrix3x4));
-		Matrix34Multiply_OnlySetOrigin( (float*)&this->OutFrames[i], (float*)&t->joints[i].matrix, (float*)&jointMats[i] );
+		Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&t->joints[i].matrix, (float*)&jointMats[i]);
 	}
 
 	struct vertz
@@ -515,10 +509,10 @@ void ObjModel::DebugRender(CRenderer* render)
 		}
 
 		vertz p[6];
-		Vec3 max = jointMats[i].transform(Vec3(0,0,0));
+		Vec3 max = jointMats[i].transform(Vec3(0, 0, 0));
 		if (t->joints[i].parent >= 0)
 		{
-			Vec3 min = jointMats[t->joints[i].parent].transform(Vec3(0,0,0));
+			Vec3 min = jointMats[t->joints[i].parent].transform(Vec3(0, 0, 0));
 
 			p[0].p = min;
 			p[0].color = 0xFFFFFFFF;
@@ -528,17 +522,17 @@ void ObjModel::DebugRender(CRenderer* render)
 		}
 		//draw normals
 		p[0].p = max;
-		p[0].color = COLOR_ARGB(255,255,0,0);
-		p[1].p = max+((Vec3)jointMats[i].a)*0.075f;
-		p[1].color = COLOR_ARGB(255,255,0,0);
+		p[0].color = COLOR_ARGB(255, 255, 0, 0);
+		p[1].p = max + ((Vec3)jointMats[i].a)*0.075f;
+		p[1].color = COLOR_ARGB(255, 255, 0, 0);
 		p[2].p = max;
-		p[2].color = COLOR_ARGB(255,0,255,0);
-		p[3].p = max+((Vec3)jointMats[i].b)*0.075f;
-		p[3].color = COLOR_ARGB(255,0,255,0);
+		p[2].color = COLOR_ARGB(255, 0, 255, 0);
+		p[3].p = max + ((Vec3)jointMats[i].b)*0.075f;
+		p[3].color = COLOR_ARGB(255, 0, 255, 0);
 		p[4].p = max;
-		p[4].color = COLOR_ARGB(255,0,0,255);
-		p[5].p = max+((Vec3)jointMats[i].c)*0.075f;
-		p[5].color = COLOR_ARGB(255,0,0,255);
+		p[4].color = COLOR_ARGB(255, 0, 0, 255);
+		p[5].p = max + ((Vec3)jointMats[i].c)*0.075f;
+		p[5].color = COLOR_ARGB(255, 0, 0, 255);
 		//renderer->d3ddev->DrawPrimitiveUP(D3DPT_LINELIST, 3, &p, sizeof(vertz));
 	}
 
@@ -563,11 +557,10 @@ void ObjModel::DebugRender(CRenderer* render)
 	//renderer->SetTexture(0, old);
 	//renderer->DepthWriteEnable(true);
 	renderer->SetShader(olds);
-	renderer->SetDepthRange(0.0f,1.0f);
+	renderer->SetDepthRange(0.0f, 1.0f);
 #endif
 }
 
-#include "../RenderTexture.h"
 CTexture* ObjModel::GetPositionMap()
 {
 	if (this->position_map)
@@ -599,7 +592,7 @@ CTexture* ObjModel::GetPositionMap()
 	this->t->meshes[0].ib->Bind();
 
 	//finally draw it
-	renderer->DrawIndexedPrimitive(PrimitiveType::PT_TRIANGLELIST, 0, 0, this->t->meshes[0].num_vertexes, this->t->meshes[0].num_triangles*3);
+	renderer->DrawIndexedPrimitive(PrimitiveType::PT_TRIANGLELIST, 0, 0, this->t->meshes[0].num_vertexes, this->t->meshes[0].num_triangles * 3);
 
 	renderer->SetRenderTarget(0, &rt);
 	renderer->SetViewport(&oldvp);
@@ -607,7 +600,6 @@ CTexture* ObjModel::GetPositionMap()
 	this->position_map = crt;
 	//I shouldnt have to do this, fix me later
 	//this->position_map->texture = crt->GetColorResourceView();
-	
+
 	return this->position_map;
 }
-#endif

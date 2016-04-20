@@ -2,8 +2,8 @@
 
 #include "ResourceManager.h"
 #include "iqm.h"
-#include "Math\Matrix.h"
-#include "Graphics\CVertexBuffer.h"
+#include "Math/Matrix.h"
+#include "Graphics/CVertexBuffer.h"
 
 struct Mesh;
 struct Joint;

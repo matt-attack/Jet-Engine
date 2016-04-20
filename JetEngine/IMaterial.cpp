@@ -75,7 +75,7 @@ public:
 		for (int i = 0; i < num_builder_options; i++)
 			if (id & (1 << i))
 				list[size++] = options[i];
-		
+
 		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, size);
 
 		if (shader.vshader == 0 || shader.pshader == 0)
@@ -179,7 +179,7 @@ void IMaterial::Update(CRenderer* renderer)
 	if (this->shader_builder)
 	{
 		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
-		
+
 		int id = (this->alphatest ? ALPHA_TEST : 0) |
 			(this->normal_map ? NORMAL_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
@@ -218,4 +218,55 @@ void IMaterial::ApplyShader(bool skinned, bool lit)
 			renderer->SetShader(shader_lit_unskinned_ptr);
 		else
 			renderer->SetShader(shader_unskinned_ptr);
+}
+
+
+//loads a material from a .mat file
+#include <fstream>
+#include <sstream>
+
+bool read_bool(const std::string& in)
+{
+	if (in == "false")
+		return false;
+	return true;
+}
+IMaterial* IMaterial::Load(const char* name)
+{
+	ok, lets get auto material reloading
+	auto mat = new IMaterial((char*)name);
+
+	//setup defaults here
+	mat->alpha = false;
+	mat->alphatest = false;
+	mat->filter = FilterMode::Linear;
+	mat->depthhack = false;
+	mat->cullmode = CULL_CW;
+
+	mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
+	mat->shader_builder = true;
+	mat->skinned = true;//this doesnt always need to be true
+
+	std::string realname = "Content/";
+	realname += name;
+	realname += ".mat";
+	auto file = std::ifstream(realname);
+	std::string line;
+	while (std::getline(file, line))
+	{
+		std::istringstream iss(line);
+		std::string a, b;
+		if (!(iss >> a >> b)) { break; } // error
+	
+		// process pair (a,b)
+		if (a == "normal:")
+			mat->normal = b;
+		else if (a == "diffuse:")
+			mat->diffuse = b;
+		else if (a == "alpha:")
+			mat->alphatest = read_bool(b);//fixme
+		//else if (a == "cast_shadows:")
+		//	mat->
+	}
+	return mat;
 }

@@ -1,10 +1,11 @@
 #include "ModelData.h"
 
-#include "Graphics\CVertexBuffer.h"
-#include "Graphics\IModel.h"
-#include "Graphics\Models\ObjModel.h"
-#include "Graphics\CTexture.h"
+#include "Graphics/CVertexBuffer.h"
+#include "Graphics/IModel.h"
+#include "Graphics/Models/ObjModel.h"
+#include "Graphics/CTexture.h"
 #include "IMaterial.h"
+#include "Util/Profile.h"
 
 ModelData::~ModelData()
 {
@@ -520,25 +521,35 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				nm->material = IMaterial::GetList()[material];
 			else
 			{
-				IMaterial* mat = new IMaterial(material);
-				mat->alpha = false;
-				//ok, this is eww, but fine for now
-				std::string mname = material;
-				if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
-					mname = mname + ".png";//.tga
-				
-				//need to change this to not always be set to skinned, for example for trees
-				mat->skinned = true;
-				mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
-				mat->shader_builder = true;
+				//ok, lets try and load the material from file here
+				std::string n = material;
+				IMaterial* mat = 0;
+				if (n.length() > 4 && n[n.length()-4] != '.')//n.substr(n.length() - 4, 4) == ".mat")
+				{
+					mat = IMaterial::Load(material);
+				}
+				else//legacy method
+				{
+					printf("WARNING: loading legacy material '%s'\n", material);
 
-				//temporary test values
-				ok, how do I want to set these???
-					also theres a backface culling problem on tree leaves
-				mat->normal = "brick.jpg";
-				mat->alphatest = true;
-				
-				mat->diffuse = mname;
+					mat = new IMaterial(material);
+					mat->alpha = false;
+					//ok, this is eww, but fine for now
+					std::string mname = material;
+					if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
+						mname = mname + ".png";//.tga
+
+					//need to change this to not always be set to skinned, for example for trees
+					mat->skinned = true;
+					mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
+					mat->shader_builder = true;
+
+					//temporary test values
+					mat->normal = "brick.jpg";
+					//mat->alphatest = true;
+
+					mat->diffuse = mname;
+				}
 				mat->Update(renderer);//load any associated textures
 				nm->material = mat;
 			}
@@ -872,7 +883,6 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 	}
 }
 
-#include "Util\Profile.h"
 std::vector<ModelData::OutVert> ModelData::DoDecal(Joint* bone, const Vec3& direction, const Vec3& origin)
 {
 	PROFILE("DoDecal");
