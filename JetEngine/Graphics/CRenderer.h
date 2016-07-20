@@ -2,6 +2,7 @@
 #define RENDERER_HEADER
 
 #include "../Defines.h"
+#include "../ResourceManager.h"
 
 class ModelData;
 
@@ -293,8 +294,8 @@ public:
 	CShader* passthrough = 0;
 	CShader* unlit_textured = 0;
 	CShader* shaders[25];
-	//change shaders to not use magic numbers anymore and name them
 
+	//change shaders to not use magic numbers anymore and name them
 	CTexture* gui_texture;
 
 	int xres;

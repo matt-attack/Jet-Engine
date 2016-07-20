@@ -178,10 +178,7 @@ public:
 	//0 = move left/right, 1 = move forward/back, 2 = look right/left 3 = look up/down
 	float GetAxis(int player, int axis);
 
-	bool GetBindBool(int player, int bind)
-	{
-		return GetBind(player, bind) > 0.5f ? true : false;
-	}
+	bool GetBindBool(int player, int bind);
 
 	std::vector<Controller> controllers;
 	void UpdateControllers();

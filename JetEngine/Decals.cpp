@@ -80,7 +80,8 @@ void DecalManager::Draw()
 	{
 		renderer->DepthWriteEnable(false);
 		renderer->EnableAlphaBlending(true);
-		renderer->SetPixelTexture(0, resources.get<CTexture>("decals.png"));
+		
+		renderer->SetPixelTexture(0, this->texture);
 		renderer->SetCullmode(CULL_NONE);
 
 		auto shader = renderer->SetShader(this->shader);

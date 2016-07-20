@@ -675,7 +675,7 @@ bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 #ifdef _WIN32
 	renderer->CreateShader(19, "Shaders/font.shdr");
 
-	this->texture = resources.get<CTexture>("Oxygen-Regular.ttf_sdf.png");
+	this->texture = resources.get_unsafe<CTexture>("Oxygen-Regular.ttf_sdf.png");
 	/*GLuint vertexShader = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vertexShader, 1, &vertexSource, 0 );
 	glCompileShader( vertexShader );

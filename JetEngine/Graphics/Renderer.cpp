@@ -29,6 +29,7 @@ Renderer::Renderer()
 	this->shadowMaxDist = 150;//350
 	this->shadowSplitLogFactor = 0.9f;
 	this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
+	this->sun_light = Vec3(0.9f, 0.9, 0.9);
 	this->_shadows = true;//should default to false eventually
 	this->SetAmbient(Vec3(0.4, 0.4, 0.54), Vec3(0.2, 0.2, 0.2));
 }
@@ -39,34 +40,6 @@ void Renderer::Init(CRenderer* renderer)
 	shader_ss = renderer->CreateShader(13, "Shaders/skinned_shadow.vsh");
 
 	shader_s = renderer->CreateShader(2, "Shaders/shadow.vsh");
-	//allocate depth buffer
-	/*D3D11_TEXTURE2D_DESC depthBufferDesc;
-	ZeroMemory((void*)&depthBufferDesc, sizeof(depthBufferDesc));
-	depthBufferDesc.Width = SHADOW_MAP_SIZE;
-	depthBufferDesc.Height = SHADOW_MAP_SIZE;
-	depthBufferDesc.MipLevels = 1;
-	depthBufferDesc.ArraySize = 1;
-	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthBufferDesc.SampleDesc.Count = 1;
-	depthBufferDesc.SampleDesc.Quality = 0;
-	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	depthBufferDesc.CPUAccessFlags = 0;
-	depthBufferDesc.MiscFlags = 0;
-	ID3D11Texture2D* depthStencilBuffer;
-	HRESULT result = renderer->device->CreateTexture2D(&depthBufferDesc, 0, &depthStencilBuffer);
-	if (FAILED(result))
-	throw 7;
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-	depthStencilViewDesc.Format = depthBufferDesc.Format;
-	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-	result = renderer->device->CreateDepthStencilView(depthStencilBuffer,&depthStencilViewDesc, &depthStencilView);
-	if (FAILED(result))
-	throw 7;*/
 
 	//create common constant buffers
 	//bind each buffer
@@ -425,6 +398,8 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	renderer->SetCullmode(CULL_CCW);
 
+	CShader* atest = resources.get_shader("Shaders/alpha_shadow.vsh");
+
 	//unbind PS
 
 	CShader* shader;
@@ -440,6 +415,26 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 		renderer->context->PSSetShader(0, 0, 0);
 
+		if (obj->material)
+		{
+			/*if (obj->material->alphatest == false)
+			{
+				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+				renderer->context->PSSetShader(0, 0, 0);
+			}
+			else
+			{
+				renderer->SetPixelTexture(0, obj->material->texture);
+				renderer->context->PSSetShader(atest->pshader, 0, 0);
+			}*/
+
+			if (obj->material->cullmode == CULL_NONE)
+				renderer->SetCullmode(CULL_NONE);
+			else
+				renderer->SetCullmode(CULL_CCW);
+		}
+		
+		
 		auto mat = shader->buffers.wvp;
 		if (mat.buffer)
 		{
@@ -501,6 +496,23 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 			{
 				Mesh* mesh = &model->t->meshes[i];
 				mesh->ib->Bind();
+
+				/*if (mesh->material->alphatest == false)
+				{
+					//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+					renderer->context->PSSetShader(0, 0, 0);
+				}
+				else
+				{
+					ok, finish implementing shader
+					renderer->SetPixelTexture(0, mesh->material->texture);
+					renderer->context->PSSetShader(atest->pshader, 0, 0);
+				}*/
+				
+				if (mesh->material->cullmode == CULL_NONE)
+					renderer->SetCullmode(CULL_NONE);
+				else
+					renderer->SetCullmode(CULL_CCW);
 
 				renderer->DrawIndexedPrimitive(PT_TRIANGLELIST, 0, 0, mesh->num_vertexes, mesh->num_triangles * 3);
 
@@ -568,20 +580,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 	out.BuildViewFrustum();
 }
 
-//speed up chunk generation, or move loading other planets to a different thread after loading the first so player gets in faster
-//get other enemy types, improve AI so it can move and shoot
-//make other AI types
-//ok, make HUD feel more like a helmet with a HUD, show damage info
-//go iron man style
-//make it appear to curve like a helmet's face would
 
-
-//1. add air supplies
-//2. show helmet damage
-//3. indicators on hud, danger warnigns that blink!!!
-//DEFINATELY MORE SPACEBUILD CONCEPTS
-//ok, new idea CO-OP spacebuild related game
-//survival like, kill wildlife, enemies, need to collect supplies for air and what not
 void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's parent is the same as the cameras, just render nicely
 {
 	PROFILE("RendererProcess");
@@ -596,7 +595,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 	todo_lock.unlock();//unlock
 
-
+	
 	renderer->ApplyCam(cam);
 
 	this->rcount = this->renderables.size();
@@ -674,81 +673,6 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	//all transform heirachys so add dirty flags
 	//ok, to draw shadows, we need to make sure we are in right area, then apply world*shadowvp as the world*view*projection matrix
 	Matrix4 shadowMapViewProjs[SHADOW_MAP_MAX_CASCADE_COUNT];
-	/*if (this->_shadows)
-	{
-		PROFILE("DrawShadows");
-		GPUPROFILE("RenderShadows");
-
-		//setup viewport
-		Viewport vp;
-		renderer->GetViewport(&vp);
-		int ow = vp.Width;
-		int oh = vp.Height;
-		int ox = vp.X;
-		vp.X = 0;
-		vp.Width = SHADOW_MAP_SIZE;
-		vp.Height = SHADOW_MAP_SIZE;
-		renderer->SetViewport(&vp);
-
-		//draw to shadow map
-		CalcShadowMapSplitDepths(shadowMappingSplitDepths, cam, 200);
-		for (unsigned int cascade_i = 0; cascade_i < this->shadowSplits; cascade_i++)
-		{
-			//need to adjust shadow maps to fit around objects
-			CCamera tmpCamera = *cam;
-			tmpCamera._far = shadowMappingSplitDepths[cascade_i];
-			if (cascade_i > 0)
-				tmpCamera._near = shadowMappingSplitDepths[cascade_i - 1];
-
-			//tmpCamera.doProjection();
-			tmpCamera.doMatrix();
-
-			//build basic frustum that fits the tmpCamera
-			CCamera culling;
-			BuildShadowFrustum(&tmpCamera, culling, this->dirToLight);
-
-			//AABB frustumBB = tmpCamera.GetFrustumAABB();
-			//const BOX &frustumBB = tmpCamera.GetMatrices().GetFrustumBox();
-			//scene.ListObjectsIntersectingSweptBox(objs, frustumBB, g_DirToLight);
-			//need to make list of all renderables in frustum
-			std::vector<Renderable*> locals;
-			for (auto ren : this->renderables)
-			{
-				//submit to render queue
-				if (ren->castsShadows && ren->parent == cam->parent)
-				{
-					//need to cull against light dir
-					if (culling.BoxInFrustumSidesAndFar(ren->aabb))
-					{
-						if (ren->updated == false)
-						{
-							//if we have an entity, update it before rendering
-							if (ren->entity)
-								ren->entity->PreRender();
-							ren->updated = true;
-						}
-						locals.push_back(ren);
-					}
-				}
-			}
-
-			//refine matrix to fit all meshes tightly
-			CalcShadowMapMatrices(
-				shadowMapViewProjs[cascade_i],
-				shadowMapTexXforms[cascade_i],
-				&tmpCamera, &locals, cascade_i);
-
-			//draw each
-			RenderShadowMap(cascade_i, &locals, shadowMapViewProjs[cascade_i]);
-		}
-
-		//renderer->context->OMSetRenderTargets(1, &renderer->renderTargetView, renderer->depthStencilView);
-
-		vp.X = ox;
-		vp.Width = ow;
-		vp.Height = oh;
-		renderer->SetViewport(&vp);
-	}*/
 
 	//could try and only draw this every other frame on low end computers
 	this->RenderShadowMaps(shadowMapViewProjs, cam);
@@ -780,6 +704,12 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		renderer->context->PSSetSamplers(3, 1, &this->shadowSampler_linear);
 		//renderer->context->PSSetSamplers(3, 1, &this->shadowSampler);
 	}
+
+	//sort the lights by size so that largest lights get picked
+	std::sort(this->lights.begin(), this->lights.end(), [](const Light& a, const Light& b)
+	{
+		return a.radius > b.radius;
+	});
 
 	//ok, lets be dumb and update materials here
 	for (auto ii : IMaterial::GetList())
@@ -828,6 +758,9 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		//hack for the moment 
 		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
 		const float radius = rc.source ? 10 : rc.radius;
+		//todo: need button to turn light on/off
+			//todo: get enemy spawning system and deaths
+			//todo: perhaps allow more lights if necessary
 		for (auto light : this->lights)
 		{
 			if (num_lights < 3 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
@@ -1037,7 +970,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		data->ambient_down.xyz = this->ambient_bottom;
 		data->ambient_range.xyz = this->ambient_range;
 		//data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
-		data->daylight = Vec4(0.9f, 0.9, 0.9, 0.9);//rc->source->daylight;
+		data->daylight = Vec4(this->sun_light,1);//rc->source->daylight;
 		for (int i = 0; i < 3; i++)
 		{
 			data->lights[i].pos.xyz = light_list[i].position;

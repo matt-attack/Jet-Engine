@@ -121,6 +121,7 @@ void ProfileExit()
 
 StackProfile::StackProfile(char* name)
 {
+	return;
 	this->name = name;
 
 #ifndef _WIN32
@@ -149,6 +150,7 @@ StackProfile::StackProfile(char* name)
 
 StackProfile::~StackProfile()
 {
+	return;
 	INT64 end;
 #ifdef _WIN32
 	QueryPerformanceCounter((LARGE_INTEGER *)&end);

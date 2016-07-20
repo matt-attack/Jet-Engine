@@ -85,7 +85,7 @@ public:
 	}
 };
 
-IMaterial::IMaterial(char* name)
+IMaterial::IMaterial(const char* name)
 {
 	this->cullmode = CULL_CW;
 	this->texture = 0;
@@ -98,6 +98,15 @@ IMaterial::IMaterial(char* name)
 	this->name = name;
 
 	GetList()[name] = this;
+}
+
+IMaterial::~IMaterial()
+{
+	if (this->texture)
+		this->texture->Release();
+
+	if (this->normal_map)
+		this->normal_map->Release();
 }
 
 IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack)
@@ -153,7 +162,7 @@ void IMaterial::Update(CRenderer* renderer)
 	if (this->diffuse.length() > 0)
 	{
 		//try and load
-		auto tex = resources.get<CTexture>(diffuse);
+		auto tex = resources.get_unsafe<CTexture>(diffuse);
 		if (tex && tex->texture)
 			this->texture = tex->texture;
 	}
@@ -165,7 +174,7 @@ void IMaterial::Update(CRenderer* renderer)
 
 	if (this->normal.length() > 0)
 	{
-		auto tex = resources.get<CTexture>(normal);
+		auto tex = resources.get_unsafe<CTexture>(normal);
 		if (tex && tex->texture)
 			this->normal_map = tex->texture;
 
@@ -178,7 +187,7 @@ void IMaterial::Update(CRenderer* renderer)
 	}
 	if (this->shader_builder)
 	{
-		auto shaders = resources.get<ShaderBuilder>(this->shader_name);
+		auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
 
 		int id = (this->alphatest ? ALPHA_TEST : 0) |
 			(this->normal_map ? NORMAL_MAP : 0) |
@@ -192,11 +201,11 @@ void IMaterial::Update(CRenderer* renderer)
 		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);
 		this->shader_unskinned_ptr = shaders->GetShader(id ^ SKINNING);
 		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) ^ SKINNING);
-
 	}
 	else
 	{
-		this->shader_ptr = resources.get<CShader>(this->shader_name);
+		auto shdr = resources.get_unsafe<CShader>(this->shader_name);
+		this->shader_ptr = shdr;
 	}
 }
 
@@ -231,18 +240,25 @@ bool read_bool(const std::string& in)
 		return false;
 	return true;
 }
-IMaterial* IMaterial::Load(const char* name)
+IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)//Load(const char* name)
 {
-	ok, lets get auto material reloading
-	auto mat = new IMaterial((char*)name);
+	//ok, lets get auto material reloading
+	//	add alpha test to shadows
+	//	and fix branch culling / lighting issues
+	auto mat = res;// new IMaterial((char*)name);
 
+	std::string name = path;
+	int offset = name.find_last_of('/');
+	name = name.substr(offset, name.length()-offset);
+
+	new (mat) IMaterial(name.c_str());
 	//setup defaults here
 	mat->alpha = false;
 	mat->alphatest = false;
 	mat->filter = FilterMode::Linear;
 	mat->depthhack = false;
 	mat->cullmode = CULL_CW;
-
+	
 	mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
 	mat->shader_builder = true;
 	mat->skinned = true;//this doesnt always need to be true
@@ -257,14 +273,19 @@ IMaterial* IMaterial::Load(const char* name)
 		std::istringstream iss(line);
 		std::string a, b;
 		if (!(iss >> a >> b)) { break; } // error
-	
+
 		// process pair (a,b)
 		if (a == "normal:")
 			mat->normal = b;
 		else if (a == "diffuse:")
 			mat->diffuse = b;
 		else if (a == "alpha:")
-			mat->alphatest = read_bool(b);//fixme
+			mat->alpha = read_bool(b);
+		else if (a == "alpha_test:")
+			mat->alphatest = read_bool(b);
+		else if (a == "cull:")
+			if (!read_bool(b))
+				mat->cullmode = CULL_NONE;
 		//else if (a == "cast_shadows:")
 		//	mat->
 	}

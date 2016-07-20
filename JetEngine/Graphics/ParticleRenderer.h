@@ -3,6 +3,7 @@
 
 #include "../camera.h"
 #include "CVertexBuffer.h"
+#include "../ResourceManager.h"
 
 struct Particle;
 class CShader;
@@ -30,10 +31,8 @@ public:
 		this->shader = 0;
 	}
 
-	~ParticleRenderer()
-	{
-		delete[] this->data;
-	}
+	~ParticleRenderer();
+
 
 	void AddParticle(const Vec3& pos, const Vec3& vel, const Vec2& size, float lt);
 

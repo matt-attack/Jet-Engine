@@ -521,6 +521,9 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 	this->hmapv->Release();
 	this->hmapt->Release();
 
+	this->grass->Release();
+	this->rock->Release();
+
 	for (int i = 0; i < 2; i++)
 	{
 		for (int x = 0; x < world_size / patch_size; x++)
@@ -801,8 +804,8 @@ void HeightmapTerrainSystem::Load()
 	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
 	terrain_vd = this->vertex_declaration;
 
-	grass = resources.get<CTexture>("snow.jpg");
-	rock = resources.get<CTexture>("rock.png");
+	grass = resources.get_unsafe<CTexture>("snow.jpg");
+	rock = resources.get_unsafe<CTexture>("rock.png");
 	//implement teh texturing
 	if (loaded == false)
 	{
@@ -1060,7 +1063,7 @@ void HeightmapTerrainSystem::GenerateNormals()
 
 
 		//bind shaders, render full screen quad and bam
-		renderer->SetShader(resources.get<CShader>("Shaders/generate_normals.shdr"));
+		renderer->SetShader(resources.get_unsafe<CShader>("Shaders/generate_normals.shdr"));
 
 		struct data
 		{

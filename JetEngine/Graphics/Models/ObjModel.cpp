@@ -76,7 +76,7 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 
 		delete[] this->JointTransforms;
 
-		t = resources.get<ModelData>(name);//renderer->GetOrLoadModel((char*)name);
+		t = resources.get_unsafe<ModelData>(name);//renderer->GetOrLoadModel((char*)name);
 		if (t->num_joints > 0)
 		{
 			if (frames == 0)
@@ -570,7 +570,7 @@ CTexture* ObjModel::GetPositionMap()
 	auto crt = this->position_map ? (CRenderTexture*)this->position_map : CRenderTexture::Create(512, 512, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
 	//setup shaders to generate map
-	auto shdr = resources.get<CShader>("Shaders/color_map_generator.shdr");
+	auto shdr = resources.get_shader("Shaders/color_map_generator.shdr");
 	renderer->SetShader(shdr);
 
 	//bind rendertarget

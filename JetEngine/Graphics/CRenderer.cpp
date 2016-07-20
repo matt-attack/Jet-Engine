@@ -439,7 +439,8 @@ CShader* CRenderer::CreateShader(int id, const char* name)
 	if (this->shaders[id])
 		printf("Recreating/Overwriting shader %i\n", id);
 	//throw 7;
-	this->shaders[id] = resources.get<CShader>(name);
+	this->shaders[id] = resources.get_unsafe<CShader>(name);
+	//hack to avoid issues
 	return this->shaders[id];
 }
 
@@ -703,7 +704,7 @@ void CRenderer::Init(int scrx, int scry)
 	//ID3D11RenderTargetView* renderTargetView;
 	HRESULT result = device->CreateRenderTargetView(backBufferPtr, NULL, &renderTargetView);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	// Release pointer to the back buffer as we no longer need it.
 	backBufferPtr->Release();
@@ -726,7 +727,7 @@ void CRenderer::Init(int scrx, int scry)
 	ID3D11Texture2D* depthStencilBuffer;
 	result = device->CreateTexture2D(&depthBufferDesc, 0, &depthStencilBuffer);
 	if (FAILED(result))
-		throw 7;*/
+	throw 7;*/
 
 	//create the view
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
@@ -772,7 +773,7 @@ void CRenderer::Init(int scrx, int scry)
 
 	result = device->CreateDepthStencilView(depthStencilBuffer, &depthStencilViewDesc, &depthStencilView);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	depthStencilBuffer->Release();
 
@@ -796,24 +797,24 @@ void CRenderer::Init(int scrx, int scry)
 	ID3D11RasterizerState* rasterState;
 	result = device->CreateRasterizerState(&rasterDesc, &rs_none);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
 	result = device->CreateRasterizerState(&rasterDesc, &rs_wireframe);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.CullMode = D3D11_CULL_BACK;
 	result = device->CreateRasterizerState(&rasterDesc, &rs_cw);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	rasterDesc.CullMode = D3D11_CULL_BACK;
 	rasterDesc.FrontCounterClockwise = false;
 	result = device->CreateRasterizerState(&rasterDesc, &rs_ccw);
 	if (FAILED(result))
-		throw 7;
+	throw 7;
 
 	// Now set the rasterizer state.
 	context->RSSetState(rs_none);*/
@@ -896,7 +897,7 @@ void CRenderer::Init(int scrx, int scry)
 
 	this->SetFont("Arial", 20);
 
-	this->gui_texture = resources.get<CTexture>("controls.png");
+	this->gui_texture = resources.get_unsafe<CTexture>("controls.png");
 
 	//D3DX11_IMAGE_LOAD_INFO info;
 	//ZeroMemory(&info, sizeof(D3DX11_IMAGE_LOAD_INFO));
@@ -920,7 +921,7 @@ void CRenderer::Init(int scrx, int scry)
 	NULL,
 	NULL,
 	&terrain_texture);*/
-	missing_texture = resources.get<CTexture>("missing.png")->texture;
+	missing_texture = resources.get_unsafe<CTexture>("missing.png")->texture;
 
 	this->passthrough = new CShader("Content/Shaders/passthrough.shdr", "vs_main", "Content/Shaders/passthrough.shdr", "ps_main");
 	this->unlit_textured = new CShader("Content/Shaders/unlit_texture.shdr", "vs_main", "Content/Shaders/unlit_texture.shdr", "ps_main");
@@ -2345,7 +2346,7 @@ void CRenderer::DrawIcon(int x, int y, int size, int id, COLOR color)
 	float minv = (float)(id / 4) / 4.0f;
 	float maxv = (float)(id / 4 + 1) / 4.0f;//1.0f/4.0f;
 
-	auto tex = resources.get<CTexture>("icons.png");
+	auto tex = resources.get_unsafe<CTexture>("icons.png");
 	this->SetPixelTexture(0, tex->texture);
 	this->EnableAlphaBlending(true);
 	Rect r;
@@ -2764,12 +2765,16 @@ struct Beam
 };
 
 std::vector<Beam> beams;
+CTexture* beamtex = 0;
 void CRenderer::DrawBeams()
 {
 	if (beams.size() == 0)
 		return;
 
-	renderer->SetPixelTexture(0, resources.get<CTexture>("Laser.png"));
+	if (beamtex == 0)
+		beamtex = resources.get_unsafe<CTexture>("Laser.png");
+
+	renderer->SetPixelTexture(0, beamtex);
 	struct vertz
 	{
 		Vec3 p;

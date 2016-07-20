@@ -66,6 +66,8 @@ public:
 
 	iqmbounds* bounds;
 
+	iqmbounds default_bounds;
+
 	Animation* anims;
 	int num_joints,num_frames,num_anims;
 	Matrix3x4 *frames;//depreciated

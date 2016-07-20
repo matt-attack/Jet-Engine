@@ -70,9 +70,9 @@ void ResourceManager::update()
 		}
 		//ok, we need to know type from the filename
 		std::map<std::string, Resource *>::iterator iter;
-		for (int i = m_stack.size() - 1; i >= 0; i--) {
-			iter = m_stack[i].find(resname);
-			if (iter != m_stack[i].end()) {
+		//for (int i = m_stack.size() - 1; i >= 0; i--) {
+			iter = m_stack.find(resname);
+			if (iter != m_stack.end()) {
 				//T *ptr = dynamic_cast<T *>(iter->second);
 				//assert(ptr);
 				FILE* f = fopen(filename, "rb");
@@ -87,7 +87,7 @@ void ResourceManager::update()
 				iter->second->Reload(this, filename);
 				iter->second->m_resmgr = this;
 				this->reload_lock.unlock();
-				break;
+				//break;
 			}
 			/*iter = m_stack[i].find(filename2);
 			if (iter != m_stack[i].end()) {
@@ -102,7 +102,7 @@ void ResourceManager::update()
 				this->reload_lock.unlock();
 				break;
 			}*/
-		}
+		//}
 
 #ifndef MATT_SERVER
 		//this shouldnt be here, change CTexture to be inherited from resource
@@ -155,7 +155,7 @@ void ResourceManager::update()
 void ResourceManager::push()
 {
 	log("[ResourceManager] Pushing!\n");
-	m_stack.push_back(std::map<std::string, Resource *>());
+	//m_stack.push_back(std::map<std::string, Resource *>());
 }
 
 void ResourceManager::pop()
@@ -165,15 +165,65 @@ void ResourceManager::pop()
 
 	log("[ResourceManager] Popping!\n");
 
-	std::map<std::string, Resource *> &v = m_stack[m_stack.size() - 1];
-	std::map<std::string, Resource *>::reverse_iterator iter;
-	for (iter = v.rbegin(); iter != v.rend(); iter++)//need to iterate through backwards
+	//std::map<std::string, Resource *> &v = m_stack[m_stack.size() - 1];
+	//std::map<std::string, Resource *>::reverse_iterator iter;
+	//todo: get this working again and remove stacks
+	//for (iter = v.rbegin(); iter != v.rend(); iter++)//need to iterate through backwards
+	//std::vector<
+	for (auto iter: this->m_stack)
 	{
-		logf("[ResourceManager]   Unloaded %s\n", iter->first.c_str());
+		if (iter.second->count <= 0)
+		{
+			//todo: get this to actually free them
+			logf("[ResourceManager]   Unloaded %s\n", iter.first.c_str());
+			//this->m_stack.erase(iter.first);
+		}
+		
+	//todo: fix the problem here that causes a crash
+		//go to refcounted resources instead
 
-		delete iter->second;//fails on obj model
+		//also keep getting a random crash potentially related to networking
+		//maybe do a stash and see if it happens
+		//delete iter->second;//fails on obj model
 	}
-	m_stack.pop_back();
+	//m_stack.pop_back();
 }
 
 size_t ResourceManager::stack_size() { return m_stack.size(); }
+
+#include "Graphics\Shader.h"
+CShader * ResourceManager::get_shader(const std::string &filename)//todo, optimize me by hashing then searching
+{
+	resource_lock.lock();
+	std::map<std::string, Resource *>::iterator iter;
+	//for (int i = m_stack.size() - 1; i >= 0; i--) {
+		iter = m_stack.find(filename);
+		if (iter != m_stack.end()) {
+			CShader *ptr = dynamic_cast<CShader*>(iter->second);
+			//assert(ptr);
+			resource_lock.unlock();
+			ptr->AddRef();
+			return ptr;
+		}
+	//}
+
+	resource_lock.unlock();
+
+	//allocate here
+	//append the path to the content folder
+	std::string path = "Content/" + filename;
+	CShader* t = new CShader;
+	CShader *rv = CShader::load_as_resource(path, t);
+	rv->m_resmgr = this;
+
+	resource_lock.lock();
+
+	m_stack[filename] = rv;
+
+	resource_lock.unlock();
+
+	logf("[ResourceManager] Loaded %s\n", filename.c_str());
+
+	rv->AddRef();
+	return rv;
+}

@@ -15,9 +15,15 @@ struct Particle
 	unsigned int color;
 };
 
+ParticleRenderer::~ParticleRenderer()
+{
+	this->texture->Release();
+	delete[] this->data;
+}
+
 void ParticleRenderer::Init()
 {
-	this->texture = resources.get<CTexture>("smoke.png");
+	this->texture = resources.get_unsafe<CTexture>("smoke.png");
 
 	if (this->shader)
 		return;//already loaded
@@ -158,7 +164,7 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 	UINT stride = sizeof(Particle);
 	UINT offset = 0;
 
-	this->texture = resources.get<CTexture>("smoke.png");
+	//this->texture = resources.get<CTexture>("smoke.png");
 	renderer->SetPixelTexture(4, this->texture);
 	// done streaming-out--unbind the vertex buffer
 	//ID3D11Buffer* bufferArray[1] = { 0 };

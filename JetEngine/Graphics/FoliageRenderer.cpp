@@ -134,7 +134,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//ok, need to make geometry shaders reloadable too
 
 	//	maybe add some metadata in start of shader file?
-	this->shader = resources.get<CShader>("Shaders/tree_billboards.shdr");
+	this->shader = resources.get_shader("Shaders/tree_billboards.shdr");
 	//this->shader = new CShader("Content/Shaders/tree_billboards.shdr", "vs_main", "Content/Shaders/tree_billboards.shdr", "ps_main", 0, 0, "Content/Shaders/tree_billboards.shdr", "gs_main");
 }
 

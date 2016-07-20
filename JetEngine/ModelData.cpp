@@ -51,6 +51,57 @@ ModelData* ModelData::load_as_resource(const std::string &path, ModelData* res)
 		BuildModelFromObjModel(d, d);
 #endif
 
+	if (d->num_anims < 1)
+	{
+		//get bounding boxes for bones
+		auto bb = AABB(Vec3(INFINITY, INFINITY, INFINITY), Vec3(-INFINITY, -INFINITY, -INFINITY));
+
+		//make custom bounds
+		for (int i = 0; i < d->NumVertex; i++)
+		{
+			Vec3 pos = Vec3(d->VertexArray[i].X, d->VertexArray[i].Y, d->VertexArray[i].Z);
+			//if (bb.max == Vec3(0, 0, 0) && bb.min == Vec3(0, 0, 0))
+			//	bb.max = bb.min = pos;
+			if (pos.x > bb.max.x)
+				bb.max.x = pos.x;
+			if (pos.y > bb.max.y)
+				bb.max.y = pos.y;
+			if (pos.z > bb.max.z)
+				bb.max.z = pos.z;
+
+			if (pos.x < bb.min.x)
+				bb.min.x = pos.x;
+			if (pos.y < bb.min.y)
+				bb.min.y = pos.y;
+			if (pos.z < bb.min.z)
+				bb.min.z = pos.z;
+		}
+
+		d->default_bounds.bbmin[0] = bb.min.x;
+		d->default_bounds.bbmin[1] = bb.min.y;
+		d->default_bounds.bbmin[2] = bb.min.z;
+		d->default_bounds.bbmax[0] = bb.max.x;
+		d->default_bounds.bbmax[1] = bb.max.y;
+		d->default_bounds.bbmax[2] = bb.max.z;
+
+		float min = INFINITY;
+		float max = -INFINITY;
+		for (int i = 0; i < 3; i++)
+		{
+			if (d->default_bounds.bbmin[i] < min)
+				min = d->default_bounds.bbmin[i];
+			if (d->default_bounds.bbmax[i] > max)
+				max = d->default_bounds.bbmax[i];
+		}
+		d->default_bounds.radius = max(abs(min), abs(max));
+	}
+	else
+	{
+		//insert default bounds
+		//lets cheat for now and use anim frame bounds
+		d->default_bounds = d->bounds[0];
+	}
+
 	d->name = path;
 
 	return d;
@@ -261,6 +312,7 @@ int ModelData::GetBone(const char* name)
 		if (strcmp(name, joints[i].name) == 0)
 			return i;
 	}
+	throw 7;//bad bone
 	return -1;
 };
 
@@ -524,9 +576,9 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				//ok, lets try and load the material from file here
 				std::string n = material;
 				IMaterial* mat = 0;
-				if (n.length() > 4 && n[n.length()-4] != '.')//n.substr(n.length() - 4, 4) == ".mat")
+				if (n.length() > 4 && n[n.length() - 4] != '.')//n.substr(n.length() - 4, 4) == ".mat")
 				{
-					mat = IMaterial::Load(material);
+					mat = resources.get_unsafe<IMaterial>(material);
 				}
 				else//legacy method
 				{

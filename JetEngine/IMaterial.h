@@ -2,6 +2,7 @@
 #define _MATERIAL_HEADER
 
 #include "Graphics\CRenderer.h"
+#include "ResourceManager.h"
 
 #include <map>
 
@@ -17,10 +18,10 @@ enum ShaderFeatures
 };
 
 //each mesh will have one of these
-class IMaterial
+class IMaterial: public Resource
 {
 	friend class Renderer;
-
+	friend class ResourceManager;
 public:
 	int key;//generated from properties of material, used for sorting
 	bool alpha;
@@ -49,8 +50,11 @@ public:
 
 	bool shader_builder = false;
 	bool skinned = false;
-
-	IMaterial(char* name);
+private:
+	IMaterial() {  };
+public:
+	IMaterial(const char* name);
+	~IMaterial();
 
 	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
@@ -75,8 +79,9 @@ public:
 		return materials;
 	}
 
-	//loads a material from a .mat file
-	static IMaterial* Load(const char* name);
+	//resource stuff
+	virtual void Reload(ResourceManager* mgr, const std::string& filename) {};
+	static IMaterial* load_as_resource(const std::string &path, IMaterial* res);
 };
 
 

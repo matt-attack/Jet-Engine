@@ -198,3 +198,8 @@ void CInput::DoCallbacks(std::function<void(int, int)> bindpresscb)
 		this->controller_change = false;
 	}
 }
+
+bool CInput::GetBindBool(int player, int bind)
+{
+	return GetBind(player, bind);// > 0.5f ? true : false;
+}

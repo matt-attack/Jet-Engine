@@ -8,6 +8,7 @@
 #include "../defines.h"
 #include "CIndexBuffer.h"
 #include "CVertexBuffer.h"
+//#include "CTexture.h"
 
 class CTexture;
 

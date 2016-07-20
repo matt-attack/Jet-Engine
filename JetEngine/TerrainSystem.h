@@ -59,7 +59,9 @@ public:
 	HeightmapTerrainSystem();
 	~HeightmapTerrainSystem();
 
-	CTexture *nmap, *grass, *rock;
+	CTexture* grass, *rock;
+	CTexture* nmap;
+
 	void Load();
 
 	void SaveHeightmap(const char* file);
