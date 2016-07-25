@@ -23,7 +23,7 @@ ParticleRenderer::~ParticleRenderer()
 
 void ParticleRenderer::Init()
 {
-	this->texture = resources.get_unsafe<CTexture>("smoke.png");
+	//this->texture = resources.get_unsafe<CTexture>("smoke.png");
 
 	if (this->shader)
 		return;//already loaded
@@ -95,9 +95,12 @@ void ParticleRenderer::Update(float dt)
 			//this->data[i].position = Vec3(1024, 400, 1024);
 			//this->data[i].velocity = Vec3::random(25, 25, 25);
 			//this->data[i].size = Vec2(5, 5);
+			//theres a potential issue with doing this that dead particles could be a frame late
+			//but it should be fine
 			this->data[i] = this->data[this->num_particles];
 			this->num_particles--;
 		}
+		//need to add particle fade out, somewhere...
 		this->data[i].position = this->data[i].position + this->data[i].velocity*dt;
 	}
 
@@ -108,7 +111,7 @@ void ParticleRenderer::Update(float dt)
 }
 
 
-void ParticleRenderer::AddParticle(const Vec3& pos, const Vec3& vel, const Vec2& size, float lt)
+void ParticleRenderer::AddParticle(const int color, const Vec3& pos, const Vec3& vel, const Vec2& size, float lt)
 {
 	if (this->num_particles >= 1024 - 1)
 		return;
@@ -118,7 +121,8 @@ void ParticleRenderer::AddParticle(const Vec3& pos, const Vec3& vel, const Vec2&
 	p->position = pos;
 	p->velocity = vel;
 	p->size = size;
-	p->color = COLOR_ARGB(255, 40, 40, 40);
+	p->color = color;// COLOR_ARGB(255, 40, 40, 40);
+	//ok, lets add fade out
 }
 
 void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
@@ -154,9 +158,15 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 	//
 	// Set IA stage.
 	//
+	//ok, use additive blending on spark particles
 	renderer->DepthWriteEnable(false);
 	this->shader->BindIL(&this->vd);// GetVertexDeclaration(22));
-	renderer->EnableAlphaBlending(true);
+	
+	if (this->additive)
+		renderer->SetBlendMode(CRenderer::BlendMode::BlendAdditive);
+	else
+		renderer->EnableAlphaBlending(true);
+
 	renderer->context->GSSetShader(this->shader->gshader, 0, 0);
 	//dc->IASetInputLayout(renderer->GetVertexDeclaration(15));
 	dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
@@ -182,4 +192,15 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 	renderer->context->GSSetShader(0, 0, 0);
 	renderer->EnableAlphaBlending(false);
 	renderer->DepthWriteEnable(true);
+}
+
+int ParticleSystem::AddParticleType(const char* texture, bool additive)
+{
+	//this->texture = resources.get_unsafe<CTexture>("smoke.png");
+
+	auto tex = resources.get_unsafe<CTexture>(texture);
+	auto renderer = new ParticleRenderer(tex);
+	renderer->additive = additive;
+	this->renderers.push_back(renderer);
+	return this->renderers.size() - 1;
 }

@@ -15,7 +15,8 @@ enum Binds
 	BIND_C = 512,
 	BIND_SHIFT = 1024,
 	BIND_Q = 2048,
-	BIND_VIEW = 4096
+	BIND_VIEW = 4096,
+	BIND_LIGHTS = 4096*2,
 };
 
 #ifdef _WIN32
