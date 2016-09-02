@@ -50,6 +50,9 @@ class HeightmapTerrainSystem : public ITerrainSystem, Renderable
 	//ok, lets have a LOD Tree
 	float* heights;
 
+	//downsampled heights for ray tracing through (4x less dense)
+	float* heights_ds;
+
 	bool done = false;
 	bool need_to_reload_normals;
 
@@ -75,6 +78,7 @@ public:
 
 	void UpdateHeights();
 
+	float GetRoughHeight(float x, float y);
 	float GetHeight(float x, float y);
 	float GetHeightAndNormal(float x, float y, Vec3& normal);
 	float GetHeightAndVectors(float x, float y, Vec3& normal, Vec3& xtangent, Vec3& ytangent);

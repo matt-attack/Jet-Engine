@@ -77,7 +77,7 @@ void ParticleRenderer::Init()
 	{ ELEMENT_COLOR, USAGE_COLOR } };
 	this->vd = renderer->GetVertexDeclaration(elm9, 5);
 
-	this->shader = new CShader("Content/Shaders/particles.shdr", "vs_main", "Content/Shaders/particles.shdr", "ps_main", 0, 0, "Content/Shaders/particles.shdr", "gs_main");
+	this->shader = new CShader("Content/Shaders/particles.shdr", "vs_main", "Content/Shaders/particles.shdr", "ps_main", 0, 0, 0, "Content/Shaders/particles.shdr", "gs_main");
 }
 
 #include "../Util/Profile.h"

@@ -66,7 +66,7 @@ public:
 
 	virtual void Apply(CRenderer* renderer);
 
-	void ApplyShader(bool skinned, bool lit);
+	void ApplyShader(bool skinned, int lights);
 
 	//updates internal data, called when a resource changes
 	//or when settings are changed

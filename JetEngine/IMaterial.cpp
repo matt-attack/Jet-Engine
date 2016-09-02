@@ -68,15 +68,25 @@ public:
 		if (this->shaders[id] == 0)
 			this->shaders[id] = new CShader;
 
-		char* list[num_builder_options];
+		char* list[num_builder_options+1];
+		char* definitions[num_builder_options+1];
 		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
 		//build the list
 		int size = 0;
 		for (int i = 0; i < num_builder_options; i++)
 			if (id & (1 << i))
-				list[size++] = options[i];
+			{
+				list[size] = options[i];
+				definitions[size++] = "true";
+			}
 
-		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, size);
+		if (id & (1 << 2))//if point lights, specify a number we want
+		{
+			list[size] = "NUM_POINTS";
+			definitions[size++] = "3";
+		}
+
+		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, definitions, size);
 
 		if (shader.vshader == 0 || shader.pshader == 0)
 			return;//epic fail
@@ -199,8 +209,8 @@ void IMaterial::Update(CRenderer* renderer)
 
 		this->shader_ptr = shaders->GetShader(id);
 		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);
-		this->shader_unskinned_ptr = shaders->GetShader(id ^ SKINNING);
-		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) ^ SKINNING);
+		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING));
+		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING));
 	}
 	else
 	{
@@ -209,7 +219,7 @@ void IMaterial::Update(CRenderer* renderer)
 	}
 }
 
-void IMaterial::ApplyShader(bool skinned, bool lit)
+void IMaterial::ApplyShader(bool skinned, int lights)
 {
 	if (this->shader_builder == false)
 	{
@@ -217,13 +227,15 @@ void IMaterial::ApplyShader(bool skinned, bool lit)
 		return;
 	}
 
+	//todo: ok, have different shaders for different numbers of lights
+
 	if (skinned)
-		if (lit)
+		if (lights)
 			renderer->SetShader(shader_lit_ptr);
 		else
 			renderer->SetShader(shader_ptr);
 	else
-		if (lit)
+		if (lights)
 			renderer->SetShader(shader_lit_unskinned_ptr);
 		else
 			renderer->SetShader(shader_unskinned_ptr);

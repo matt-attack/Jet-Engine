@@ -36,7 +36,6 @@ Renderer::Renderer()
 
 void Renderer::Init(CRenderer* renderer)
 {
-	//todo: stop using renderer list of shaders
 	shader_ss = renderer->CreateShader(13, "Shaders/skinned_shadow.vsh");
 
 	shader_s = renderer->CreateShader(2, "Shaders/shadow.vsh");
@@ -124,8 +123,6 @@ void Renderer::Init(CRenderer* renderer)
 			);
 		if (FAILED(hr))
 			throw 7;
-
-		ID3D11RenderTargetView* renderTargetView;
 
 		hr = renderer->device->CreateShaderResourceView(
 			renderTargetTexture,
@@ -385,14 +382,6 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	CRenderTexture oldrt = renderer->GetRenderTarget(0);
 
-	//IDirect3DSurface9* surf;
-	//this->ShadowMapTextures[id]->GetSurfacelevel(0, &surf);
-	//renderer->SetRenderTarget(0, this->ShadowMapSurfaces[id]);
-	//renderer->context->OMSetRenderTargets(1, &this->ShadowMapSurfaces[id]->color, depthStencilView);
-	//pDev->SetRenderTarget(0,surf);
-	//pDev->SetDepthStencilSurface(this->ShadowMapSurfaces[id]);
-
-	//this->shadowMapSurfaces[id]->Clear(1,0,1,1);
 	renderer->context->ClearDepthStencilView(this->shadowMapSurfaces[id]->depth, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	renderer->context->OMSetRenderTargets(1, &this->shadowMapSurfaces[id]->color, this->shadowMapSurfaces[id]->depth);
 
@@ -419,13 +408,13 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 		{
 			/*if (obj->material->alphatest == false)
 			{
-				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
-				renderer->context->PSSetShader(0, 0, 0);
+			//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+			renderer->context->PSSetShader(0, 0, 0);
 			}
 			else
 			{
-				renderer->SetPixelTexture(0, obj->material->texture);
-				renderer->context->PSSetShader(atest->pshader, 0, 0);
+			renderer->SetPixelTexture(0, obj->material->texture);
+			renderer->context->PSSetShader(atest->pshader, 0, 0);
 			}*/
 
 			if (obj->material->cullmode == CULL_NONE)
@@ -433,8 +422,8 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 			else
 				renderer->SetCullmode(CULL_CCW);
 		}
-		
-		
+
+
 		auto mat = shader->buffers.wvp;
 		if (mat.buffer)
 		{
@@ -499,24 +488,22 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 				/*if (mesh->material->alphatest == false)
 				{
-					//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
-					renderer->context->PSSetShader(0, 0, 0);
+				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+				renderer->context->PSSetShader(0, 0, 0);
 				}
 				else
 				{
-					ok, finish implementing shader
-					renderer->SetPixelTexture(0, mesh->material->texture);
-					renderer->context->PSSetShader(atest->pshader, 0, 0);
+				ok, finish implementing shader
+				renderer->SetPixelTexture(0, mesh->material->texture);
+				renderer->context->PSSetShader(atest->pshader, 0, 0);
 				}*/
-				
+
 				if (mesh->material->cullmode == CULL_NONE)
 					renderer->SetCullmode(CULL_NONE);
 				else
 					renderer->SetCullmode(CULL_CCW);
 
 				renderer->DrawIndexedPrimitive(PT_TRIANGLELIST, 0, 0, mesh->num_vertexes, mesh->num_triangles * 3);
-
-				//renderer->DrawIndexedPrimitive(PT_TRIANGLELIST,0,mesh->first_vertex,mesh->num_vertexes,0,mesh->num_triangles);
 			}
 			break;
 		}
@@ -595,7 +582,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 	todo_lock.unlock();//unlock
 
-	
+
 	renderer->ApplyCam(cam);
 
 	this->rcount = this->renderables.size();
@@ -750,46 +737,45 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			lastm = rc.material;
 			shaderchange = true;
 		}
-			
+
 		//find applicable lights then set'em up
 		int num_lights = 0;
-		Light found_lights[3];//max per pixel
+		Light found_lights[6];//max per pixel
 		//move this into an external function to clean up this code
 		//hack for the moment 
 		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
 		const float radius = rc.source ? 10 : rc.radius;
-		//todo: need button to turn light on/off
-			//todo: get enemy spawning system and deaths
-			//todo: perhaps allow more lights if necessary
+		//todo: get enemy spawning system and deaths
+		//todo: perhaps allow more lights if necessary
 		for (auto light : this->lights)
 		{
-			if (num_lights < 3 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
+			if (num_lights < 6 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
 			{
 				//apply it
 				found_lights[num_lights++] = light;
 			}
 		}
-		
+
 		//do shader LOD here
-		
+
 		//need to get right shader for right number of lights
 		//if (num_lights > 0 && rc.material->shader_builder)
 		//{
 		//}
 		//else
 		//{
-			//why am i doing this :/
-			//for (int i = 0; i < 3; i++)
-			//	found_lights[i].radius = 0;
+		//why am i doing this :/
+		//for (int i = 0; i < 3; i++)
+		//	found_lights[i].radius = 0;
 		//}
 
 		auto oldshdr = renderer->shader;
 
 		//ok, need to select right shader for skinned / nonskinned
 		//todo: also do shader LOD
-		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights > 0);
+		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights);
 		shaderchange = (oldshdr != renderer->shader);
-		
+
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
@@ -970,7 +956,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		data->ambient_down.xyz = this->ambient_bottom;
 		data->ambient_range.xyz = this->ambient_range;
 		//data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
-		data->daylight = Vec4(this->sun_light,1);//rc->source->daylight;
+		data->daylight = Vec4(this->sun_light, 1);//rc->source->daylight;
 		for (int i = 0; i < 3; i++)
 		{
 			data->lights[i].pos.xyz = light_list[i].position;
@@ -1032,7 +1018,7 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 {
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
-	
+
 	//todo: match this up with the loop above to fix bugs
 	for (int i = 0; i < renderqueue.size(); i++)
 	{
@@ -1065,7 +1051,7 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		renderer->SetShader(shader);
 		renderer->SetPixelTexture(0, rc.material->texture);
 
-		
+
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);

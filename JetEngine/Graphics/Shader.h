@@ -82,7 +82,7 @@ public:
 
 	CShader() {};
 	CShader(const char* vs, const char* ps);
-	CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros = 0, int nummacros = 0, const char* gloc = 0, const char* gfunc = 0);
+	CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros = 0, char** macrodefinitions = 0, int nummacros = 0, const char* gloc = 0, const char* gfunc = 0);
 	
 	~CShader()
 	{

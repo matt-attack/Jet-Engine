@@ -15,7 +15,7 @@
 #include "IMaterial.h"
 class TerrainMaterial : public IMaterial
 {
-	
+
 public:
 	ID3D11SamplerState* sampler, *textureSampler;
 	CTexture *nmap, *grass, *rock;
@@ -38,7 +38,7 @@ public:
 		renderer->context->PSSetShaderResources(7, 1, &rock->texture);
 
 		renderer->SetPrimitiveType(PT_TRIANGLELIST);
-		
+
 		renderer->EnableAlphaBlending(false);
 	}
 };
@@ -489,7 +489,7 @@ ITerrainSystem::~ITerrainSystem(void)
 HeightmapTerrainSystem::HeightmapTerrainSystem()
 {
 	this->castsShadows = false;
-	
+
 	grass = 0;
 	hmapt = 0;
 	hmapv = 0;
@@ -814,6 +814,25 @@ void HeightmapTerrainSystem::Load()
 
 		this->heights = info.heightMap;
 		this->world_size = info.terrainHeight;
+
+		int ds_size = this->world_size*this->world_size / (4 * 4);
+		this->heights_ds = new float[ds_size];
+		//initialize all of this to 0
+		for (int i = 0; i < ds_size; i++)
+			this->heights_ds[i] = 0;
+
+		//downsample for the heights
+		for (int x = 0; x < this->world_size; x++)
+		{
+			for (int y = 0; y < this->world_size; y++)
+			{
+				int index = ((this->world_size/*hminfo.terrainHeight*/) * (/*2047-*/x)) + y;
+				int ds_index = ((this->world_size/4/*hminfo.terrainHeight*/) * (/*2047-*/x/4)) + y/4;
+
+				if (this->heights[index] > this->heights_ds[ds_index])
+					this->heights_ds[ds_index] = this->heights[index];
+			}
+		}
 	}
 
 	nmap = 0;
@@ -912,6 +931,25 @@ float HeightmapTerrainSystem::GetHeight(float x, float y)
 		float s10 = this->heights[(iy + 1) * 2048 + ix];
 		float s11 = this->heights[(iy + 1) * 2048 + ix + 1];
 		return biLinearInterpolation(s00, s01, s10, s11, x - ix, y - iy);
+		//return s00+(s01-s00)*(x-ix);//this->heights[y*2048+x];
+	}
+
+	return 0;
+}
+
+float HeightmapTerrainSystem::GetRoughHeight(float x, float y)
+{
+	x /= TerrainScale*4;
+	y /= TerrainScale*4;
+	if (x >= 0 && y >= 0 && x < 2047 && y < 2047)
+	{
+		int ix = floor(x);
+		int iy = floor(y);
+		float s00 = this->heights[iy * 2048 + ix];
+		//float s01 = this->heights[iy * 2048 + ix + 1];
+		//float s10 = this->heights[(iy + 1) * 2048 + ix];
+		//float s11 = this->heights[(iy + 1) * 2048 + ix + 1];
+		return s00;// biLinearInterpolation(s00, s01, s10, s11, x - ix, y - iy);
 		//return s00+(s01-s00)*(x-ix);//this->heights[y*2048+x];
 	}
 

@@ -29,7 +29,7 @@ void CBuffer::UploadAndSet(void* data, int size)
 	}
 }
 
-CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros, int nummacros, const char* gloc, const char* gfunc)
+CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros, char** macrodefinitions, int nummacros, const char* gloc, const char* gfunc)
 {
 #ifdef _WIN32
 	this->vshader = 0;
@@ -43,7 +43,7 @@ CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const ch
 		for (int i = 0; i < nummacros; i++)
 		{
 			xmacros[i].Name = macros[i];
-			xmacros[i].Definition = "true";
+			xmacros[i].Definition = macrodefinitions[i];// "true";
 		}
 		xmacros[nummacros].Name = 0;
 		xmacros[nummacros].Definition = 0;
@@ -532,7 +532,7 @@ CShader* CShader::load_as_resource(const std::string &path, CShader* res)
 	in[23] = 0;
 
 	if (strcmp(in, "#define geometry_shader") == 0)
-		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, path.c_str(), "gs_main");
+		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0,0, path.c_str(), "gs_main");
 	//ok, here I need to load the first bit of the shader text and see what it says to determine what shader type it is
 	//make a copy of uniforms
 	else
@@ -557,7 +557,7 @@ void CShader::Reload(ResourceManager* mgr, const std::string& path)
 
 	bool needs_gs = strcmp(in, "#define geometry_shader") == 0;
 	if (needs_gs)
-		newshader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, path.c_str(), "gs_main");
+		newshader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, 0, path.c_str(), "gs_main");
 	//ok, here I need to load the first bit of the shader text and see what it says to determine what shader type it is
 	//make a copy of uniforms
 	else
