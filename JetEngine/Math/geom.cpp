@@ -63,5 +63,6 @@ double AngleDifference(double a, double b)
 	double dif = fmod(b - a + 3.1415926535895/*180*/, 2.0*3.1415926535895/*360*/);
 	if (dif < 0)
 		dif += 2.0*3.1415926535895;// 360;
+
 	return dif - 3.1415926535895;// 180;
 }

@@ -391,6 +391,10 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	//unbind PS
 
+	//lets do a little hack since we dont need the pixel shaders
+	this->shader_s->pshader = 0;
+	this->shader_ss->pshader = 0;
+
 	CShader* shader;
 	Matrix4 shadowmat = viewProj.Transpose();
 	for (auto obj : *objs)
@@ -402,20 +406,23 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 		Matrix4 world = (obj->matrix*shadowmat).Transpose();
 
-		renderer->context->PSSetShader(0, 0, 0);
+		//renderer->context->PSSetShader(0, 0, 0);
 
 		if (obj->material)
 		{
-			/*if (obj->material->alphatest == false)
+			if (obj->material->alphatest == false)
 			{
-			//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
-			renderer->context->PSSetShader(0, 0, 0);
+				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+				//renderer->context->PSSetShader(0, 0, 0);
 			}
 			else
 			{
-			renderer->SetPixelTexture(0, obj->material->texture);
-			renderer->context->PSSetShader(atest->pshader, 0, 0);
-			}*/
+				renderer->SetShader(atest);
+
+				//need to set vertex shader too...
+				renderer->SetPixelTexture(0, obj->material->texture);
+				renderer->SetFilter(0, FilterMode::Linear);
+			}
 
 			if (obj->material->cullmode == CULL_NONE)
 				renderer->SetCullmode(CULL_NONE);
@@ -439,7 +446,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 			renderer->context->VSSetConstantBuffers(mat.vsslot, 1, &mat.buffer);
 		}
-
+		
 		switch (obj->type)
 		{
 		case Standard:
@@ -486,17 +493,22 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 				Mesh* mesh = &model->t->meshes[i];
 				mesh->ib->Bind();
 
-				/*if (mesh->material->alphatest == false)
+				if (mesh->material->alphatest == false)
 				{
-				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
-				renderer->context->PSSetShader(0, 0, 0);
+					//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
+					renderer->SetShader(shader);
+
+					//renderer->context->PSSetShader(0, 0, 0);
+					//this could cause an issue with the wrong IL being bound since renderer->shader is still the same
 				}
 				else
 				{
-				ok, finish implementing shader
-				renderer->SetPixelTexture(0, mesh->material->texture);
-				renderer->context->PSSetShader(atest->pshader, 0, 0);
-				}*/
+					renderer->SetShader(atest);
+	
+					//need to set vertex shader too...
+					renderer->SetPixelTexture(0, mesh->material->texture);
+					renderer->SetFilter(0, FilterMode::Linear);
+				}
 
 				if (mesh->material->cullmode == CULL_NONE)
 					renderer->SetCullmode(CULL_NONE);

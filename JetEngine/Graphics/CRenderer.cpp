@@ -1127,6 +1127,8 @@ void CRenderer::Init(int scrx, int scry)
 
 	glGenBuffers( 1, &rect_vb );
 #endif
+
+	this->Resize(xres, yres);
 }
 
 #ifndef USEOPENGL

@@ -818,7 +818,7 @@ void HeightmapTerrainSystem::Load()
 		int ds_size = this->world_size*this->world_size / (4 * 4);
 		this->heights_ds = new float[ds_size];
 		//initialize all of this to 0
-		for (int i = 0; i < ds_size; i++)
+		/*for (int i = 0; i < ds_size; i++)
 			this->heights_ds[i] = 0;
 
 		//downsample for the heights
@@ -826,13 +826,13 @@ void HeightmapTerrainSystem::Load()
 		{
 			for (int y = 0; y < this->world_size; y++)
 			{
-				int index = ((this->world_size/*hminfo.terrainHeight*/) * (/*2047-*/x)) + y;
-				int ds_index = ((this->world_size/4/*hminfo.terrainHeight*/) * (/*2047-*/x/4)) + y/4;
+				int index = ((this->world_size) * (x)) + y;
+				int ds_index = ((this->world_size/4) * (x/4)) + y/4;
 
 				if (this->heights[index] > this->heights_ds[ds_index])
 					this->heights_ds[ds_index] = this->heights[index];
 			}
-		}
+		}*/
 	}
 
 	nmap = 0;
@@ -939,8 +939,8 @@ float HeightmapTerrainSystem::GetHeight(float x, float y)
 
 float HeightmapTerrainSystem::GetRoughHeight(float x, float y)
 {
-	x /= TerrainScale*4;
-	y /= TerrainScale*4;
+	x /= TerrainScale;// *4;
+	y /= TerrainScale;// *4;
 	if (x >= 0 && y >= 0 && x < 2047 && y < 2047)
 	{
 		int ix = floor(x);

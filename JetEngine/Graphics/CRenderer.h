@@ -282,12 +282,9 @@ public:
 
 	void SetAALevel(int samples);
 
-	CShader* shader;
+	CShader* shader;//the current shader being used
 
 	Matrix4 world, view, projection;
-	//Matrix4 wVP;
-	//bool _wvpDirty;
-
 
 	VertexDeclaration input_layout;
 
@@ -413,7 +410,7 @@ public:
 	void ClearDepth();
 	void ClearStencil();
 
-	ID3D11ShaderResourceView* current_texture;
+	ID3D11ShaderResourceView* current_texture = 0;
 	void SetPixelTexture(int stage, int id)
 	{
 		this->current_texture = 0;

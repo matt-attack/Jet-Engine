@@ -90,7 +90,9 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//ZeroMemory(&p, sizeof(Particle));
 	//p.Age = 0.0f;
 	//p.Type = 0;
-	for (int i = 0; i < 100; i++)
+	//experiment with forests and add tree collisions
+	//	how to do groupings of trees???
+	for (int i = 0; i < 1000; i++)
 	{
 		int model = rand() % this->tree_models.size();
 		data[i].position = Vec3::random(2048, 0, 2048);// +Vec3(512, 0, 512);
@@ -182,6 +184,8 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 	this->GenerateImpostors();
 
+	float fade_distane = 100;
+
 	//ok, now lets be super dumb
 	//ok, lets speed this up considerably
 	int count[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -189,7 +193,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 		return;//showdebug > 1)
 	for (int i = 0; i < this->num_billboards; i++)
 	{
-		if (this->data[i].position.distsqr(cam._pos) < 100 * 100)
+		if (this->data[i].position.distsqr(cam._pos) < fade_distane * fade_distane)
 		{ 
 			int type = this->data[i].type;
 			auto model = this->tree_models[type];

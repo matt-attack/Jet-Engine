@@ -280,8 +280,9 @@ void CGame::Update()
 		return;
 	}
 
-	this->Draw();
+	this->Draw();//render the frame
 
+	//reset input
 	input.deltaX = 0;
 	input.deltaY = 0;
 	input.left_mouse = false;

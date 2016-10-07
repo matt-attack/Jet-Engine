@@ -84,12 +84,14 @@
     <ClInclude Include="CGameState.h" />
     <ClInclude Include="GUI\gui_settings.h" />
     <ClInclude Include="LoadingState.h" />
+    <ClInclude Include="SplashScreen.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CGame.cpp" />
     <ClCompile Include="GUI\gui_settings.cpp" />
     <ClCompile Include="LoadingState.cpp" />
+    <ClCompile Include="SplashScreen.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
