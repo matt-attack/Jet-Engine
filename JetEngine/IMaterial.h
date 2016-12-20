@@ -48,6 +48,12 @@ public:
 	std::string normal;
 	std::string shader_name;
 
+private:
+	//custom defines/settings for shaders
+	//when this changes need to invalidate shaders and regenerate
+	std::map<std::string, std::string> defines;
+public:
+
 	bool shader_builder = false;
 	bool skinned = false;
 private:
@@ -56,13 +62,10 @@ public:
 	IMaterial(const char* name);
 	~IMaterial();
 
-	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
-
+	
 	IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
-	//IMaterial(char* name, char* shader, bool shader_builder, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
-
-	//IMaterial(char* name, int shader, FilterMode fmode, char* diffuse, char* normal, CullMode cmode, bool alpha, bool weaponhack = false);
+	void SetDefine(const std::string& name, const std::string& value);
 
 	virtual void Apply(CRenderer* renderer);
 
@@ -89,16 +92,4 @@ public:
 
 //a shader will be made up of a few components
 //position / normal generator + tangent system(optional) + surface shader + lighting + shadow
-class DamageableMaterial : public IMaterial
-{
-public:
-	CTexture* damage_texture;
-
-	virtual void Apply(CRenderer* renderer)
-	{
-		IMaterial::Apply(renderer);
-
-		renderer->SetPixelTexture(9, damage_texture);
-	}
-};
 #endif

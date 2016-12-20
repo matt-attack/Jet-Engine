@@ -1,10 +1,10 @@
 #define SAFE_RELEASE(x) if( x ) { (x)->Release(); (x) = NULL; }
 
 #ifndef MATT_SERVER
-#include "Graphics/CRenderer.h"
+#include "../CRenderer.h"
 #endif
 #include "BlockModel.h"
-#include "IMaterial.h"
+#include "../../IMaterial.h"
 //#include "Entities/PlayerEntity.h"
 
 #define MODEL_X 32

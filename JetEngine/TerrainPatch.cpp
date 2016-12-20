@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+float TerrainScale = 2.0;
+
 #undef min
 
 //#define USE_SKIRTS

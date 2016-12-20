@@ -34,7 +34,7 @@ CLoadingState::CLoadingState(void)
 	this->thread_data->status = "Loading...";
 
 	this->previous_state = 0;
-};
+}
 
 CLoadingState::~CLoadingState(void)
 {
@@ -78,4 +78,4 @@ void CLoadingState::Draw(CGame* game, float dTime)
 	this->SetStatus(this->thread_data->status);
 	renderer->Clear(1.0f, 1.0f, 1.0f, 1.0f);
 	desktop.renderall(0,0,0,0,1);
-};
+}

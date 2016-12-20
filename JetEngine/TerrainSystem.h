@@ -2,6 +2,8 @@
 
 #include "TerrainPatch.h"
 
+extern float LODboost;
+
 class CCamera;
 class ITerrainSystem
 {
@@ -17,18 +19,6 @@ class VoxelTerrainSystem: public ITerrainSystem
 public:
 };
 
-#include <map>
-struct XYP
-{
-	int x, y;
-
-	bool operator < (const XYP& o) const 
-	{
-		return (x < o.x || (x == o.x && y < o.y));
-	}
-	XYP() {}
-	XYP(int x, int y) : x(x), y(y) {};
-};
 class TerrainMaterial;
 class QuadTree;
 class HeightmapTerrainSystem : public ITerrainSystem, Renderable
@@ -65,7 +55,11 @@ public:
 	CTexture* grass, *rock;
 	CTexture* nmap;
 
-	void Load();
+	void Load(float terrain_scale);
+
+	void LoadHeightmap(const char* file);
+	void GenerateHeightmap();
+
 
 	void SaveHeightmap(const char* file);
 
@@ -82,5 +76,8 @@ public:
 	float GetHeight(float x, float y);
 	float GetHeightAndNormal(float x, float y, Vec3& normal);
 	float GetHeightAndVectors(float x, float y, Vec3& normal, Vec3& xtangent, Vec3& ytangent);
+
+private:
+	void SetupChunks();
 };
 

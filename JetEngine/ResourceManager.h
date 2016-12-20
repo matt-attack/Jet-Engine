@@ -85,8 +85,7 @@ public:
 
 	void init();
 
-	void push();
-	void pop();
+	void release_unused();
 
 	size_t stack_size();
 

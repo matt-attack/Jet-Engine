@@ -10,7 +10,6 @@
 class SplashScreenState : public CGameState
 {
 	gui_window desktop;
-	//gui_progressbar progress;
 
 	CGameState* next_state;
 
@@ -20,7 +19,7 @@ public:
 	SplashScreenState(void);
 	~SplashScreenState(void);
 
-	virtual void Init(CGame* game);
+	virtual void Init(CGame* game) {}
 
 	virtual void Cleanup() {};
 
@@ -29,7 +28,7 @@ public:
 	virtual void Pause() {};
 	virtual void Resume() {};
 
-	virtual void MouseEvent(CGame* game, int x, int y, int eventId) { this->time = 1000; };
+	virtual void MouseEvent(CGame* game, int x, int y, int eventId) { if (eventId == ENG_R_UP || eventId == ENG_L_UP) this->time = 1000; };
 	virtual void KeyboardEvent(CGame* game, int eventType, int keyId) { this->time = 1000; };
 
 	virtual void HandleEvents(CGame* game, int messagetype, void* data1, void* data2) {};
@@ -40,15 +39,6 @@ public:
 	void SetNextState(CGameState* state)
 	{
 		this->next_state = state;
-	};
-
-	void SetProgress(float p)
-	{
-		//this->progress.setProgress(p);
-	}
-	void SetStatus(char* str)
-	{
-		//this->progress.settext(str);
 	}
 };
 #endif

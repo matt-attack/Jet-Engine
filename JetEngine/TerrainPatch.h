@@ -4,7 +4,7 @@
 #include "Graphics/CVertexBuffer.h"
 #include "Graphics/CIndexBuffer.h"
 
-const float TerrainScale = 1.0;
+extern float TerrainScale;
 
 enum TerrainDefs
 {

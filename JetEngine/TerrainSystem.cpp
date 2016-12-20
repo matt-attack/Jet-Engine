@@ -9,8 +9,14 @@
 #include "Graphics/Shader.h"
 #include "Graphics/RenderTexture.h"
 
+
+#include "Util/Noise.h"
+
 #include <fstream>
 #include <ostream>
+
+float LODboost = 4;//todo: break this out into an option for terrain quality
+
 
 #include "IMaterial.h"
 class TerrainMaterial : public IMaterial
@@ -182,7 +188,7 @@ public:
 		//else if (this->patch->maxy - this->patch->miny > 30)
 		//lod += 2;
 
-		return lod;
+		return lod + LODboost;
 	}
 
 	void Render(float* heights, CCamera* cam, int p = 0)
@@ -495,20 +501,7 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 	hmapv = 0;
 	need_to_reload_normals = false;
 	patch_size = 512;
-	world_size = 1024 * 2;
-
-	//for number of players
-	for (int i = 0; i < 2; i++)
-	{
-		grid[i] = new QuadTree*[(world_size / patch_size)*(world_size / patch_size)];
-		for (int x = 0; x < world_size / patch_size; x++)
-		{
-			for (int y = 0; y < world_size / patch_size; y++)
-			{
-				grid[i][x*(world_size / patch_size) + y] = new QuadTree(x*patch_size*TerrainScale, y*patch_size*TerrainScale, 512);
-			}
-		}
-	}
+	
 
 	this->heights = 0;
 }
@@ -780,25 +773,153 @@ void HeightmapTerrainSystem::SaveHeightmap(const char* file)
 	}
 }
 
+void HeightmapTerrainSystem::GenerateHeightmap()
+{
+	//HeightMapInfo info;
+	//R16HeightMapLoad("Content/heightmap.r16", info);
+
+	//lets generate our own heights
+
+	this->heights = new float[2048 * 2048];// info.heightMap;
+	this->world_size = 2048;// info.terrainHeight;
+
+	int ds_size = this->world_size*this->world_size / (4 * 4);
+	this->heights_ds = new float[ds_size];
+
+	//ok procedural time, generate map with mountains and such, maybe a river
+	//	then add a few random objectives, spawn some enemies at each
+	//	need to make world 2x as large and somehow hide edges....
+
+	//generate some buildings
+	//generate some heights
+	const float hill_thresh = 0.4f;
+	const float mountain_thresh = 0.75f;
+	const float thresh = 0.3f;
+	for (int x = 0; x < this->world_size; x++)
+	{
+		for (int y = 0; y < this->world_size; y++)
+		{
+			int index = ((this->world_size) * (x)) + y;
+
+			float is_mountain = noise2d_perlin_abs(x / 260.0f, y / 260.0f, 41865, 2, 0.5f);
+
+			//float scale = 5*(is_mountain - thresh)*(1.0f / (1.0f - thresh));
+			float base_height = (noise2d_perlin_abs(x / 160.0f, y / 160.0f, 1586541, 6, 0.5));// +1.0f) * 20;// +100;
+
+			if (is_mountain > hill_thresh)
+			{
+#undef min
+				this->heights[index] = base_height*std::min(100.0f, 100 * (is_mountain - hill_thresh) / (mountain_thresh - hill_thresh)) + 100;
+			}
+			else
+				this->heights[index] = 100;
+
+			if (is_mountain < 0.05)
+				this->heights[index] = 400;
+			//if (is_mountain > )
+			//float height = 0;
+			//if (scale > 0)
+			//	height = base_height*scale;
+			//else
+			//	height = base_height;
+			//this->heights[index] = height+100;// noise2d_perlin(x / 80.0f, y / 80.0f, 1586541, 2, 0.25) * 50 + 100;
+		}
+	}
+	//initialize all of this to 0
+	/*for (int i = 0; i < ds_size; i++)
+	this->heights_ds[i] = 0;
+
+	//downsample for the heights
+	for (int x = 0; x < this->world_size; x++)
+	{
+	for (int y = 0; y < this->world_size; y++)
+	{
+	int index = ((this->world_size) * (x)) + y;
+	int ds_index = ((this->world_size/4) * (x/4)) + y/4;
+
+	if (this->heights[index] > this->heights_ds[ds_index])
+	this->heights_ds[ds_index] = this->heights[index];
+	}
+	}*/
+	this->SetupChunks();
+}
+
+void HeightmapTerrainSystem::LoadHeightmap(const char* file)
+{
+	HeightMapInfo info;
+	R16HeightMapLoad("Content/heightmap.r16", info);
+
+	//lets generate our own heights
+
+	this->heights = info.heightMap;
+	this->world_size = info.terrainHeight;
+
+	int ds_size = this->world_size*this->world_size / (4 * 4);
+	this->heights_ds = new float[ds_size];
+
+	//initialize all of this to 0
+	/*for (int i = 0; i < ds_size; i++)
+	this->heights_ds[i] = 0;
+
+	//downsample for the heights
+	for (int x = 0; x < this->world_size; x++)
+	{
+	for (int y = 0; y < this->world_size; y++)
+	{
+	int index = ((this->world_size) * (x)) + y;
+	int ds_index = ((this->world_size/4) * (x/4)) + y/4;
+
+	if (this->heights[index] > this->heights_ds[ds_index])
+	this->heights_ds[ds_index] = this->heights[index];
+	}
+	}*/
+	this->SetupChunks();
+}
+
+void HeightmapTerrainSystem::SetupChunks()
+{
+	//world_size = 1024 * 2;
+
+	//for number of players
+	for (int i = 0; i < 2; i++)
+	{
+		grid[i] = new QuadTree*[(world_size / patch_size)*(world_size / patch_size)];
+		for (int x = 0; x < world_size / patch_size; x++)
+		{
+			for (int y = 0; y < world_size / patch_size; y++)
+			{
+				grid[i][x*(world_size / patch_size) + y] = new QuadTree(x*patch_size*TerrainScale, y*patch_size*TerrainScale, 512);
+			}
+		}
+	}
+}
+
 VertexDeclaration terrain_vd;
 IMaterial* terrain_mat;
-void HeightmapTerrainSystem::Load()
+void HeightmapTerrainSystem::Load(float terrain_scale)
 {
+	bool loaded = this->grass ? true : false;
+
+	if (loaded)
+		return;
+
 	//create material
+	TerrainScale = terrain_scale;
 	TerrainMaterial* mt = new TerrainMaterial;
 	this->material = mt;// IMaterial("terrain");
 	this->material->skinned = false;
 	this->material->alpha = false;
 	this->material->alphatest = false;
+	this->material->SetDefine("TERRAIN_SCALE", std::to_string(TerrainScale));
 	this->material->shader_name = "Shaders/terrain_shadow.shdr";
 	this->material->shader_builder = true;
+	this->material->filter = FilterMode::Linear;
 	//this->material->shader_ptr = shader_s;
 	this->material->cullmode = CULL_CW;
 	this->my_material = mt;
 
 	terrain_mat = this->material;
-	bool loaded = this->grass ? true : false;
-
+	
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
 	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
@@ -807,33 +928,6 @@ void HeightmapTerrainSystem::Load()
 	grass = resources.get_unsafe<CTexture>("snow.jpg");
 	rock = resources.get_unsafe<CTexture>("rock.png");
 	//implement teh texturing
-	if (loaded == false)
-	{
-		HeightMapInfo info;
-		R16HeightMapLoad("Content/heightmap.r16", info);
-
-		this->heights = info.heightMap;
-		this->world_size = info.terrainHeight;
-
-		int ds_size = this->world_size*this->world_size / (4 * 4);
-		this->heights_ds = new float[ds_size];
-		//initialize all of this to 0
-		/*for (int i = 0; i < ds_size; i++)
-			this->heights_ds[i] = 0;
-
-		//downsample for the heights
-		for (int x = 0; x < this->world_size; x++)
-		{
-			for (int y = 0; y < this->world_size; y++)
-			{
-				int index = ((this->world_size) * (x)) + y;
-				int ds_index = ((this->world_size/4) * (x/4)) + y/4;
-
-				if (this->heights[index] > this->heights_ds[ds_index])
-					this->heights_ds[ds_index] = this->heights[index];
-			}
-		}*/
-	}
 
 	nmap = 0;
 
@@ -853,8 +947,9 @@ void HeightmapTerrainSystem::Load()
 		comparisonSamplerDesc.MipLODBias = 0.f;
 		comparisonSamplerDesc.MaxAnisotropy = 0;
 		comparisonSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;//LESS_EQUAL;
-		comparisonSamplerDesc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;// D3D11_FILTER_MIN_MAG_MIP_POINT;
-
+		comparisonSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		//comparisonSamplerDesc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;// D3D11_FILTER_MIN_MAG_MIP_POINT;
+		//test this and try to get it to look better
 		// Point filtered shadows can be faster, and may be a good choice when
 		// rendering on hardware with lower feature levels. This sample has a
 		// UI option to enable/disable filtering so you can see the difference

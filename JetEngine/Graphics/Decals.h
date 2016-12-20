@@ -2,9 +2,9 @@
 #define DECAL_HEADER
 
 #ifndef MATT_SERVER
-#include "Graphics/CRenderer.h"
-#include "Graphics/CVertexBuffer.h"
-#include "Graphics\CTexture.h"
+#include "CRenderer.h"
+#include "CVertexBuffer.h"
+#include "CTexture.h"
 
 #include <vector>
 #include <map>
@@ -28,10 +28,10 @@ class DecalManager
 
 public:
 	int count;
-	DecalManager()
+	DecalManager(int limit)
 	{
 		count = 0;
-		maxcount = 100;
+		maxcount = limit;
 		oldest = 0;
 		shader = renderer->CreateShader(4, "Shaders/model_diffuse.shdr");
 		texture = resources.get_unsafe<CTexture>("decals.png");

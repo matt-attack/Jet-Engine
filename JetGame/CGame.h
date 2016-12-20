@@ -173,7 +173,7 @@ public:
 			delete[] d;
 		}
 #endif
-	};
+	}
 
 	void SaveSettings()
 	{
@@ -192,7 +192,7 @@ public:
 		fwrite(str, strlen(str), 1, f);
 		fclose(f);
 #endif
-	};
+	}
 
 	void RegisterCVar(const char* name, float default)
 	{
@@ -239,7 +239,7 @@ public:
 		//need to insert if not present
 		throw 7;
 		return 0;
-	};
+	}
 
 	std::string GetSettingString(const char* name)
 	{
@@ -257,7 +257,7 @@ public:
 		//need to insert if not present
 		throw 7;
 		return 0;
-	};
+	}
 
 	bool GetSettingBool(const char* name)
 	{
@@ -275,7 +275,7 @@ public:
 		//need to insert if not present
 		throw 7;
 		return false;
-	};
+	}
 
 	bool ProcessCommand(const char* command)
 	{

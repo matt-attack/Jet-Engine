@@ -9,12 +9,11 @@ ResourceManager resources;
 
 ResourceManager::ResourceManager(void)
 {
-	push();
 }
 
 ResourceManager::~ResourceManager(void)
 {
-	pop();
+	this->release_unused();
 #ifdef _WIN32
 	FindCloseChangeNotification(this->change_notifier);
 #endif
@@ -152,30 +151,25 @@ void ResourceManager::update()
 #endif
 }
 
-void ResourceManager::push()
-{
-	log("[ResourceManager] Pushing!\n");
-	//m_stack.push_back(std::map<std::string, Resource *>());
-}
-
-void ResourceManager::pop()
+void ResourceManager::release_unused()
 {
 	if (m_stack.size() == 0)
 		return;//cant pop
 
-	log("[ResourceManager] Popping!\n");
+	log("[ResourceManager] Freeing Unused Resources!\n");
 
 	//std::map<std::string, Resource *> &v = m_stack[m_stack.size() - 1];
 	//std::map<std::string, Resource *>::reverse_iterator iter;
 	//todo: get this working again and remove stacks
 	//for (iter = v.rbegin(); iter != v.rend(); iter++)//need to iterate through backwards
-	//std::vector<
+	std::vector<std::string> to_remove;
 	for (auto iter: this->m_stack)
 	{
 		if (iter.second->count <= 0)
 		{
 			//todo: get this to actually free them
 			logf("[ResourceManager]   Unloaded %s\n", iter.first.c_str());
+			to_remove.push_back(iter.first);
 			//this->m_stack.erase(iter.first);
 		}
 		
@@ -185,6 +179,12 @@ void ResourceManager::pop()
 		//also keep getting a random crash potentially related to networking
 		//maybe do a stash and see if it happens
 		//delete iter->second;//fails on obj model
+	}
+
+	//remove them
+	for (auto iter : to_remove)
+	{
+		//this->m_stack.erase(iter);
 	}
 	//m_stack.pop_back();
 }

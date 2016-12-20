@@ -96,8 +96,7 @@ public:
 		Vec3 pos;
 		Vec3 normal;
 		Vec2 uv;
-		//float nx, ny, nz;
-		//float u, v;
+
 		unsigned int blendweight;
 		//unsigned char blendweight[4];
 		unsigned char blendindex[4];

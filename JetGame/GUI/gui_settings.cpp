@@ -1,4 +1,5 @@
 #include "gui_settings.h"
+#include <JetEngine/TerrainSystem.h>
 
 gui_settings::gui_settings(CGame* game)
 {
@@ -98,6 +99,8 @@ gui_settings::gui_settings(CGame* game)
 	box->SetSelected(game->GetSettingBool("cl_vsync") ? 0 : 1);
 	gtab->AddWindow(box);
 
+	//LODboost
+
 	box = new gui_dropbox;
 	box->setpos(150, 160);
 	box->setsize(100, 40);
@@ -116,6 +119,27 @@ gui_settings::gui_settings(CGame* game)
 		printf("Selected: %s\n", box->GetSelected().c_str());
 	};
 	box->SetSelected(game->GetSettingBool("cl_aa_samples") ? 0 : 1);
+	gtab->AddWindow(box);
+
+	box = new gui_dropbox;
+	box->setpos(210, 60);
+	box->setsize(100, 40);
+	box->AddItem("Low");
+	box->AddItem("Mid");
+	box->AddItem("High");
+	
+	box->settext("Terrain Quality");
+	box->callback = [game](gui_dropbox* box)
+	{
+		if (box->GetSelected() == "Low")
+			LODboost = 0;
+		else if (box->GetSelected() == "Mid")
+			LODboost = 2;
+		else
+			LODboost = 4;
+		printf("Selected: %s\n", box->GetSelected().c_str());
+	};
+	box->SetSelected(1);// game->GetSettingBool("cl_vsync") ? 0 : 1);
 	gtab->AddWindow(box);
 
 	label = new gui_label;

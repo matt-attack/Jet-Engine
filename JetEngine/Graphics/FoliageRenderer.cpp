@@ -19,7 +19,6 @@ FoliageRenderer::FoliageRenderer()
 	this->data = 0;
 }
 
-
 FoliageRenderer::~FoliageRenderer()
 {
 }
@@ -101,10 +100,6 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 		data[i].position.y += data[i].size.y / 2;
 		data[i].color = COLOR_ARGB(255, 255, 255, 255);
 		data[i].type = model;
-		//p[i].position = Vec3(i * 30, i * 50, i * 20);
-		//p[i].velocity = Vec3(0, 0, 0);
-		//p[i].size = Vec2(40, 40);
-		//p[i].age = 10;
 	}
 
 	D3D11_SUBRESOURCE_DATA vinitData;
@@ -137,35 +132,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 
 	//	maybe add some metadata in start of shader file?
 	this->shader = resources.get_shader("Shaders/tree_billboards.shdr");
-	//this->shader = new CShader("Content/Shaders/tree_billboards.shdr", "vs_main", "Content/Shaders/tree_billboards.shdr", "ps_main", 0, 0, "Content/Shaders/tree_billboards.shdr", "gs_main");
 }
-
-
-/*void ParticleRenderer::Update(float dt)
-{
-PROFILE("particle update");
-
-//update the stufffs
-for (int i = 0; i < this->num_particles; i++)
-{
-this->data[i].age -= dt;
-if (this->data[i].age < 0)// || this->data[i].age < 0)
-{
-//this->data[i].age = 0;
-//this->data[i].position = Vec3(1024, 400, 1024);
-//this->data[i].velocity = Vec3::random(25, 25, 25);
-//this->data[i].size = Vec2(5, 5);
-this->data[i] = this->data[this->num_particles];
-this->num_particles--;
-}
-this->data[i].position = this->data[i].position + this->data[i].velocity*dt;
-}
-
-D3D11_MAPPED_SUBRESOURCE res;
-renderer->context->Map(mStreamOutVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &res);
-memcpy(res.pData, data, sizeof(Particle) * this->num_particles);
-renderer->context->Unmap(mStreamOutVB, 0);
-}*/
 
 void FoliageRenderer::AddModel(const char* name)
 {
@@ -182,15 +149,16 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 	ID3D11DeviceContext* dc = renderer->context;
 
+	//todo: need to generate normal map in each and make sure to render at fullbright
 	this->GenerateImpostors();
 
-	float fade_distane = 100;
+	float fade_distane = 150;
 
 	//ok, now lets be super dumb
 	//ok, lets speed this up considerably
 	int count[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	if (renderer->current_aa_level == 2)
-		return;//showdebug > 1)
+	//if (renderer->current_aa_level == 2)
+	//	return;//showdebug > 1)
 	for (int i = 0; i < this->num_billboards; i++)
 	{
 		if (this->data[i].position.distsqr(cam._pos) < fade_distane * fade_distane)
@@ -201,7 +169,6 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 			//make trees use the alpha test material
 			//get available model
 			ObjModel* rm = 0;
-			//rm = model.model;
 			if (render_models[type].size() <= count[type])
 			{
 				//allocate new one
@@ -215,11 +182,8 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 			{
 				rm = render_models[type][count[type]++];
 			}
-			//need to render just an instance of it, not do this jazz
-			//	needs to go into normal renderer, NOT be drawn immediately
-			//	that way I can have shadows, and culling too
 
-			//render it bitches
+			//render it
 			Vec3 offset = this->data[i].position - Vec3(0, model.dimensions.y / 2, 0);
 			rm->aabb = rm->t->joints[0].bb;
 			rm->aabb.min *= 2;
@@ -227,9 +191,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 			rm->aabb.max += offset;
 			rm->aabb.min += offset;
 			rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
-			//r.Render((CCamera*)&cam, model.model);
 			r.AddRenderable(rm);
-				//break;
 		}
 	}
 
@@ -319,7 +281,7 @@ void FoliageRenderer::GenerateImpostors()
 
 	renderer->EnableAlphaBlending(false);
 	
-	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));// cam._matrix.LookAtLHMatrix(cam._pos, Vec3(0, 0, 0), Vec3(0, 1, 0));
+	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 
 	if (this->tree_models.size() > 8)
 		throw 7;
@@ -343,18 +305,7 @@ void FoliageRenderer::GenerateImpostors()
 			//model.aabb.min = Vec3(model.t->bounds[25].bbmin);// -Vec3(2, 0, 10);
 			//model.aabb.max = Vec3(model.t->bounds[25].bbmax);// +Vec3(2, 0, -10);
 			model->matrix = Matrix4::RotationMatrixZ((3.14159265 / 4.0) *((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
-			//cam._projectionMatrix = Matrix4::OrthographicLHMatrix(-5, 7, 7, 7);
 
-			/*cam._projectionMatrix = Matrix4::OrthographicOffCenterLHMatrix(
-				-3.5,// left
-				3.5,// right
-				-3.5,// bottom
-				3.5,// top
-				-5,// near
-				7);// far*/
-			//cam._projectionMatrix = Matrix4::Identity();
-
-			//cam.doLookAt(Vec3(0, 0, 0), Vec3(0, 1, 0));
 
 			auto ii = model;
 			Matrix4 view = cam._matrix;
@@ -389,9 +340,6 @@ void FoliageRenderer::GenerateImpostors()
 				objsYmax,// top
 				objsNear,// near
 				objsFar).Transpose();// far
-
-			//dimensions = Vec2(abs(objsXmax - objsXmin), abs(objsYmax - objsYmin));
-			//std::swap(dimensions.x, dimensions.y);//bug fix 
 
 			r.Render(&cam, model);
 		}

@@ -1,12 +1,10 @@
 #ifndef _BLOCKMODEL_HEADER
 #define _BLOCKMODEL_HEADER
 
-#include "Math\AABB.h"
+#include "../../Math/AABB.h"
 
-#ifndef MATT_SERVER
-#include "Graphics\Renderable.h"
-#include "Graphics/CVertexBuffer.h"
-#endif
+#include "../Renderable.h"
+#include "../CVertexBuffer.h"
 
 typedef unsigned int uint;
 

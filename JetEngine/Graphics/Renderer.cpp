@@ -28,7 +28,7 @@ Renderer::Renderer()
 	this->shadowMapDepthBias = 0.0f;
 	this->shadowMaxDist = 150;//350
 	this->shadowSplitLogFactor = 0.9f;
-	this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
+	//this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
 	this->sun_light = Vec3(0.9f, 0.9, 0.9);
 	this->_shadows = true;//should default to false eventually
 	this->SetAmbient(Vec3(0.4, 0.4, 0.54), Vec3(0.2, 0.2, 0.2));
@@ -768,26 +768,15 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			}
 		}
 
-		//do shader LOD here
-
-		//need to get right shader for right number of lights
-		//if (num_lights > 0 && rc.material->shader_builder)
-		//{
-		//}
-		//else
-		//{
-		//why am i doing this :/
-		//for (int i = 0; i < 3; i++)
-		//	found_lights[i].radius = 0;
-		//}
-
+		
 		auto oldshdr = renderer->shader;
 
 		//ok, need to select right shader for skinned / nonskinned
-		//todo: also do shader LOD
+		//todo: also do shader LOD here
 		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights);
 		shaderchange = (oldshdr != renderer->shader);
 
+		//apply per instance values
 		//only need to do this for shader builder shaders
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
@@ -1031,7 +1020,6 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
 
-	//todo: match this up with the loop above to fix bugs
 	for (int i = 0; i < renderqueue.size(); i++)
 	{
 		const RenderCommand& rc = renderqueue[i];

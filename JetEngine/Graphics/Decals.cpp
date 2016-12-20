@@ -1,5 +1,5 @@
 #include "Decals.h"
-#include "Graphics/Shader.h"
+#include "Shader.h"
 
 void DecalManager::AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal)
 {

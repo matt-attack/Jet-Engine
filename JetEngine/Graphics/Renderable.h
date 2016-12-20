@@ -179,25 +179,6 @@ public:
 	}
 };
 
-extern IMaterial chunk_material;
-extern IMaterial achunk_material;
-class ChunkRenderable: public Renderable
-{
-
-public:
-	//float light;
-	//CVertexBuffer* vb;
-	CVertexBuffer* water_vb;
-
-	ChunkRenderable()
-	{
-		this->castsShadows = 1;
-		this->receivesShadows = 1;
-	}
-
-	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue);
-};
-
 #else
 class Renderable
 {

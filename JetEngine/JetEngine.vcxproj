@@ -81,11 +81,11 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BlockModel.cpp" />
+    <ClCompile Include="Graphics\Models\BlockModel.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CInput.cpp" />
     <ClCompile Include="DbgNew.cpp" />
-    <ClCompile Include="Decals.cpp" />
+    <ClCompile Include="Graphics\Decals.cpp" />
     <ClCompile Include="Defines.cpp" />
     <ClCompile Include="Graphics\CIndexBuffer.cpp" />
     <ClCompile Include="Graphics\CRenderer.cpp" />
@@ -95,6 +95,7 @@
     <ClCompile Include="Graphics\font.cpp" />
     <ClCompile Include="Graphics\IModel.cpp" />
     <ClCompile Include="Graphics\Models\BasicModel.cpp" />
+    <ClCompile Include="Graphics\Models\BuildingModel.cpp" />
     <ClCompile Include="Graphics\Models\ObjModel.cpp" />
     <ClCompile Include="Graphics\ParticleRenderer.cpp" />
     <ClCompile Include="Graphics\Renderable.cpp" />
@@ -121,11 +122,11 @@
     <ClCompile Include="Util\Profile.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BlockModel.h" />
+    <ClInclude Include="Graphics\Models\BlockModel.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="CInput.h" />
     <ClInclude Include="DbgNew.h" />
-    <ClInclude Include="Decals.h" />
+    <ClInclude Include="Graphics\Decals.h" />
     <ClInclude Include="Defines.h" />
     <ClInclude Include="Graphics\Animation.h" />
     <ClInclude Include="Graphics\CIndexBuffer.h" />
@@ -136,6 +137,7 @@
     <ClInclude Include="Graphics\font.h" />
     <ClInclude Include="Graphics\IModel.h" />
     <ClInclude Include="Graphics\Models\BasicModel.h" />
+    <ClInclude Include="Graphics\Models\BuildingModel.h" />
     <ClInclude Include="Graphics\Models\ObjModel.h" />
     <ClInclude Include="Graphics\ParticleRenderer.h" />
     <ClInclude Include="Graphics\Renderable.h" />
@@ -164,7 +166,6 @@
     <ClInclude Include="Math\Rect.h" />
     <ClInclude Include="Math\Vector.h" />
     <ClInclude Include="ModelData.h" />
-    <ClInclude Include="Particles.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Sound\ISoundFileWrapper.h" />
     <ClInclude Include="Sound\OpenAL.h" />

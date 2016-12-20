@@ -37,7 +37,7 @@ class Renderer
 	Vec3 ambient_bottom, ambient_range;
 
 public:
-	Vec3 ambient, sun_light;
+	Vec3 sun_light;
 
 	ID3D11SamplerState* shadowSampler;
 	ID3D11SamplerState* shadowSampler_linear;

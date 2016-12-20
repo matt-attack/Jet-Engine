@@ -111,9 +111,6 @@
     <ClCompile Include="TerrainSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BlockModel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DbgNew.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -126,10 +123,16 @@
     <ClCompile Include="Graphics\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Decals.cpp">
+    <ClCompile Include="CInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CInput.cpp">
+    <ClCompile Include="Graphics\Models\BuildingModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Models\BlockModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Decals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -257,22 +260,13 @@
     <ClInclude Include="Util\vector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Particles.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ModelData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Decals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TerrainPatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TerrainSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BlockModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DbgNew.h">
@@ -321,6 +315,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\TrailRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Models\BuildingModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Models\BlockModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Decals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

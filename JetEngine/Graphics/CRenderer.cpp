@@ -2336,6 +2336,8 @@ bool CRenderer::WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p
 			return true;
 		}
 
+		out = in.toscreen(&in, &viewport, &projection, &view, &worl);
+
 		//not on screen
 		return false;
 	}

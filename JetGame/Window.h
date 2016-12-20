@@ -9,7 +9,6 @@ class Window
 	HWND__* hWnd;
 public:
 	Window(HINSTANCE__* instance, int nCmdShow, int xRes, int yRes);
-
 	~Window();
 
 	void AddGame(CGame* game);

@@ -24,10 +24,8 @@ void initKeyboard(HWND han_Window)//should be setup input
 	Rid[0].dwFlags = 0;//RIDEV_NOLEGACY;//RIDEV_INPUTSINK | RIDEV_CAPTUREMOUSE;
 	Rid[0].hwndTarget = han_Window;
 	bool res = RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
-	if (res)
-		log("we are ok\n");
-	else
-		log("uh oh raw input failed\n");
+	if (!res)
+		log("[ERROR] Raw input initiation failed\n");
 }
 
 void OSInit(HWND hWnd)

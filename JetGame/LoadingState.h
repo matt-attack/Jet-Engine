@@ -55,7 +55,7 @@ public:
 	void SetStateToLoad(CGameState* state)
 	{
 		this->state_to_load = state;
-	};
+	}
 
 	void SetPreviousState(CGameState* state)
 	{

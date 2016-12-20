@@ -15,6 +15,10 @@ class ShaderBuilder : public Resource
 public:
 	CShader* shaders[1 << num_builder_options];
 
+private:
+	std::map<std::string, std::string> defines;//set whenever you call LoadShader with those defines
+public:
+
 	ShaderBuilder()
 	{
 		for (int i = 0; i < (1 << num_builder_options); i++)
@@ -33,11 +37,21 @@ public:
 		{
 			for (int i = 0; i < (1 << num_builder_options); i++)
 				if (this->shaders[i])
-					this->LoadShader(i);
+					this->LoadShader(i, this->defines);
 
 			return;
 		}
 		this->path = path;
+	}
+
+	void InvalidateCache()
+	{
+		for (int i = 0; i < (1 << num_builder_options); i++)
+			if (this->shaders[i])
+			{
+				delete this->shaders[i];
+				this->shaders[i] = 0;
+ 			}
 	}
 
 	static ShaderBuilder* load_as_resource(const std::string &path, ShaderBuilder* res)
@@ -53,23 +67,26 @@ public:
 		return d;
 	}
 
-	CShader* GetShader(int id)
+	CShader* GetShader(int id, std::map<std::string, std::string>& defines)
 	{
 		if (this->shaders[id])
 			return this->shaders[id];
 
-		this->LoadShader(id);
+		this->LoadShader(id, defines);
 
 		return this->shaders[id];
 	}
 
-	void LoadShader(int id)
+	void LoadShader(int id, std::map<std::string, std::string>& defines)
 	{
 		if (this->shaders[id] == 0)
 			this->shaders[id] = new CShader;
 
-		char* list[num_builder_options+1];
-		char* definitions[num_builder_options+1];
+		this->defines = defines;
+
+		//add defines to definitions list
+		char** list = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size()));// [num_builder_options + 1];
+		char** definitions = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size())); //[num_builder_options + 1];
 		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
 		//build the list
 		int size = 0;
@@ -86,7 +103,23 @@ public:
 			definitions[size++] = "3";
 		}
 
+		//add extra definitions
+		for (auto ii : this->defines)
+		{
+			list[size] = new char[ii.first.size() + 1];// (char*)ii.first.c_str();
+			strcpy(list[size], ii.first.c_str());
+			definitions[size] = new char[ii.second.size() + 1];// (char*)ii.second.c_str();
+			strcpy(definitions[size++], ii.second.c_str());
+		}
+
 		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, definitions, size);
+
+		//free the defines
+		for (int i = size; i > size - this->defines.size(); i--)
+		{
+			delete[] list[i-1];
+			delete[] definitions[i-1];
+		}
 
 		if (shader.vshader == 0 || shader.pshader == 0)
 			return;//epic fail
@@ -199,6 +232,7 @@ void IMaterial::Update(CRenderer* renderer)
 	{
 		auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
 
+		//these are static material values
 		int id = (this->alphatest ? ALPHA_TEST : 0) |
 			(this->normal_map ? NORMAL_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
@@ -207,13 +241,17 @@ void IMaterial::Update(CRenderer* renderer)
 		if (r._shadows)
 			id |= SHADOWS;
 
-		this->shader_ptr = shaders->GetShader(id);
-		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS);
-		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING));
-		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING));
+		//these are shaders that will be used depending on lighting and scene configurations
+		this->shader_ptr = shaders->GetShader(id, this->defines);
+		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS, this->defines);
+		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING), this->defines);
+		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING), this->defines);
+
+		shaders->Release();
 	}
 	else
 	{
+		//todo: get passing defines to work here
 		auto shdr = resources.get_unsafe<CShader>(this->shader_name);
 		this->shader_ptr = shdr;
 	}
@@ -302,4 +340,15 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 		//	mat->
 	}
 	return mat;
+}
+
+
+void IMaterial::SetDefine(const std::string& name, const std::string& value)
+{
+	this->defines[name] = value;
+
+	auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
+
+	//apply the changes
+	shaders->InvalidateCache();	
 }

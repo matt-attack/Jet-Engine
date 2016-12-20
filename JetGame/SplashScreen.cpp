@@ -19,18 +19,11 @@ SplashScreenState::~SplashScreenState(void)
 	
 }
 
-void SplashScreenState::Init(CGame* game)
-{
-	//progress.setpos(renderer->xres / 2 - 200, renderer->yres / 2 - 25);
-	//progress.setsize(400, 50);
-
-};
-
 void SplashScreenState::Update(CGame* game, float dTime)
 {
 	this->time += dTime;
 
-	if (this->time >= 10)
+	if (this->time >= 5)
 	{
 		game->ChangeState(this->next_state);
 	}
