@@ -7,8 +7,6 @@
 
 CCamera::CCamera()
 {
-	_minXang = -1.5707963f;
-	_maxXang = 1.5707963f;
 	this->perspective = true;
 
 	_near = 0.1f;
@@ -19,43 +17,38 @@ CCamera::CCamera()
 	this->_upDir = Vec3(1, 0, 0);
 };
 
-void CCamera::orthoProjection(float l, float r, float b, float t, float n, float f)
+void CCamera::OrthoProjection(float l, float r, float b, float t, float n, float f)
 {
 	this->perspective = false;
 	this->_projectionMatrix = Matrix4::OrthographicOffCenterLHMatrix(l, r, b, t, n, f);
 }
 
-void CCamera::setPos(const Vec3 pos)//temporary fix
+void CCamera::SetPos(const Vec3 pos)//temporary fix
 {
 	this->_pos = pos;
-};
+}
 
-void CCamera::setUp(const Vec3 pos)
-{
-	this->_upDir = pos;
-};
-
-void CCamera::setLookAt(const Vec3 pos)
-{
-	this->_lookAt = pos;
-};
-
-void CCamera::setFOV(const float fov)
+void CCamera::SetFOV(const float fov)
 {
 	this->_fov = fov;
 }
 
-void CCamera::setFar(float Far)
+void CCamera::SetFar(float Far)
 {
 	this->_far = Far;
 }
+#undef near
+void CCamera::SetNear(float near)
+{
+	this->_near = near;
+}
 
-void CCamera::setAspectRatio(const float ratio)
+void CCamera::SetAspectRatio(const float ratio)
 {
 	this->_aspectRatio = ratio;
 }
 
-void CCamera::doLookAt(Vec3 at, Vec3 up)
+void CCamera::DoLookAt(Vec3 at, Vec3 up)
 {
 
 	this->_matrix = _matrix.LookAtLHMatrix(this->_pos, at, up);
@@ -74,7 +67,7 @@ void CCamera::doLookAt(Vec3 at, Vec3 up)
 	this->BuildViewFrustum();
 }
 
-void CCamera::perspectiveProjection()
+void CCamera::PerspectiveProjection()
 {
 	this->perspective = true;
 #if 1//ndef ANDROID
@@ -105,7 +98,7 @@ void CCamera::perspectiveProjection()
 
 }
 
-void CCamera::doMatrix()
+void CCamera::DoMatrix()
 {
 	//Vec3 cameraFinalTarget = Vec3(1,0,0);
 	//Vec3 cameraRotatedUpVector = Vec3(0,1,0);
@@ -134,7 +127,7 @@ void CCamera::doMatrix()
 	BuildViewFrustum();
 };
 
-void CCamera::doMatrixNoRot()
+void CCamera::DoMatrixNoRot()
 {
 	Vec3 t = this->_pos + this->_lookAt;
 	Matrix4 newv = newv.LookAtLHMatrix(this->_pos, t, this->_upDir);

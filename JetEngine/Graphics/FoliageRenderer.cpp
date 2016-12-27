@@ -73,6 +73,8 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	this->AddModel("tree2.iqm");
 	//this->dimensions = this->GetImpostorSize("tree.iqm");
 
+
+	//port this to use my api functions
 	D3D11_BUFFER_DESC vbd;
 	vbd.Usage = D3D11_USAGE_DYNAMIC;// D3D11_USAGE_DEFAULT;
 	vbd.ByteWidth = sizeof(TreeBillboard) * 1024;
@@ -262,7 +264,6 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 int rrr = 0;
 void FoliageRenderer::GenerateImpostors()
 {
-	//return;
 	if (this->texture == 0)
 		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT);
 	else if (hack++ > 1)

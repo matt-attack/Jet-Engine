@@ -575,7 +575,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 		if (boxCorners[corner_i].y > max.y) max.y = boxCorners[corner_i].y;
 	}
 
-	out.orthoProjection(min.x, max.x, min.y, max.y, min.z, max.z);
+	out.OrthoProjection(min.x, max.x, min.y, max.y, min.z, max.z);
 	out.BuildViewFrustum();
 }
 
@@ -832,7 +832,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			tmpCamera._far = shadowMappingSplitDepths[i];
 			if (i > 0)
 				tmpCamera._near = shadowMappingSplitDepths[i - 1];
-			tmpCamera.perspectiveProjection();
+			tmpCamera.PerspectiveProjection();
 
 			COLOR colors[] = { 0x14FF0000, 0x1400FF00, 0x140000FF };
 
@@ -1095,12 +1095,12 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 		{
 			//need to adjust shadow maps to fit around objects
 			CCamera tmpCamera = *cam;
-			tmpCamera._far = shadowMappingSplitDepths[cascade_i];
+			tmpCamera.SetFar(shadowMappingSplitDepths[cascade_i]);
 			if (cascade_i > 0)
-				tmpCamera._near = shadowMappingSplitDepths[cascade_i - 1];
+				tmpCamera.SetNear(shadowMappingSplitDepths[cascade_i - 1]);
 
 			//tmpCamera.doProjection();
-			tmpCamera.doMatrix();
+			tmpCamera.DoMatrix();
 
 			//build basic frustum that fits the tmpCamera
 			CCamera culling;
