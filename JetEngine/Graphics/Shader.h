@@ -78,8 +78,7 @@ public:
 public:
 	UniformBuffers buffers;
 	std::map<std::string, CBuffer> cbuffers;
-	//void Bind();implement me
-
+	
 	CShader() {};
 	CShader(const char* vs, const char* ps);
 	CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros = 0, char** macrodefinitions = 0, int nummacros = 0, const char* gloc = 0, const char* gfunc = 0);
@@ -98,6 +97,7 @@ public:
 #endif
 	}
 
+private:
 #ifndef USEOPENGL
 	void SetupUniforms(ID3D10Blob* vertexTable, ID3D10Blob* pixelTable, ID3D10Blob* geometryTable = 0);
 #else
@@ -153,6 +153,8 @@ public:
 		}
 	}
 #endif
+
+public:
 
 	static CShader* load_as_resource(const std::string &path, CShader* res);
 

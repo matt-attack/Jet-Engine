@@ -1,18 +1,9 @@
 #ifndef RENDERABLE_HEADER
 #define RENDERABLE_HEADER
 
-#ifndef MATT_SERVER
-//#include "CRenderer.h"
-//#include "CVertexBuffer.h"
-//#include "CIndexBuffer.h"
-//#include "Shader.h"
-#endif
-//#include "../camera.h"
-
 #include <vector>
 #include <float.h>
 
-//#include "../IMaterial.h"
 #include "../Math/AABB.h"
 #include "../Math/Matrix.h"
 
@@ -22,6 +13,7 @@ class CVertexBuffer;
 class CIndexBuffer;
 class CTexture;
 
+//used to call update methods before rendering (only called once per renderable per frame)
 class IPreRenderable
 {
 public:
@@ -41,7 +33,6 @@ public:
 	virtual Vec3 WorldToLocal(const Vec3& vector) = 0;
 };
 
-#ifndef MATT_SERVER
 
 enum RenderableType
 {
@@ -51,12 +42,7 @@ enum RenderableType
 	Custom = 3,
 };
 
-enum MeshFlags
-{
-	ReceivesShadows = 1,
-	CastsShadows = 2,
-};
-
+//all the main details required to render a mesh's vertex or index data
 struct RMesh
 {
 	Matrix3x4* OutFrames;
@@ -66,6 +52,7 @@ struct RMesh
 	CVertexBuffer* vb;
 };
 
+//contains per instance variables to go along with a material kindof a hack atm to work for damage textures
 struct MaterialInstanceBlock
 {
 	CTexture* extra;//well, this works for now...
@@ -138,16 +125,7 @@ public:
 	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue) {};
 };
 
-/*class EntityRenderable: public Renderable
-{
-CEntity* entity;
-public:
-EntityRenderable(CEntity* end);
-~EntityRenderable();
-
-virtual void 
-};*/
-
+//used for a basic mesh renderable
 class BasicRenderable: public Renderable
 {
 public:
@@ -155,8 +133,6 @@ public:
 
 	float light;
 	float depthoverride;
-
-	//CVertexBuffer* vb;
 
 	BasicRenderable()
 	{
@@ -178,12 +154,5 @@ public:
 		queue->push_back(rc);
 	}
 };
-
-#else
-class Renderable
-{
-
-};
-#endif
 
 #endif

@@ -15,11 +15,11 @@ struct vert
 {
 	Vec3 pos;
 	COLOR color;
-	float u,v;
+	float u, v;
 };
 
 class DecalManager
-{	
+{
 	CVertexBuffer vb;
 	std::vector<vert> verts;//have a map of vectors? one for each material?
 	int maxcount; int oldest;
@@ -40,7 +40,7 @@ public:
 	~DecalManager()
 	{
 		if (texture)
-		texture->Release();
+			texture->Release();
 	}
 
 	void AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal);
