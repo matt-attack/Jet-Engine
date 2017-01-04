@@ -54,15 +54,15 @@ void CGame::Init(Window* window)
 	this->RegisterCVar("cl_volume", 50);
 	this->RegisterCVar("cl_controller", 1);
 	this->RegisterCVar("cl_aa_samples", 1);
-	
+
 	//need to start making map with mission like thing
 	//improve mech config
-	
+
 	log("Initializing Sound Manager\n");
 	SoundManager::GetInstance()->Initialize("hello", false);
 	SoundManager::GetInstance()->Enable();
 	SoundManager::GetInstance()->SetMasterVolume(0.5f);
-	
+
 	//maybe integrate sounds into the resource manager?
 
 	SoundManager::GetInstance()->AddSound("Content/Sounds/select.wav", "select");
@@ -241,7 +241,7 @@ void CGame::Update()
 	ProfileStartFrame();
 	PROFILE("FrameTime");
 	GPUPROFILE("FrameTime");
-	
+
 	//delete old states
 	for (int i = 0; i < this->to_delete.size(); i++)
 		delete this->to_delete[i];
@@ -251,10 +251,14 @@ void CGame::Update()
 
 	//update input stuff
 	this->input.UpdateControllers();
-	auto state = states.back();
-	this->input.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
-	this->input.first_player_controller = this->GetSettingBool("cl_controller");
-	
+
+	if (states.size() > 0)
+	{
+		auto state = states.back();
+		this->input.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
+		this->input.first_player_controller = this->GetSettingBool("cl_controller");
+	}
+
 	SoundManager::GetInstance()->Update();
 
 	//was using LINEAR_DISTANCE_CLAMPED
@@ -270,9 +274,10 @@ void CGame::Update()
 	this->onUpdate();
 
 	// let the state update the game
-	states.back()->Update(this, elapsedtime);
+	if (states.size() > 0)
+		states.back()->Update(this, elapsedtime);
 
-	if (this->states.back() != this->last)//prevents rendering right after gamestate changed because update hasnt yet ran
+	if (states.size() > 0 && this->states.back() != this->last)//prevents rendering right after gamestate changed because update hasnt yet ran
 	{
 		this->last = this->states.back();
 		return;
@@ -289,7 +294,7 @@ void CGame::Update()
 	//this is a dumb not crossplatform part
 #ifdef WIN32
 	auto res = GetFocus();
-	if (res != this->window->GetOSHandle())
+	if (states.size() > 0 && res != this->window->GetOSHandle())
 		this->states.back()->Pause();
 #endif
 }
@@ -309,7 +314,8 @@ void CGame::Draw()
 	// let the state draw the screen
 	{
 		GPUPROFILEGROUP("Game Render");
-		states.back()->Draw(this, elapsedtime);
+		if (states.size() > 0)
+			states.back()->Draw(this, elapsedtime);
 	}
 
 	renderer->FlushDebug();

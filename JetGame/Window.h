@@ -8,6 +8,9 @@ class Window
 {
 	HWND__* hWnd;
 public:
+
+	bool destroyed = false;
+
 	Window(HINSTANCE__* instance, int nCmdShow, int xRes, int yRes);
 	~Window();
 
@@ -19,4 +22,6 @@ public:
 	}
 
 	void ProcessMessages();
+
+	bool Destroyed();
 };

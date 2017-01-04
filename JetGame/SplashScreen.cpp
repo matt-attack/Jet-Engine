@@ -33,7 +33,7 @@ void SplashScreenState::Draw(CGame* game, float dTime)
 {
 	renderer->Clear(1.0f, 0.0f, 0.0f, 0.0f);
 
-	renderer->DrawCenteredText(Rect(0, renderer->xres, 0, renderer->yres), "Hi im a splash screen", COLOR_ARGB(255, 255, 255, 255));
+	renderer->DrawCenteredText(Rect(0, renderer->xres, 0, renderer->yres), "Powered by Jet Engine", COLOR_ARGB(255, 255, 255, 255));
 	//draw the text
 	//progress.setpos(renderer->xres / 2 - 200, renderer->yres / 2 - 25);
 

@@ -6,8 +6,6 @@
 #include "font.h"
 #include <D3D11.h>
 
-ID3D11ShaderResourceView* missing_texture = 0;
-
 
 //int msaa_count = 2;
 //int msaa_quality = 0;
@@ -883,8 +881,8 @@ void CRenderer::Init(int scrx, int scry)
 	context->PSSetSamplers(0, 1, &linear_sampler);
 
 	//renderer shaders
-	renderer->CreateShader(16, "Shaders/guitexture.txt");
-	renderer->CreateShader(15, "Shaders/gui.txt");
+	this->CreateShader(16, "Shaders/guitexture.txt");
+	this->CreateShader(15, "Shaders/gui.txt");
 
 	VertexElement elm8[] = { { ELEMENT_FLOAT4, USAGE_POSITION },
 	{ ELEMENT_COLOR, USAGE_COLOR },
@@ -921,7 +919,8 @@ void CRenderer::Init(int scrx, int scry)
 	NULL,
 	NULL,
 	&terrain_texture);*/
-	missing_texture = resources.get_unsafe<CTexture>("missing.png")->texture;
+
+	//missing_texture = resources.get_unsafe<CTexture>("missing.png")->texture;
 
 	this->passthrough = new CShader("Content/Shaders/passthrough.shdr", "vs_main", "Content/Shaders/passthrough.shdr", "ps_main");
 	this->unlit_textured = new CShader("Content/Shaders/unlit_texture.shdr", "vs_main", "Content/Shaders/unlit_texture.shdr", "ps_main");
@@ -935,7 +934,7 @@ void CRenderer::Init(int scrx, int scry)
 		"gl_FragColor = texture2D(texture, Texcoord) * color;"//vec4(1,0,1,1);"//"gl_FragColor = texture2D(texture, Texcoord);"
 		"}";
 
-	char* vertexSource =  "precision mediump float;"
+	char* vertexSource = "precision mediump float;"
 		"attribute vec4 pos;"
 		"varying vec2 Texcoord;"
 		"void main() {"
@@ -1252,19 +1251,6 @@ void CRenderer::Clear(bool cleardepth, bool clearstencil)
 #endif
 }
 
-void CRenderer::Clear(int color)
-{
-#ifdef USEOPENGL
-	glClearColor(0,0,0,0);//r, g, b, a);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-#else
-	throw 7;
-	float colors[4] = { 1.0f, 1.0f, ((float)(color & 0xFF)) / 255.0f, 1.0f };
-	context->ClearRenderTargetView(renderTargetView, colors);
-	context->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-#endif
-};
-
 void CRenderer::Clear(float a, float r, float g, float b)
 {
 #ifdef USEOPENGL
@@ -1307,7 +1293,7 @@ void CRenderer::DrawPrimitive(enum PrimitiveType mode, unsigned int offset, unsi
 				size = 1;
 			else if (elm->Type == ELEMENT_FLOAT2)
 				size = 2;
-			else 
+			else
 				size = 3;
 			if (elm->Usage != USAGE_NONE)
 			{
@@ -1327,7 +1313,7 @@ void CRenderer::DrawPrimitive(enum PrimitiveType mode, unsigned int offset, unsi
 		}
 	}
 
-	glDrawArrays( (int)mode, offset, vertices );
+	glDrawArrays((int)mode, offset, vertices);
 #else
 	if (mode != PT_TRIANGLELIST)
 		stats.triangles += vertices;
@@ -1364,7 +1350,7 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 				size = 1;
 			else if (elm->Type == ELEMENT_FLOAT2)
 				size = 2;
-			else 
+			else
 				size = 3;
 			if (elm->Usage != USAGE_NONE)
 			{
@@ -1385,7 +1371,7 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 
 			i++;
 			elm = &sh->elements[i];
-		}
+}
 	}
 	//GLenum e = glGetError();
 	//if (e)
@@ -1773,14 +1759,14 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 	{
 		this->SetShader(13);
 
-		glBindBuffer( GL_ARRAY_BUFFER, this->rect_vb);
+		glBindBuffer(GL_ARRAY_BUFFER, this->rect_vb);
 
 		//position attribute
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4*4, 0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * 4, 0);
 
 		//glUniform4f(colorUnif, 1.0f, 1.0f, 1.0f, 0.2f);
-		glUniform4f(colorUnif, ((float)((color & 0x00FF0000) >> 16))/255.0f, ((float)((color & 0x0000FF00) >> 8))/255.0f,((float)(color & 0x000000FF))/255.0f,(float)((color & 0xFF000000 >> 24))/255.0f);
+		glUniform4f(colorUnif, ((float)((color & 0x00FF0000) >> 16)) / 255.0f, ((float)((color & 0x0000FF00) >> 8)) / 255.0f, ((float)(color & 0x000000FF)) / 255.0f, (float)((color & 0xFF000000 >> 24)) / 255.0f);
 		glUniform1i(texUnif, 0);
 
 		float sx = 2.0f / (float)xres;
@@ -1794,10 +1780,10 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 		h *= sy;
 
 		GLfloat box[4][4] = {
-			{x,     y    , minu, minv},//0,0
-			{x + w, y    , maxu, minv},//1,0
-			{x,     y - h, minu, maxv},//0,1
-			{x + w, y - h, maxu, maxv},//1,1
+			{ x, y, minu, minv },//0,0
+			{ x + w, y, maxu, minv },//1,0
+			{ x, y - h, minu, maxv },//0,1
+			{ x + w, y - h, maxu, maxv },//1,1
 		};
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
@@ -2113,7 +2099,7 @@ void CRenderer::DrawGraph()
 		r.right += 2;
 	}
 	this->SetFont("Arial", 20);
-}
+	}
 
 void CRenderer::DrawText(int x, int y, const char* text, COLOR color)
 {
@@ -2310,7 +2296,7 @@ bool CRenderer::WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p
 	Matrix4f worl;
 	Viewport viewport;
 	worl.MakeIdentity();
-	renderer->ApplyCam(cam);// cam->applyCam();
+	this->ApplyCam(cam);// cam->applyCam();
 	this->GetViewport(&viewport);
 	if (cam != 0)
 	{
@@ -2778,7 +2764,7 @@ void CRenderer::DrawBeams()
 	if (beamtex == 0)
 		beamtex = resources.get_unsafe<CTexture>("Laser.png");
 
-	renderer->SetPixelTexture(0, beamtex);
+	this->SetPixelTexture(0, beamtex);
 	struct vertz
 	{
 		Vec3 p;
@@ -2968,4 +2954,50 @@ void CRenderer::ApplyCam(CCamera* cam)//kinda pointless to do all the time, but 
 {
 	this->SetMatrix(VIEW_MATRIX, &cam->_matrix);
 	this->SetMatrix(PROJECTION_MATRIX, &cam->_projectionMatrix);
+}
+
+ID3D11ShaderResourceView* CRenderer::GetMissingTextureImage()
+{
+	if (this->missing_texture)
+		return this->missing_texture;
+
+	//load it
+	D3D11_TEXTURE2D_DESC td;
+	td.Width = 10;
+	td.Height = 10;
+	td.Format = DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM;
+	td.SampleDesc.Count = 1;
+	td.SampleDesc.Quality = 0;
+	td.MipLevels = 1;
+	td.ArraySize = 1;
+	td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	td.CPUAccessFlags = 0;
+	td.MiscFlags = 0;
+	td.Usage = D3D11_USAGE_DEFAULT;
+
+
+	unsigned int tex_data[10 * 10 * 4];
+	for (int x = 0; x < 10; x++)
+	{
+		for (int y = 0; y < 10; y++)
+		{
+			if (x % 2 == 0 && y % 2 == 0)
+				tex_data[x + 10 * y] = COLOR_ARGB(255, 255, 0, 255);
+			else
+				tex_data[x + 10 * y] = COLOR_ARGB(128, 0, 255, 0);
+		}
+	}
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = &tex_data;
+	data.SysMemPitch = 4 * 10;
+	data.SysMemSlicePitch = 4 * 10 * 10;
+
+	ID3D11Texture2D* tex = 0;
+	device->CreateTexture2D(&td, &data, &tex);
+
+	//D3D11_SHADER_RESOURCE_VIEW_DESC vdesc;
+	//vdesc.
+	device->CreateShaderResourceView(tex, 0/*&vdesc*/, &this->missing_texture);
+
+	return this->missing_texture;
 }

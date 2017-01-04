@@ -7,8 +7,6 @@ extern JNIEnv* javaEnv;
 extern jobject mattcraftrenderer;
 #endif
 
-extern ID3D11ShaderResourceView* missing_texture;
-
 CTexture::CTexture(ID3D11ShaderResourceView* tex)
 {
 	texture = tex;
@@ -18,7 +16,7 @@ CTexture::CTexture(ID3D11ShaderResourceView* tex)
 
 CTexture::~CTexture()
 {
-	if (this->texture && this->texture != missing_texture)
+	if (this->texture && this->texture != renderer->GetMissingTextureImage())
 	{
 		texture->Release();
 		renderer->stats.textures--;
@@ -59,15 +57,15 @@ CTexture* CTexture::load_as_resource(const std::string &path, CTexture* res)
 	info.MipLevels = 0;
 	HRESULT h = D3DX11CreateShaderResourceViewFromFileA(renderer->device, path.c_str(), 0, 0, &res->texture, 0);
 	if (FAILED(h))
-		printf("uhoh");
+		log("uhoh when loading texture");
 	//D3DX11CreateTextureFromFileA(renderer->device, path.c_str(), &info, 0, &res->texture, 0);
 	if (res->texture == 0)
 	{
 		//try again
-		printf("texture loading failed\n");
+		logf("Error: Loading texture %s failed\n", path.c_str());
 
 		//insert dummy
-		res->texture = missing_texture;
+		res->texture = renderer->GetMissingTextureImage();
 	}
 	else
 	{

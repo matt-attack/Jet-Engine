@@ -5,7 +5,7 @@
 #include <Windows.h>
 #include "CGame.h"
 
-std::map<HWND, CGame*> games;
+std::map<HWND, std::pair<CGame*, Window*>> games;
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -67,12 +67,17 @@ Window::Window(HINSTANCE hInstance, int nCmdShow, int xRes, int yRes)
 
 Window::~Window()
 {
-	games[hWnd] = 0;
+	games[hWnd] = { 0, 0};
 }
 
 void Window::AddGame(CGame* game)
 {
-	games[hWnd] = game;
+	games[hWnd] = { game, this };
+}
+
+bool Window::Destroyed()
+{
+	return this->destroyed;
 }
 
 void Window::ProcessMessages()
@@ -101,8 +106,13 @@ int SelectedBlockType = 1;
 // this is the main message handler for the program
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	auto game = games[hWnd];
-	if (game == 0)
+	auto game = games[hWnd].first;
+	//if (game == 0)
+	//	return DefWindowProc(hWnd, message, wParam, lParam);
+
+	auto window = games[hWnd].second;
+
+	if (window == 0)
 		return DefWindowProc(hWnd, message, wParam, lParam);
 
 	auto input = game->GetInput();
@@ -111,20 +121,22 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		///ADD KEY UP AND KEY DOWN
 	case WM_KEYUP:
 	{
-		game->KeyboardEvent(ENG_KEY_UP, wParam);
+		if (game)
+			game->KeyboardEvent(ENG_KEY_UP, wParam);
 		break;
 	}
 	case WM_KEYDOWN:
 	{
 		//exclude repeats in keydown
-		if ((lParam & 1 << 30) <= 1)//bit 30
+		if (game && (lParam & 1 << 30) <= 1)//bit 30
 			game->KeyboardEvent(ENG_KEY_DOWN, wParam);
 
 		break;
 	}
 	case WM_CHAR:
 	{
-		game->KeyboardEvent(ENG_CHAR, wParam);
+		if (game)
+			game->KeyboardEvent(ENG_CHAR, wParam);
 
 		break;
 	}
@@ -133,7 +145,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		GetCursorPos(&input->m_pos);
 		ScreenToClient(hWnd, &input->m_pos);
 
-		game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_R_DOWN);
+		if (game)
+			game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_R_DOWN);
 
 		break;
 	}
@@ -142,7 +155,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		GetCursorPos(&input->m_pos);
 		ScreenToClient(hWnd, &input->m_pos);
 
-		game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_R_UP);
+		if (game)
+			game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_R_UP);
 		break;
 	}
 	case WM_LBUTTONDOWN:
@@ -150,7 +164,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		GetCursorPos(&input->m_pos);
 		ScreenToClient(hWnd, &input->m_pos);
 
-		game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_L_DOWN);
+		if (game)
+			game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_L_DOWN);
 
 		break;
 	}
@@ -159,7 +174,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		GetCursorPos(&input->m_pos);
 		ScreenToClient(hWnd, &input->m_pos);
 
-		game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_L_UP);
+		if (game)
+			game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_L_UP);
 
 		break;
 	}
@@ -174,7 +190,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	{
 		GetCursorPos(&input->m_pos);
 		ScreenToClient(hWnd, &input->m_pos);
-		if (input->lmouse_down == true)
+		if (game && input->lmouse_down == true)
 		{
 			//drag
 			game->MouseEvent(input->m_pos.x, input->m_pos.y, ENG_L_DRAG);
@@ -252,7 +268,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	case WM_DESTROY:
 	{
 		PostQuitMessage(0);
-		game->Quit();
+
+		if (game)
+			game->Quit();
+
+		if (window)
+			window->destroyed = true;
 
 		return 0;
 	}

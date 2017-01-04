@@ -251,6 +251,8 @@ class CRenderer
 
 	ID3D11DepthStencilState* depthStencilStateNoWrite, *depthStencilState;
 
+	ID3D11ShaderResourceView* missing_texture = 0;
+
 	bool wireframe;
 	bool vsync;
 
@@ -404,7 +406,6 @@ public:
 	CVertexBuffer* MakeCubeVB(float scale, int blockID, COLOR color);
 
 	void Clear(bool cleardepth, bool clearstencil);
-	void Clear(int color);
 	void Clear(float a, float r, float g, float b);
 
 	void ClearDepth();
@@ -530,5 +531,7 @@ public:
 	}
 
 	void DrawStats(float frametime, float realframetime, unsigned int memuse, float rp);
+
+	ID3D11ShaderResourceView* GetMissingTextureImage();
 };
 #endif
