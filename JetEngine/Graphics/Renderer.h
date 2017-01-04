@@ -33,7 +33,7 @@ class Renderer
 	//have several lists of renderables
 	std::vector<Renderable*> renderables;
 
-	CShader *shader_s, *shader_ss;
+	CShader *shader_s, *shader_ss, *shader_sa;
 	Vec3 ambient_bottom, ambient_range;
 
 public:

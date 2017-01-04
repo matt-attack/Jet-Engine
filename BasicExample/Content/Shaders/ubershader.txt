@@ -1,0 +1,296 @@
+
+//#define NORMAL_MAP
+//#undef NORMAL_MAP
+//#define SHADOWS
+
+#ifdef POINT_LIGHTS
+//#define NUM_POINT 3
+#endif
+struct VS_INPUT
+{
+	float4 Position    : POSITION;
+	float3 Normal      : NORMAL0;
+	float3 Tangent     : TANGENT0;
+	float2 Texture     : TEXCOORD0;
+#ifdef SKINNING
+	uint4 boneWeights : BLENDWEIGHT;
+	uint4 boneIndices : BLENDINDICES;
+#endif
+};
+
+// Vertex shader output structure
+struct VS_OUTPUT
+{
+	float4 Position   : SV_Position;
+	float4 Diffuse    : COLOR0;
+	float2 TexCoord   : TEXCOORD0;
+	float3 WorldPos   : TEXCOORD1;
+#ifdef SHADOWS
+	float Depth       : TEXCOORD2;
+#endif
+	float3 Normal     : NORMAL0;
+#ifdef NORMAL_MAP
+	float3 Tangent     : TANGENT0;
+	float3 Bitangent  : BITANGENT0;
+#endif
+};
+
+struct PointLight
+{
+	float4 position;
+	float3 color;
+};
+
+cbuffer Lighting
+{
+	float3 LightDirection;
+	float3 LightColor;
+	float3 AmbientDown;
+	float3 AmbientRange;
+#ifdef NUM_POINT
+	PointLight lights[NUM_POINT];
+#endif
+};
+
+cbuffer Matrices
+{
+	float4x4 world;
+	float4x4 view;
+	float4x4 proj;
+	float4x4 WorldViewProjection;
+};
+
+#ifdef SKINNING
+cbuffer Skinning
+{
+	float4x3 SkinMats[70];
+};
+#endif
+
+Texture2D Texture2  : register(t0);
+sampler TextureSampler2 : register(s0) = sampler_state
+{
+	Texture = (Texture2);
+};
+
+Texture2D STexture0  : register(t1);
+Texture2D STexture1  : register(t2);
+Texture2D STexture2  : register(t3);
+
+Texture2D NormalMap : register(t10);
+
+Texture2D DamageTexture  : register(t9);
+
+#ifdef SHADOWS
+SamplerComparisonState ShadowSampler : register(s3)
+{
+   // sampler state
+   Filter = COMPARISON_MIN_MAG_MIP_POINT;
+   AddressU = BORDER;
+   AddressV = BORDER;
+   BorderColor = float4(1,1,1,1);
+
+   // sampler comparison state
+   ComparisonFunc = LESS_EQUAL;
+};
+
+//pixel shader only shadow stuff
+//Texture2D shadowmaps[3];
+
+cbuffer Shadow
+{
+	float4 ShadowSplits;
+	float4x4 ShadowMats[3];
+};
+#endif
+
+const static float2 pcf2[4] = {
+	float2(-1.5,0.5),
+	float2(0.5,0.5),
+	float2(-1.5,-1.5),
+	float2(0.5,-1.5)
+};
+
+#ifdef SHADOWS
+float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldPos)
+{
+	//2x2 PCF
+	/*float visibility = 1.0f;
+	float4 lightingPosition =  mul(float4(WorldPos.xyz,1), ShadowMats[iCurrentCascadeIndex]);
+	for (int i = 0; i < 4; i++)
+	{
+		//visibility += tex2Dproj(tex, float4(lightingPosition.xy + (pcf2[i]/1024.0f) * lightingPosition.w, lightingPosition.z, lightingPosition.w));
+		if ( tex2D( tex, lightingPosition.xy + pcf2[i]/1024.0f ).r  <  lightingPosition.z - 0.005 )
+		{
+			visibility-=0.15f;
+		}
+	}
+	//visibility /= 4;
+	rl *= min(visibility,l);*/
+
+	//standard 1 sample
+	float4 lightingPosition = mul(float4(WorldPos,1), ShadowMats[iCurrentCascadeIndex]);
+	float shadowdepth = float(tex.SampleCmpLevelZero(ShadowSampler, lightingPosition.xy, lightingPosition.z - 0.001));
+	//if (shadowdepth == 0)//+ 0.002 < lightingPosition.z)
+		rl *= shadowdepth;//(AmbientColor-rl)*(1-shadowdepth)+rl;//rl = AmbientColor;
+	//else
+		//rl = l;
+
+	return rl;
+}
+#endif
+
+VS_OUTPUT vs_main( in VS_INPUT In)
+{
+	VS_OUTPUT Out;
+
+#ifdef SKINNING
+	float4x3 m = SkinMats[int(In.boneIndices.x)] * In.boneWeights.x/255;
+	m += SkinMats[int(In.boneIndices.y)] * In.boneWeights.y/255;
+	m += SkinMats[int(In.boneIndices.z)] * In.boneWeights.z/255;
+	m += SkinMats[int(In.boneIndices.w)] * In.boneWeights.w/255;
+
+	float4 mpos = float4(mul(In.Position,m), In.Position.w);
+	float3 wn = mul(In.Normal,(float3x3)m);
+	float3 n = normalize(mul(wn,(float3x3)world));
+	
+	Out.Position = mul(mpos, WorldViewProjection);
+	Out.WorldPos = mul(mpos, world);
+#ifdef SHADOWS
+	Out.Depth = mul(mpos, mul(world,view)).z;
+#endif
+#else
+	float3 n = normalize(mul(In.Normal, (float3x3)world));
+	
+	Out.Position = mul(float4(In.Position.xyz,1), WorldViewProjection);//mul(mul(world,view), proj));//mul(In.Position, WorldViewProjection);
+	Out.WorldPos = mul(float4(In.Position.xyz,1), world);
+#ifdef SHADOWS
+	Out.Depth = mul(float4(In.Position.xyz,1), mul(world,view)).z;
+#endif
+#endif
+
+#ifndef NORMAL_MAP
+	float Dot = dot(n, LightDirection);
+	//float bounceLight = saturate(-Dot*0.5 + 0.5)*0.2;
+	//float3 bounceLightColor = sunlightColor * sceneAlbedo * saturate(dot(sunDirection, groundUpVector));
+	//float3 bounceLight = bounceLightColor * dot(surfaceNormal, groundUpVector) * 0.5 + 0.5;
+	float li = saturate(Dot)*LightColor;// + AmbientColor;// + bounceLight;
+	Out.Diffuse.rgb *= saturate(li);
+#else
+	float li = 0;
+#endif
+	Out.Diffuse = float4(1,1,1,1)*li;
+	Out.TexCoord = In.Texture;
+#ifdef NORMAL_MAP
+	Out.Tangent = normalize(mul(In.Tangent, (float3x3)world));
+	Out.Bitangent = cross(Out.Tangent, n);
+#endif
+	Out.Normal = n;
+	
+	return Out;//return output vertex
+}
+
+const static float CASCADE_COUNT_FLAG = 3;
+const static float steps[7] = { 0.05, 0.2, 0.4, 0.6, 0.8, 1.0,1.0};
+float4 ps_main(in VS_OUTPUT In) : SV_Target
+{
+#ifdef SHADOWS
+	float4 vCurrentPixelDepth = In.Depth;
+	float4 fComparison = ( vCurrentPixelDepth > ShadowSplits);
+	float fIndex = dot(
+		float4( CASCADE_COUNT_FLAG > 0,
+		CASCADE_COUNT_FLAG > 1,
+		CASCADE_COUNT_FLAG > 2,
+		CASCADE_COUNT_FLAG > 3)
+		, fComparison );
+
+	fIndex = min( fIndex, CASCADE_COUNT_FLAG );
+	int iCurrentCascadeIndex = (int)fIndex;
+#endif
+
+#ifdef NORMAL_MAP
+	float rl = 0;
+#else
+	float rl = In.Diffuse.x;
+#endif
+
+	In.Diffuse = Texture2.Sample(TextureSampler2, In.TexCoord);
+
+#ifdef ALPHA_TEST
+	if (In.Diffuse.a == 0)
+		discard;
+#endif
+	//In.Diffuse = float4(1,1,1,1);
+	//return In.Diffuse;
+#ifdef NORMAL_MAP
+	float3 normal = NormalMap.Sample(TextureSampler2, In.TexCoord*3).rgb*2-float3(1,1,1);
+	//normal = normalize(normal + In.Normal);//fast approximation
+	normal = normal.z*In.Normal + normal.x*In.Tangent + normal.y*In.Bitangent;
+#else
+	float3 normal = In.Normal;
+#endif
+
+#ifdef NORMAL_MAP
+	float Dot2 = dot(normal, LightDirection);
+	rl = saturate(Dot2)*LightColor;// + AmbientColor;// + bounceLight;
+#endif
+#ifdef SHADOWS
+	if (iCurrentCascadeIndex == 0)
+	{ 
+		//rl = SampleMap(STexture0, 0, rl, In.WorldPos);
+		//return float4(1,0,1,1)*rl;
+	}
+	else if (iCurrentCascadeIndex == 1) 
+	{ 
+		rl = SampleMap(STexture1, 1, rl, In.WorldPos);
+		//return float4(1,0,0,1)*rl;
+	}
+	else if (iCurrentCascadeIndex == 2)
+	{
+		rl = SampleMap(STexture2, 2, rl, In.WorldPos);
+		//return float4(1,1,0,1)*rl;
+	}
+#endif
+	//return float4(rl, rl, rl, 1);
+	//do bounce light
+	//float Dot = normal.y;//dot(normal, LightDirection);
+	//float bounceLight = -Dot*0.2;// + 0.5;//*0.35;
+	//rl += bounceLight;
+	//return In.Diffuse;
+	In.Diffuse *= DamageTexture.Sample(TextureSampler2, In.TexCoord);
+	//
+	float3 light = rl;
+	//do lighting here
+#ifdef NUM_POINT
+	for (int i = 0; i < NUM_POINT; i++)
+	{
+		float3 pos = lights[i].position;
+		float dist = distance(pos, In.WorldPos);
+		float3 dir = normalize(pos - In.WorldPos);
+		float radius = lights[i].position.w;
+		float d = (1-pow(dist/radius,4))*dot(dir, normal);
+		if (dist < radius & d > 0)
+			light += lights[i].color*d;//0.5;
+	}
+#endif
+
+	//float3 AmbientDown = float3(0.2,0.2,0.2);
+	//float3 AmbientUp = float3(0.4,0.4,0.54);
+	//float3 AmbientRange = AmbientUp - AmbientDown;
+	//ambient light round two
+	float up = normal.y * 0.5 + 0.5;
+    	float3 ambient = AmbientDown + up * AmbientRange;
+        light += ambient;
+	//light += AmbientUp;
+             
+	//return float4(1,1,1,1);
+	//return float4(In.Normal, 1);
+	//return float4(normal, 1);
+	//return float4(In.Tangent, 1);
+	//In.Diffuse.rgb = In.Normal;
+	
+	//do specular
+	//float3 half = normalize(LightDirection+ViewDirection);
+	//float d = pow(saturate(dot(half, In.Normal)),0.6);
+	return float4(In.Diffuse.rgb*light,In.Diffuse.a);//0.15
+}

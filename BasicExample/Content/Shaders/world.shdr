@@ -1,0 +1,55 @@
+struct VS_INPUT
+{
+    float4 Position   : POSITION;
+    float4 Diffuse    : COLOR0;
+    float2 Texture    : TEXCOORD0;
+	float Ambient	  : BLENDWEIGHT;
+	float DayLight    : BLENDINDICES;
+};
+
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+    float4 Diffuse    : COLOR0;
+    float2 Texture    : TEXCOORD0;
+};
+
+cbuffer WVP
+{
+	float4x4 WorldViewProjection;
+};
+
+cbuffer Lighting
+{
+	float3 direction;
+	float ambient;
+	float LightColor;
+};
+ 
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+	 
+    Out.Position = mul(In.Position, WorldViewProjection);
+		
+    //Out.Diffuse = In.Diffuse*In.Ambient + LightColor*In.DayLight;
+	float4 diff = In.Diffuse;
+	diff.rgb *= In.DayLight*LightColor + In.Ambient;
+//In.Diffuse.rgb *= (In.DayLight
+	Out.Diffuse = diff;//In.Diffuse*(In.DayLight*DL + In.Ambient);
+    Out.Texture = In.Texture;
+	 
+    return Out; //return output vertex
+}
+
+Texture2D Texture;
+sampler TextureSampler = sampler_state
+{
+    Texture = (Texture);
+};
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{ 
+	return Texture.Sample(TextureSampler, In.Texture)*In.Diffuse;//float4(1,1,1,1);
+}
+

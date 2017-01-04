@@ -1,0 +1,113 @@
+struct VS_INPUT
+{
+	float2 Position   : POSITION;
+	float4 color : COLOR0;
+	float2 Texture    : TEXCOORD;
+};
+
+//Vertex shader output structure
+struct VS_OUTPUT
+{
+	float4 Position   : SV_Position;
+	float2 TexCoord   : TEXCOORD;
+};
+
+//float4 Color;
+cbuffer Data
+{
+	float4 lightdir;
+	float Resolution;
+};
+
+Texture2D Texture;
+SamplerState TextureSampler;
+
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+
+	Out.Position = float4(In.Position.xy,0,1);
+	Out.TexCoord = In.Texture;
+
+	return Out;
+};
+
+float3 PackNormal(float3 normal)
+{
+	return normal*0.5f+0.5f;
+}
+
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	float off = 1.0f/Resolution;
+	float s00 = Texture.Sample(TextureSampler, In.TexCoord+float2(0,0)).r;//this->heights[iy * 2048 + ix];
+	float s01 = Texture.Sample(TextureSampler, In.TexCoord+float2(off,0)).r;//this->heights[iy * 2048 + ix + 1];
+	float s10 = Texture.Sample(TextureSampler, In.TexCoord+float2(0,off)).r;//this->heights[(iy + 1) * 2048 + ix];
+	float s11 = Texture.Sample(TextureSampler, In.TexCoord+float2(off,off)).r;//this->heights[(iy + 1) * 2048 + ix + 1];
+
+	float3 va = float3(1, s01 - s00, 0);
+	float3 vb = float3(0, s10 - s00, 1);
+	float3 normal = normalize(cross(vb, va));
+	//normal.y /= 2;
+	//normal = normalize(normal);
+	
+
+	//generate lightmap
+	float light = 1;
+	float3 vecto = normalize(lightdir.xyz);
+	//vecto.xz = -vecto.xz;
+	
+	float3 inc = vecto*(1/Resolution);
+	inc.y = -vecto.y;
+	
+
+	float3 pos = float3(In.TexCoord.x, Texture.Sample(TextureSampler, In.TexCoord).r, In.TexCoord.y);// + 2*vecto;
+	//[fastopt]
+	//[unroll(4)]
+	for (int i = 0; i < Resolution; i++)
+	{
+		if (pos.y < Texture.Sample(TextureSampler, pos.xz).r)
+			light = 0.3; //break;
+		else
+			pos -= vecto*inc;//(1/Resolution);//inc;
+	}
+	
+	light = clamp(light,0, 1);
+
+
+	
+	/*float3 start = float3(In.TexCoord.x*Resolution, s00, In.TexCoord.y*Resolution);
+	float3 pos = start + vecto;
+	
+	float3 iv = start;
+	float3 rdirection = vecto;
+	float3 rorigin = start+vecto*2000;
+	
+	float3 v = iv + rdirection;
+	float3 dir;
+	[unroll(1)] 
+	for (int i = 0; i < 200; i++)
+	{
+		float D = length(float3(v.x, 0, v.z) - float3(rorigin.x, 0, rorigin.z));
+		float d = length(iv - v);
+		float h = iv.y + (d*rorigin.y)/D;
+		
+		if (h < Texture.Sample(TextureSampler,v.xz/Resolution).r)
+		{
+			light = 0;
+			break;
+		}
+		//else
+		//{
+			//pos -= vecto*(1/Resolution);
+		//}
+		dir = rdirection;
+		dir.y = 0;
+		v += normalize(dir);
+	}*/
+
+	//return float4(light, light, 1, 1);
+	
+	return float4(PackNormal(normal), light);
+};

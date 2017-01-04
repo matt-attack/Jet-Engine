@@ -1,0 +1,42 @@
+// Vertex shader input structure
+struct VS_INPUT
+{
+	float4 Position   : POSITION;
+	float4 Color : COLOR0;
+	float2 Tex : TEXCOORD0;
+};
+
+// Vertex shader output structure
+struct VS_OUTPUT
+{
+	float4 Position   : SV_Position;
+	float2 Tex : TEXCOORD0;
+	float4 Color : COLOR0;
+};
+
+// Global variables
+cbuffer WVP
+{
+	float4x4 WorldViewProjection;
+}
+
+Texture2D Texture;
+SamplerState TextureSampler;
+
+// Name: Simple Vertex Shader
+// Type: Vertex shader
+// Desc: Vertex transformation and texture coord pass-through
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+	
+	Out.Position = mul(In.Position, WorldViewProjection);
+	Out.Color = In.Color;
+	Out.Tex = In.Tex;
+	return Out;//return output vertex
+}
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	return Texture.Sample(TextureSampler, In.Tex)*In.Color;
+}

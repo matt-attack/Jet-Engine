@@ -1,0 +1,40 @@
+// Vertex shader input structure
+struct VS_INPUT
+{
+    float4 Position   : POSITION;
+	float4 Diffuse : COLOR0;
+};
+
+// Vertex shader output structure
+struct VS_OUTPUT
+{
+    float4 Position   : SV_Position;
+    float4 Diffuse    : COLOR0;
+};
+
+// Global variables
+//float4x4 WorldViewProjection : register(c0);
+//float DL : register(c4);
+
+cbuffer WVP
+{
+	float4x4 WorldViewProjection;
+};
+
+
+// Name: Simple Vertex Shader
+// Type: Vertex shader
+// Desc: Vertex transformation and texture coord pass-through
+VS_OUTPUT vs_main( in VS_INPUT In)
+{
+	VS_OUTPUT Out;
+	Out.Position = mul(In.Position, WorldViewProjection);
+	Out.Diffuse = In.Diffuse;
+	//Out.Diffuse.a *= DL;
+	return Out;
+}
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	return In.Diffuse;
+}

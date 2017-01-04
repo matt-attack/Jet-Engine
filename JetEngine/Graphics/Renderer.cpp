@@ -36,9 +36,11 @@ Renderer::Renderer()
 
 void Renderer::Init(CRenderer* renderer)
 {
-	shader_ss = renderer->CreateShader(13, "Shaders/skinned_shadow.vsh");
+	shader_ss = resources.get_unsafe<CShader>("Shaders/skinned_shadow.vsh");
 
-	shader_s = renderer->CreateShader(2, "Shaders/shadow.vsh");
+	shader_s = resources.get_unsafe<CShader>("Shaders/shadow.vsh");
+
+	shader_sa = resources.get_unsafe<CShader>("Shaders/alpha_shadow.vsh");// renderer->CreateShader
 
 	//create common constant buffers
 	//bind each buffer
@@ -387,7 +389,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	renderer->SetCullmode(CULL_CCW);
 
-	CShader* atest = resources.get_shader("Shaders/alpha_shadow.vsh");
+	CShader* atest = this->shader_sa;// resources.get_shader("Shaders/alpha_shadow.vsh");
 
 	//unbind PS
 

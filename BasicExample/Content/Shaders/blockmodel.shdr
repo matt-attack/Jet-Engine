@@ -1,0 +1,36 @@
+
+struct VS_INPUT 
+{
+	float4 Position   : POSITION;
+	float4 Diffuse    : COLOR0;
+	float2 Texture    : TEXCOORD0; 
+};
+	// Vertex shader output structure
+struct VS_OUTPUT {
+	float4 Position   : SV_Position;
+	float4 Diffuse    : COLOR0;
+	//float2 TexCoord    : TEXCOORD0;
+};
+
+// Global variables
+float LightColor : register(c4);
+
+cbuffer WVP
+{
+	float4x4 WorldViewProjection;
+};
+
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+	Out.Position = mul(In.Position, WorldViewProjection);
+	Out.Diffuse = In.Diffuse;
+	//Out.Diffuse.rgb *= LightColor;
+
+	return Out;
+};
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	return In.Diffuse;
+};

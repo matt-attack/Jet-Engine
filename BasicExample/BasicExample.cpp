@@ -7,17 +7,8 @@
 
 #include <Windows.h>
 
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
-#define _CRTDBG_MAP_ALLOC
-
 // include the basic windows header files and the Direct3D header file
 #include <dinput.h>
-
-//my includes
-#include <JetEngine/Graphics/CRenderer.h>
-#include <JetGame/Window.h>
 
 // include the Direct3D Library file
 #pragma comment (lib, "d3d11.lib")
@@ -34,9 +25,6 @@
 #pragma comment (lib, "JetGame.lib")
 //#pragma comment (lib, "JetNet.lib")
 
-//my globals
-CRenderer* renderer;//move these globals!!! or make them not required for other libraries
-
 extern "C" {
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -44,6 +32,11 @@ extern "C" {
 //#include "Game.h"
 #include <JetGame/CGame.h>
 #include <JetGame/SplashScreen.h>
+#include <JetEngine/Graphics/CRenderer.h>
+#include <JetGame/Window.h>
+
+//my globals
+CRenderer* renderer;//this global is required to use Jet Engine. It wraps the low level graphics functions provided by DirectX (and once, but coming again OpenGL)
 
 //create your game 
 class MyGame : public CGame
@@ -52,12 +45,12 @@ class MyGame : public CGame
 public:
 	void onInit()
 	{
-
+		//anything you want run when your game starts
 	}
 
 	void onUpdate()
 	{
-
+		//anything you want run once per frame before rendering
 	}
 };
 
@@ -77,6 +70,7 @@ public:
 
 	}
 
+	//all the functions you can implement in your gamestate
 	virtual void Init(CGame* game) {}
 
 	virtual void Cleanup() {};

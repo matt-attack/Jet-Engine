@@ -1,0 +1,51 @@
+	struct VS_INPUT {
+		float4 Position   : POSITION;
+		float4 Diffuse    : COLOR0;
+		float2 Texture    : TEXCOORD0;};
+
+	//Vertex shader output structure
+	struct VS_OUTPUT {
+		float4 Position   : SV_Position;
+		float4 Diffuse    : COLOR0;
+		float2 TexCoord   : TEXCOORD0; 
+	};
+
+	//Global variables
+	float DL : register(c4);
+
+	float AL : register(c6);
+	float3 LightDirection;
+	
+	cbuffer Matrices
+	{
+		float4x4 world;
+		float4x4 view;
+		float4x4 proj;
+	};
+
+	cbuffer WVP
+	{
+		float4x4 WorldViewProjection;
+	};
+
+	Texture2D Texture;
+	sampler TextureSampler = sampler_state
+	{
+		Texture = (Texture);
+		Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	};
+	VS_OUTPUT vs_main( in VS_INPUT In )
+	{
+		VS_OUTPUT Out;
+		Out.Position = mul(In.Position, WorldViewProjection);
+		Out.Diffuse = In.Diffuse;
+		//Out.Diffuse.rgb *= DL;
+		Out.TexCoord = In.Texture;
+
+		return Out;
+	};
+
+	float4 ps_main( in VS_OUTPUT In) : SV_Target
+	{
+		return Texture.Sample(TextureSampler, In.TexCoord);//In.Diffuse;
+	};

@@ -1,0 +1,25 @@
+struct VSIN
+{
+	float4 Position : POSITION;
+	float4 Color : COLOR0;
+	float2 Texcoord : TEXCOORD0;
+};
+
+struct VSOUT
+{
+	float4 Color : COLOR0;
+	float4 Position : SV_Position;
+};
+
+VSOUT vs_main( in VSIN In)
+{
+	VSOUT Out;
+	Out.Color = In.Color;
+	Out.Position = float4(In.Position.xyz,1);
+	return Out;
+}
+
+float4 ps_main(in VSOUT In) : SV_Target
+{
+	return In.Color;
+}

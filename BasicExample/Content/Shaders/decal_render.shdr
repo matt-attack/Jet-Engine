@@ -1,0 +1,50 @@
+struct VS_INPUT
+{
+	float2 Position   : POSITION;
+	float4 color : COLOR0;
+	float2 Texture    : TEXCOORD;
+};
+
+//Vertex shader output structure
+struct VS_OUTPUT
+{
+	float4 Position   : SV_Position;
+	float2 TexCoord   : TEXCOORD;
+};
+
+
+
+Texture2D PositionTex;
+SamplerState TextureSampler;
+
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+	Out.Position = float4(In.Position.xy,0,1);
+	Out.TexCoord = In.Texture;
+
+	return Out;
+};
+
+cbuffer cData
+{	
+	float4 origin;
+	float radius;
+};
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	float4 pos = PositionTex.Sample(TextureSampler, In.TexCoord);
+
+	if (pos.w != origin.w)//only deal with this bone
+		discard;//return float4(1,1,1,1);
+
+	//do AABB test or what not
+
+	//maybe use a sphere??
+	float len = length(pos.xyz - origin.xyz);
+	if (len > radius)
+		discard;
+
+	return float4(0.1,0.1,0.1,1);
+};
