@@ -40,6 +40,19 @@ class FoliageRenderer
 	std::vector<TreeModel> tree_models;
 	std::vector<ObjModel*> render_models[8];//stupid hack
 
+
+	struct TreeTile
+	{
+		int x, y;
+		int size;
+		CVertexBuffer vb;
+		std::vector<TreeBillboard> data;
+	};
+
+	int size = 0;
+	int tiles_dim = 0;
+	TreeTile* tiles = 0;
+
 public:
 	FoliageRenderer();
 	~FoliageRenderer();
@@ -51,6 +64,8 @@ public:
 	void Render(CRenderer* renderer, const CCamera& cam);
 
 	void AddModel(const char* name);
+
+	TreeBillboard* AddTree(float x, float z);
 
 	Vec2 GetImpostorSize(ObjModel* model);
 };

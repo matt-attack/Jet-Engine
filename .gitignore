@@ -3,7 +3,6 @@
 Debug/
 Release/
 res/
-*.png
 *.iqm
 *.cfg
 *.bmp

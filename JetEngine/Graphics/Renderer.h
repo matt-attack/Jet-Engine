@@ -38,7 +38,7 @@ class Renderer
 
 public:
 	Vec3 sun_light;
-
+private:
 	ID3D11SamplerState* shadowSampler;
 	ID3D11SamplerState* shadowSampler_linear;
 
@@ -58,6 +58,9 @@ public:
 	void CalcShadowMapSplitDepths(float *outDepths, CCamera* camera, float maxdist);
 	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, CCamera* cam, std::vector<Renderable*>* objs, int id);
 
+	std::mutex todo_lock;
+	std::queue<std::function<void()>> todo;
+
 public:
 	int rcount;
 	int rdrawn;
@@ -76,8 +79,7 @@ public:
 	};
 	std::vector<Light> lights;
 
-	std::mutex todo_lock;
-	std::queue<std::function<void()>> todo;
+
 
 	void AddPreRenderTask(std::function<void()> in)
 	{

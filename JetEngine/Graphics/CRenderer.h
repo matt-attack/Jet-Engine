@@ -223,6 +223,7 @@ typedef unsigned int Texture;
 #endif
 #undef DrawText
 class IDXGIFactory;
+class Window;
 class CRenderer
 {
 	friend class Renderable;
@@ -314,7 +315,7 @@ public:
 	void DrawGraph();//renders the debug graph
 
 #ifdef _WIN32
-	void Init(HWND hWnd, int scrx, int scry);
+	void Init(Window* wnd, int scrx, int scry);
 #else
 	void Init(int scrx, int scry);
 #endif

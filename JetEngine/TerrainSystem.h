@@ -63,6 +63,11 @@ public:
 
 	void SaveHeightmap(const char* file);
 
+	int GetSize()
+	{
+		return this->world_size*TerrainScale;
+	}
+
 	void GenerateNormals();
 
 	virtual void Render(CCamera* cam, int player);

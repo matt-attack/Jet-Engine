@@ -7,7 +7,7 @@
 CInput::CInput()
 {
 	this->first_player_controller = false;
-};
+}
 
 void CInput::Update()
 {
@@ -16,7 +16,7 @@ void CInput::Update()
 	ScreenToClient(window, &m_pos);
 #endif
 	this->UpdateControllers();
-};
+}
 
 void CInput::UpdateControllers()
 {
@@ -45,6 +45,57 @@ void CInput::UpdateControllers()
 		controller_change = true;
 }
 
+
+//this is where it all happens, gets the status for each binding
+float CInput::GetBindingState(int player, const Binding& binding)
+{
+	float state = 0;
+	if (player == 0)
+	{
+		switch (binding.type)
+		{
+		case BindingType::Keyboard:
+			state = this->kb[binding.key] ? 1.0f : 0.0f;
+			break;
+		case BindingType::Mouse:
+			state = (binding.left ? this->lmouse_down : this->rmouse_down) ? 1.0f : 0.0f;
+			break;
+		}
+	}
+
+	if (this->controllers.size() > 0 && state == false)
+	{//only check controller if kb or mouse not pressed
+		if (this->controllers.size() == 1 && player == 1 && this->first_player_controller)
+			return state;
+
+		int cid = first_player_controller ? 0 : player;//controller id
+		if (cid >= this->controllers.size())
+			return state;
+
+		switch (binding.button)
+		{
+		case LeftTrigger:
+			return ((float)this->controllers[cid].state.Gamepad.bLeftTrigger) / 255.0f;// > 125;
+		case RightTrigger:
+			return ((float)this->controllers[cid].state.Gamepad.bRightTrigger) / 255.0f;// > 125;
+		default:
+			return (this->controllers[cid].state.Gamepad.wButtons & binding.button) ? 1.0f : 0.0f;
+		}
+	}
+
+	//return whatever state is true, controller or kb
+	return state;
+}
+
+void CInput::BindAxis(int id, const Binding up, const Binding down)
+{
+	AxisBinding b;
+	b.axis = 0;
+	b.up = up;
+	b.down = down;
+	this->axes[id] = b;
+}
+
 float CInput::GetAxis(int player, int axis)
 {
 	bool invertlooky = true;
@@ -53,16 +104,30 @@ float CInput::GetAxis(int player, int axis)
 	int controllerid = this->first_player_controller ? player : player - 1;
 	if (controllerid >= this->controllers.size() || controllerid < 0)
 		controller = false;
+
+	auto& axis_data = this->axes[axis];
+	float bs = 0.0f;
+	if (axis_data.axis)
+	{
+
+	}
+	else
+	{
+		bs += this->GetBindingState(player, axis_data.up);
+		bs -= this->GetBindingState(player, axis_data.down);
+	}
+
 	float res = 0;
 	switch (axis)
 	{
 	case 0:
 		if (player == 0 && controller == false)
 		{
-			if (kb[KEY_D])
-				res = 1;
-			if (kb[KEY_A])
-				res -= 1;
+			res = bs;
+			//if (kb[KEY_D])
+			//	res = 1;
+			//if (kb[KEY_A])
+			//	res -= 1;
 		}
 		else
 		{
@@ -77,10 +142,11 @@ float CInput::GetAxis(int player, int axis)
 	case 1:
 		if (player == 0 && controller == false)
 		{
-			if (kb[KEY_W])
-				res = 1;
-			if (kb[KEY_S])
-				res -= 1;
+			res = bs;
+			//if (kb[KEY_W])
+			//	res = 1;
+			//if (kb[KEY_S])
+				//res -= 1;
 		}
 		else
 		{
@@ -133,9 +199,12 @@ float CInput::GetAxis(int player, int axis)
 	return res;
 }
 
-bool CInput::GetBind(int player, int bind)
+bool CInput::GetBindBool(int player, int bind)
 {
 	auto binding = bindings[bind];
+
+	return this->GetBindingState(player, binding) >= 0.5f;
+
 	bool state = false;
 	if (player == 0)
 	{
@@ -199,7 +268,7 @@ void CInput::DoCallbacks(std::function<void(int, int)> bindpresscb)
 	}
 }
 
-bool CInput::GetBindBool(int player, int bind)
+void CInput::Bind(int id, const Binding b)
 {
-	return GetBind(player, bind);// > 0.5f ? true : false;
+	this->bindings[id] = b;
 }

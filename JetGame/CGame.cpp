@@ -103,6 +103,8 @@ void CGame::Cleanup()
 
 	ProfileExit();
 
+	resources.release_unused();//remove resources
+
 	printf("CGameEngine Cleanup\n");
 }
 

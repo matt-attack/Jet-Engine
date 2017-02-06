@@ -4,6 +4,7 @@
 #include "../ResourceManager.h"
 #include "../ModelData.h"
 #include "font.h"
+#include "../../JetGame/Window.h"
 #include <D3D11.h>
 
 
@@ -583,11 +584,13 @@ void CRenderer::SetAALevel(int samples)
 }
 
 #ifdef _WIN32
-void CRenderer::Init(HWND hWnd, int scrx, int scry)
+void CRenderer::Init(Window* w, int scrx, int scry)
 #else
 void CRenderer::Init(int scrx, int scry)
 #endif
 {
+	auto hWnd = (HWND)w->GetOSHandle();
+
 	this->xres = scrx;
 	this->yres = scry;
 

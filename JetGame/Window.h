@@ -14,7 +14,9 @@ public:
 	Window(HINSTANCE__* instance, int nCmdShow, int xRes, int yRes);
 	~Window();
 
-	void AddGame(CGame* game);
+	void SetGame(CGame* game);
+
+	void SetTitle(const char* title);
 
 	void* GetOSHandle()
 	{

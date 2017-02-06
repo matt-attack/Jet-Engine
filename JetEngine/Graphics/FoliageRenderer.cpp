@@ -12,6 +12,8 @@
 #include "CTexture.h"
 #include "../Util/Profile.h"
 
+const int tile_size = 1024;
+
 FoliageRenderer::FoliageRenderer()
 {
 	this->shader = 0;
@@ -21,6 +23,7 @@ FoliageRenderer::FoliageRenderer()
 
 FoliageRenderer::~FoliageRenderer()
 {
+	delete[] tiles;
 }
 
 Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
@@ -64,28 +67,59 @@ Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 }
 
 
+TreeBillboard* FoliageRenderer::AddTree(float fx, float z)
+{
+	int x = (int)fx / tile_size;
+	int y = (int)z / tile_size;
+
+	this->tiles[x + y*this->tiles_dim].data.push_back({});
+	return &this->tiles[x + y*this->tiles_dim].data.back();
+}
+
 void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 {
 	if (this->shader)
 		return;//already loaded
-	
+
+	//ok, lets swap to a tile based system, split world into 1024x1024 tiles?
+
 	//this->AddModel("tree.iqm");
 	this->AddModel("tree2.iqm");
-	//this->dimensions = this->GetImpostorSize("tree.iqm");
 
+	this->size = system->GetSize();
+
+	//subdivide
+	int num = size / tile_size;
+	if (size % tile_size)
+		num++;
+	num++;
+	this->tiles_dim = num;
+	this->tiles = new TreeTile[num*num];
+	for (int x = 0; x < num; x++)
+	{
+		for (int y = 0; y < num; y++)
+		{
+			TreeTile* tile = &tiles[x + y*num];
+			tile->x = x*tile_size;
+			tile->y = y*tile_size;
+			tile->size = tile_size;
+
+
+		}
+	}
 
 	//port this to use my api functions
 	D3D11_BUFFER_DESC vbd;
 	vbd.Usage = D3D11_USAGE_DYNAMIC;// D3D11_USAGE_DEFAULT;
-	vbd.ByteWidth = sizeof(TreeBillboard) * 1024;
-	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	//vbd.ByteWidth = sizeof(TreeBillboard) * 1024;
+	//vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;// 0;
 	vbd.MiscFlags = 0;
 	vbd.StructureByteStride = 0;
 
 	// The initial particle emitter has type 0 and age 0.  The rest
 	// of the particle attributes do not apply to an emitter.
-	this->data = new TreeBillboard[1024];
+	this->data = new TreeBillboard[41024];
 
 	//Particle p[20];
 	//ZeroMemory(&p, sizeof(Particle));
@@ -93,16 +127,51 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//p.Type = 0;
 	//experiment with forests and add tree collisions
 	//	how to do groupings of trees???
-	for (int i = 0; i < 1000; i++)
+	//new algorithm
+	int cols = 150;
+	int rows = 150;
+	float w = 2048 * TerrainScale;
+	float h = 2048 * TerrainScale;
+	float xd = w / cols;
+	float yd = h / rows;
+	int i = 0;
+	Vec3 normal;
+	for (int ix = 0; ix < (cols + 1); ix++)
 	{
-		int model = rand() % this->tree_models.size();
-		data[i].position = Vec3::random(2048, 0, 2048);// +Vec3(512, 0, 512);
-		data[i].position.y = system->GetHeight(data[i].position.x, data[i].position.z);
-		data[i].size = this->tree_models[model].dimensions;// Vec2(10, 20);
-		data[i].position.y += data[i].size.y / 2;
-		data[i].color = COLOR_ARGB(255, 255, 255, 255);
-		data[i].type = model;
+		for (int iy = 0; iy < (rows + 1); iy++)
+		{
+			int model = rand() % this->tree_models.size();
+
+			float x = 0 + xd*ix + 0.0f*xd;
+			float z = 0 + yd*iy + 0.0f*yd;
+			x += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*xd)))) - 0.4f*xd;
+			z += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*yd)))) - 0.4f*yd;
+			//data[i].position += (Vec3::random(0.8*xd, 0, 0.8*yd) - Vec3(0.4*xd,0,0.4*yd));// +Vec3(512, 0, 512);
+			float y = system->GetHeightAndNormal(x, z, normal);
+			if (normal.y < 0.9)
+				continue;
+
+			auto tree = this->AddTree(x, z);
+			tree->position.x = x;
+			tree->position.z = z;
+			tree->position.y = y;
+			tree->size = this->tree_models[model].dimensions;
+			tree->position.y += this->tree_models[model].dimensions.y / 2;
+			tree->color = COLOR_ARGB(255, 255, 255, rand() % 155 + 100);
+			tree->type = model;
+			i++;
+		}
 	}
+	/*for (int i = 0; i < 1000; i++)
+	{
+	int model = rand() % this->tree_models.size();
+	data[i].position = Vec3::random(2048, 0, 2048);// +Vec3(512, 0, 512);
+	data[i].position.y = system->GetHeight(data[i].position.x, data[i].position.z);
+	data[i].size = this->tree_models[model].dimensions;// Vec2(10, 20);
+	data[i].position.y += data[i].size.y / 2;
+	data[i].color = COLOR_ARGB(255, 255, 255, 255);
+	data[i].type = model;
+	}*/
 
 	D3D11_SUBRESOURCE_DATA vinitData;
 	vinitData.pSysMem = data;// 0;// &p;
@@ -110,19 +179,26 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	vinitData.SysMemSlicePitch = 0;
 	//renderer->device->CreateBuffer(&vbd, &vinitData, &mInitVB);
 
-	this->num_billboards = 1000;
+	this->num_billboards = i;
 
 	//
 	// Create the ping-pong buffers for stream-out and drawing.
 	//
-	vbd.ByteWidth = sizeof(TreeBillboard) * 1024;// mMaxParticles;
+	vbd.ByteWidth = sizeof(TreeBillboard) * this->num_billboards;// mMaxParticles;
 	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;// | D3D11_BIND_STREAM_OUTPUT;
 
 	auto res = renderer->device->CreateBuffer(&vbd, &vinitData, &mDrawVB);
 	res = renderer->device->CreateBuffer(&vbd, 0, &mStreamOutVB);
 
+	//update vertex buffers for tiles
+	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
+	{
+		if (this->tiles[i].data.size() > 0)
+			this->tiles[i].vb.Data(this->tiles[i].data.data(), this->tiles[i].data.size()*sizeof(TreeBillboard), sizeof(TreeBillboard));
+	}
+
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	//{ ELEMENT_FLOAT3, USAGE_TEXCOORD },
+		//{ ELEMENT_FLOAT3, USAGE_TEXCOORD },
 	{ ELEMENT_FLOAT2, USAGE_TANGENT },
 	//{ ELEMENT_FLOAT2, USAGE_NORMAL },
 	//{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
@@ -154,48 +230,93 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	//todo: need to generate normal map in each and make sure to render at fullbright
 	this->GenerateImpostors();
 
-	float fade_distane = 150;
+	float fade_distance = 150;
 
 	//ok, now lets be super dumb
 	//ok, lets speed this up considerably
 	int count[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	//if (renderer->current_aa_level == 2)
-	//	return;//showdebug > 1)
-	for (int i = 0; i < this->num_billboards; i++)
+
+	int dist = this->tiles[0].size + fade_distance;
+	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
 	{
-		if (this->data[i].position.distsqr(cam._pos) < fade_distane * fade_distane)
-		{ 
-			int type = this->data[i].type;
-			auto model = this->tree_models[type];
-
-			//make trees use the alpha test material
-			//get available model
-			ObjModel* rm = 0;
-			if (render_models[type].size() <= count[type])
+		int x = this->tiles[i].x + this->tiles[i].size / 2;
+		int y = this->tiles[i].y + this->tiles[i].size / 2;
+		int index = i;// x + y*this->tiles_dim;
+		if (((x - cam._pos.x) * (x - cam._pos.x) + (y - cam._pos.z)*(y - cam._pos.z)) < dist*dist)
+		{
+			//render whats inside
+			for (int i = 0; i < this->tiles[index].data.size(); i++)
 			{
-				//allocate new one
-				auto tmp = new ObjModel;
-				tmp->Load(model.model->name);
-				render_models[type].push_back(tmp);
-				rm = tmp;
-				count[type]++;
-			}
-			else
-			{
-				rm = render_models[type][count[type]++];
-			}
+				if (this->tiles[index].data[i].position.distsqr(cam._pos) < fade_distance * fade_distance)
+				{
+					int type = this->tiles[index].data[i].type;
+					auto model = this->tree_models[type];
 
-			//render it
-			Vec3 offset = this->data[i].position - Vec3(0, model.dimensions.y / 2, 0);
-			rm->aabb = rm->t->joints[0].bb;
-			rm->aabb.min *= 2;
-			rm->aabb.max *= 2;
-			rm->aabb.max += offset;
-			rm->aabb.min += offset;
-			rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
-			r.AddRenderable(rm);
+					//make trees use the alpha test material
+					//get available model
+					ObjModel* rm = 0;
+					if (render_models[type].size() <= count[type])
+					{
+						//allocate new one
+						auto tmp = new ObjModel;
+						tmp->Load(model.model->name);
+						render_models[type].push_back(tmp);
+						rm = tmp;
+						count[type]++;
+					}
+					else
+					{
+						rm = render_models[type][count[type]++];
+					}
+
+					//render it
+					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, model.dimensions.y / 2, 0);
+					rm->aabb = rm->t->joints[0].bb;
+					rm->aabb.min *= 2;
+					rm->aabb.max *= 2;
+					rm->aabb.max += offset;
+					rm->aabb.min += offset;
+					rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+					r.AddRenderable(rm);
+				}
+			}
 		}
 	}
+	/*for (int i = 0; i < this->num_billboards; i++)
+	{
+	if (this->data[i].position.distsqr(cam._pos) < fade_distance * fade_distance)
+	{
+	int type = this->data[i].type;
+	auto model = this->tree_models[type];
+
+	//make trees use the alpha test material
+	//get available model
+	ObjModel* rm = 0;
+	if (render_models[type].size() <= count[type])
+	{
+	//allocate new one
+	auto tmp = new ObjModel;
+	tmp->Load(model.model->name);
+	render_models[type].push_back(tmp);
+	rm = tmp;
+	count[type]++;
+	}
+	else
+	{
+	rm = render_models[type][count[type]++];
+	}
+
+	//render it
+	Vec3 offset = this->data[i].position - Vec3(0, model.dimensions.y / 2, 0);
+	rm->aabb = rm->t->joints[0].bb;
+	rm->aabb.min *= 2;
+	rm->aabb.max *= 2;
+	rm->aabb.max += offset;
+	rm->aabb.min += offset;
+	rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+	r.AddRenderable(rm);
+	}
+	}*/
 
 
 	Matrix4 VP = cam._matrix*cam._projectionMatrix;// ViewProj();
@@ -240,24 +361,29 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 	//this->texture = resources.get<CTexture>("smoke.png");
 	renderer->SetPixelTexture(4, this->texture);
-	// done streaming-out--unbind the vertex buffer
-	//ID3D11Buffer* bufferArray[1] = { 0 };
-	//dc->SOSetTargets(1, bufferArray, &offset);
 
-	// ping-pong the vertex buffers
-	//std::swap(mDrawVB, mStreamOutVB);
+	//render tiles
+	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
+	{
+		if (this->tiles[i].data.size() == 0)
+			continue;
+
+		//actually render it
+		dc->IASetVertexBuffers(0, 1, &this->tiles[i].vb.vb, &stride, &offset);
+		dc->Draw(this->tiles[i].data.size(), 0);
+	}
 
 	// Draw the updated particle system we just streamed-out. 
-	dc->IASetVertexBuffers(0, 1, &mDrawVB, &stride, &offset);
+	//dc->IASetVertexBuffers(0, 1, &mDrawVB, &stride, &offset);
 
-	dc->Draw(this->num_billboards, 0);
+	//dc->Draw(this->num_billboards, 0);
 	//dc->DrawAuto();
 
 	renderer->context->GSSetShader(0, 0, 0);
 	//renderer->EnableAlphaBlending(false);
 	//renderer->DepthWriteEnable(true);
 
-	
+
 	//dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
@@ -277,11 +403,11 @@ void FoliageRenderer::GenerateImpostors()
 
 	Viewport old;
 	renderer->GetViewport(&old);
-	
+
 	rt->Clear(0, 0, 0, 0);
 
 	renderer->EnableAlphaBlending(false);
-	
+
 	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 
 	if (this->tree_models.size() > 8)

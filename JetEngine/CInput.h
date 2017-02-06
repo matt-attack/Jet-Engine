@@ -66,11 +66,17 @@ enum ControllerButtons
 {
 	LeftTrigger = 0,
 	RightTrigger = 1,
+	ButtonLeftShoulder = XINPUT_GAMEPAD_LEFT_SHOULDER,
+	ButtonRightShoulder = XINPUT_GAMEPAD_RIGHT_SHOULDER,
 	ButtonA = XINPUT_GAMEPAD_A,
 	ButtonB = XINPUT_GAMEPAD_B,
 	ButtonX = XINPUT_GAMEPAD_X,
 	ButtonY = XINPUT_GAMEPAD_Y,
+
+	ButtonBack = XINPUT_GAMEPAD_BACK,
 	ButtonStart = XINPUT_GAMEPAD_START,
+	ButtonLeftThumb = XINPUT_GAMEPAD_LEFT_THUMB,
+	ButtonRightThumb = XINPUT_GAMEPAD_RIGHT_THUMB,
 };
 
 class Controller
@@ -168,8 +174,37 @@ public:
 	void Update();
 
 	bool first_player_controller;
+private:
 	std::map<int, Binding> bindings;
-	bool GetBind(int player, int bind);
+
+	struct AxisBinding
+	{
+		int axis = 0;
+		Binding up;
+		Binding down;
+	};
+	std::map<int, AxisBinding> axes;
+
+	float GetBindingState(int player, const Binding& b);
+public:
+
+	void Bind(int id, const Binding b);
+
+	void BindAxis(int id, const Binding up, const Binding down);
+	enum ControllerAxes
+	{
+		LeftStickX = 1,
+		LeftStickY,
+		RightStick,
+		LeftTrigger,
+		RightTrigger
+	};
+	void BindAxis(int id, ControllerAxes axis);
+	//void MakeAxis(int id, );
+
+
+	//ok, todo binds can have floats, so lets change this over
+	bool GetBindBool(int player, int bind);
 
 	void DoCallbacks(std::function<void(int, int)> bindpresscb);
 
@@ -178,7 +213,7 @@ public:
 	//0 = move left/right, 1 = move forward/back, 2 = look right/left 3 = look up/down
 	float GetAxis(int player, int axis);
 
-	bool GetBindBool(int player, int bind);
+	//bool GetBindBool(int player, int bind);
 
 	std::vector<Controller> controllers;
 	void UpdateControllers();

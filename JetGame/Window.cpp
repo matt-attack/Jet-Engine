@@ -44,10 +44,9 @@ Window::Window(HINSTANCE hInstance, int nCmdShow, int xRes, int yRes)
 		xres = dx;
 	if (yres > dy - 65)//take into account taskbar and stuff
 		yres = dy - 65;
-
 	hWnd = CreateWindowEx(NULL,
 		L"WindowClass",
-		L"Mechstravaganza",
+		L"Jet Engine",
 		WS_OVERLAPPEDWINDOW,
 		0, 0,
 		xres, yres + 30,
@@ -70,7 +69,7 @@ Window::~Window()
 	games[hWnd] = { 0, 0};
 }
 
-void Window::AddGame(CGame* game)
+void Window::SetGame(CGame* game)
 {
 	games[hWnd] = { game, this };
 }
@@ -88,6 +87,11 @@ void Window::ProcessMessages()
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
+}
+
+void Window::SetTitle(const char* title)
+{
+	SetWindowTextA(this->hWnd, title);
 }
 
 bool last = true;
@@ -184,6 +188,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		if (renderer)
 			renderer->Resize((int)LOWORD(lParam), (int)HIWORD(lParam));
 
+		//window->x_size = (int)LOWORD(lParam);
+		//window->y_size = (int)HIWORD(lParam);
 		break;
 	}
 	case WM_MOUSEMOVE: //not a good method

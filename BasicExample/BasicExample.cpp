@@ -106,10 +106,10 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	renderer = new CRenderer();
 
 	Window w(hInstance, nCmdShow, 700, 700);
-	w.AddGame(game);
+	w.SetGame(game);
 
 	//initialize the renderer to work with the window and have a default size
-	renderer->Init((HWND)w.GetOSHandle(), 700, 700);
+	renderer->Init(&w, 700, 700);
 
 	//initialize the game with the window as well
 	game->Init(&w);
@@ -121,6 +121,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	while (game->Running())
 	{
+		//run the update function which both renders and updates the view/game
 		game->Update();
 
 		if (renderer->Vsync() == false)
@@ -130,8 +131,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	}
 
 	game->Cleanup();
-
-	resources.release_unused();//remove resources before killing renderer
 
 	delete renderer;
 	delete game;

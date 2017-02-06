@@ -65,10 +65,13 @@ public:
 	
 	IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
+	//sets a shader define value, only applies to shader builder type materials
 	void SetDefine(const std::string& name, const std::string& value);
 
+	//this applies material properties (blend states, textures) that are constant across all models with this material
 	virtual void Apply(CRenderer* renderer);
 
+	//this selects the proper shader for rendering depending on the models run time condition
 	void ApplyShader(bool skinned, int lights);
 
 	//updates internal data, called when a resource changes
@@ -76,6 +79,8 @@ public:
 	//this should load the correct shader pointer
 	virtual void Update(CRenderer* renderer);
 
+
+	//gets the list of materials currently created organized by name
 	static std::map<std::string, IMaterial*>& GetList()
 	{
 		static std::map<std::string, IMaterial*> materials;

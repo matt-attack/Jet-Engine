@@ -35,13 +35,13 @@ struct VS_OUTPUT
 #endif
 };
 
-struct PointLight
+/*struct PointLight
 {
 	float4 position;
 	float3 color;
-};
+};*/
 
-cbuffer Lighting
+/*cbuffer Lighting
 {
 	float3 LightDirection;
 	float3 LightColor;
@@ -50,7 +50,7 @@ cbuffer Lighting
 #ifdef NUM_POINT
 	PointLight lights[NUM_POINT];
 #endif
-};
+};*/
 
 cbuffer Matrices
 {
