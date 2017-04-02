@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 #include "CRenderer.h"
 #include "../TerrainSystem.h"
 
@@ -17,20 +15,10 @@ class FoliageRenderer
 {
 	CTexture* texture;
 	CShader* shader;
-	ID3D11Buffer* mDrawVB, *mStreamOutVB;
-
-	TreeBillboard* data;
-
+	
 	VertexDeclaration vd;
 
-	int num_billboards;
-
-	//Vec2 dimensions;
-
 	int hack = 0;
-
-	//things to render, updated every frame
-	//std::vector<Vec3> trees;
 
 	struct TreeModel
 	{

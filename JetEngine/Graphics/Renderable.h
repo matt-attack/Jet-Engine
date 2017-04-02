@@ -56,6 +56,7 @@ struct RMesh
 struct MaterialInstanceBlock
 {
 	CTexture* extra;//well, this works for now...
+	unsigned int color = 0;
 };
 
 

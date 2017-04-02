@@ -18,7 +18,6 @@ FoliageRenderer::FoliageRenderer()
 {
 	this->shader = 0;
 	this->texture = 0;
-	this->data = 0;
 }
 
 FoliageRenderer::~FoliageRenderer()
@@ -103,23 +102,13 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			tile->x = x*tile_size;
 			tile->y = y*tile_size;
 			tile->size = tile_size;
-
-
 		}
 	}
 
-	//port this to use my api functions
-	D3D11_BUFFER_DESC vbd;
-	vbd.Usage = D3D11_USAGE_DYNAMIC;// D3D11_USAGE_DEFAULT;
-	//vbd.ByteWidth = sizeof(TreeBillboard) * 1024;
-	//vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;// 0;
-	vbd.MiscFlags = 0;
-	vbd.StructureByteStride = 0;
 
 	// The initial particle emitter has type 0 and age 0.  The rest
 	// of the particle attributes do not apply to an emitter.
-	this->data = new TreeBillboard[41024];
+	//this->data = new TreeBillboard[41024];
 
 	//Particle p[20];
 	//ZeroMemory(&p, sizeof(Particle));
@@ -128,8 +117,8 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	//experiment with forests and add tree collisions
 	//	how to do groupings of trees???
 	//new algorithm
-	int cols = 150;
-	int rows = 150;
+	int cols = 175;
+	int rows = 175;
 	float w = 2048 * TerrainScale;
 	float h = 2048 * TerrainScale;
 	float xd = w / cols;
@@ -157,38 +146,11 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			tree->position.y = y;
 			tree->size = this->tree_models[model].dimensions;
 			tree->position.y += this->tree_models[model].dimensions.y / 2;
-			tree->color = COLOR_ARGB(255, 255, 255, rand() % 155 + 100);
+			tree->color = COLOR_ARGB(255, rand() % 155 + 100, rand() % 155 + 100, 0);
 			tree->type = model;
 			i++;
 		}
 	}
-	/*for (int i = 0; i < 1000; i++)
-	{
-	int model = rand() % this->tree_models.size();
-	data[i].position = Vec3::random(2048, 0, 2048);// +Vec3(512, 0, 512);
-	data[i].position.y = system->GetHeight(data[i].position.x, data[i].position.z);
-	data[i].size = this->tree_models[model].dimensions;// Vec2(10, 20);
-	data[i].position.y += data[i].size.y / 2;
-	data[i].color = COLOR_ARGB(255, 255, 255, 255);
-	data[i].type = model;
-	}*/
-
-	D3D11_SUBRESOURCE_DATA vinitData;
-	vinitData.pSysMem = data;// 0;// &p;
-	vinitData.SysMemPitch = 0;
-	vinitData.SysMemSlicePitch = 0;
-	//renderer->device->CreateBuffer(&vbd, &vinitData, &mInitVB);
-
-	this->num_billboards = i;
-
-	//
-	// Create the ping-pong buffers for stream-out and drawing.
-	//
-	vbd.ByteWidth = sizeof(TreeBillboard) * this->num_billboards;// mMaxParticles;
-	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;// | D3D11_BIND_STREAM_OUTPUT;
-
-	auto res = renderer->device->CreateBuffer(&vbd, &vinitData, &mDrawVB);
-	res = renderer->device->CreateBuffer(&vbd, 0, &mStreamOutVB);
 
 	//update vertex buffers for tiles
 	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
@@ -230,7 +192,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	//todo: need to generate normal map in each and make sure to render at fullbright
 	this->GenerateImpostors();
 
-	float fade_distance = 150;
+	float fade_distance = 100;
 
 	//ok, now lets be super dumb
 	//ok, lets speed this up considerably
@@ -242,6 +204,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 		int x = this->tiles[i].x + this->tiles[i].size / 2;
 		int y = this->tiles[i].y + this->tiles[i].size / 2;
 		int index = i;// x + y*this->tiles_dim;
+
 		if (((x - cam._pos.x) * (x - cam._pos.x) + (y - cam._pos.z)*(y - cam._pos.z)) < dist*dist)
 		{
 			//render whats inside
@@ -277,47 +240,16 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 					rm->aabb.max += offset;
 					rm->aabb.min += offset;
 					rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+					rm->color = this->tiles[index].data[i].color;
+					//add color here
 					r.AddRenderable(rm);
 				}
 			}
 		}
 	}
-	/*for (int i = 0; i < this->num_billboards; i++)
-	{
-	if (this->data[i].position.distsqr(cam._pos) < fade_distance * fade_distance)
-	{
-	int type = this->data[i].type;
-	auto model = this->tree_models[type];
 
-	//make trees use the alpha test material
-	//get available model
-	ObjModel* rm = 0;
-	if (render_models[type].size() <= count[type])
-	{
-	//allocate new one
-	auto tmp = new ObjModel;
-	tmp->Load(model.model->name);
-	render_models[type].push_back(tmp);
-	rm = tmp;
-	count[type]++;
-	}
-	else
-	{
-	rm = render_models[type][count[type]++];
-	}
-
-	//render it
-	Vec3 offset = this->data[i].position - Vec3(0, model.dimensions.y / 2, 0);
-	rm->aabb = rm->t->joints[0].bb;
-	rm->aabb.min *= 2;
-	rm->aabb.max *= 2;
-	rm->aabb.max += offset;
-	rm->aabb.min += offset;
-	rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
-	r.AddRenderable(rm);
-	}
-	}*/
-
+	ID3D11Buffer* b = 0;
+	renderer->context->PSSetConstantBuffers(2, 1, &b);
 
 	Matrix4 VP = cam._matrix*cam._projectionMatrix;// ViewProj();
 	//int total = mNum;
@@ -349,6 +281,8 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	// Set IA stage.
 	//
 	//renderer->DepthWriteEnable(true);
+	renderer->SetFilter(0, FilterMode::Linear);
+
 	this->shader->BindIL(&this->vd);// GetVertexDeclaration(22));
 	renderer->EnableAlphaBlending(false);
 	renderer->context->GSSetShader(this->shader->gshader, 0, 0);
@@ -368,23 +302,18 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 		if (this->tiles[i].data.size() == 0)
 			continue;
 
+		//todo, check if visible too
+		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x+tile_size, 20000, tiles[i].y+tile_size))) == false)
+			continue;
+
 		//actually render it
 		dc->IASetVertexBuffers(0, 1, &this->tiles[i].vb.vb, &stride, &offset);
 		dc->Draw(this->tiles[i].data.size(), 0);
 	}
 
-	// Draw the updated particle system we just streamed-out. 
-	//dc->IASetVertexBuffers(0, 1, &mDrawVB, &stride, &offset);
-
-	//dc->Draw(this->num_billboards, 0);
-	//dc->DrawAuto();
-
 	renderer->context->GSSetShader(0, 0, 0);
 	//renderer->EnableAlphaBlending(false);
 	//renderer->DepthWriteEnable(true);
-
-
-	//dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 int rrr = 0;
@@ -467,6 +396,8 @@ void FoliageRenderer::GenerateImpostors()
 				objsYmax,// top
 				objsNear,// near
 				objsFar).Transpose();// far
+
+			model->color = 0xFFFFFFFF;
 
 			r.Render(&cam, model);
 		}

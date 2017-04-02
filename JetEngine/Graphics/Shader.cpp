@@ -3,11 +3,11 @@
 #include <D3D11.h>
 #include <D3DX11.h>
 
-CBuffer::CBuffer() 
-{ 
-	this->buffer = 0; 
-	this->vsslot = this->psslot = this->gsslot = -1; 
-};
+CBuffer::CBuffer()
+{
+	this->buffer = 0;
+	this->vsslot = this->psslot = this->gsslot = -1;
+}
 
 void CBuffer::UploadAndSet(void* data, int size)
 {
@@ -21,12 +21,42 @@ void CBuffer::UploadAndSet(void* data, int size)
 		renderer->context->Unmap(buffer, 0);
 
 		if (psslot >= 0)
-			renderer->context->PSSetConstantBuffers(psslot,1,&buffer);
+			renderer->context->PSSetConstantBuffers(psslot, 1, &buffer);
 		if (vsslot >= 0)
-			renderer->context->VSSetConstantBuffers(vsslot,1,&buffer);
+			renderer->context->VSSetConstantBuffers(vsslot, 1, &buffer);
 		if (gsslot >= 0)
 			renderer->context->GSSetConstantBuffers(gsslot, 1, &buffer);
 	}
+}
+
+CShader::CShader(const char* source, std::string filename, const char* vfunc, const char* pfunc, char** macros, char** macrodefinitions, int nummacros)
+{
+	this->vshader = 0;
+
+	ID3D11VertexShader* vertexShader = NULL; //VS (NEW)
+
+	D3D10_SHADER_MACRO* xmacros = 0;
+	if (macros)
+	{
+		xmacros = new D3D10_SHADER_MACRO[nummacros + 1];
+		for (int i = 0; i < nummacros; i++)
+		{
+			xmacros[i].Name = macros[i];
+			xmacros[i].Definition = macrodefinitions[i];// "true";
+		}
+		xmacros[nummacros].Name = 0;
+		xmacros[nummacros].Definition = 0;
+	}
+	//todo pass in file name here so includes function correctly and error information
+	this->CompileVS(filename.c_str(), vfunc, xmacros, source);
+
+	ID3D10Blob* gsBuf = 0;
+	//if (gloc && gfunc)
+	//	gsBuf = this->CompileGS(gloc, gfunc, xmacros);
+
+	auto pixelShaderBuffer = this->CompilePS(filename.c_str(), pfunc, xmacros, source);
+
+	this->SetupUniforms(vertexShaderBuffer, pixelShaderBuffer, gsBuf);
 }
 
 CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros, char** macrodefinitions, int nummacros, const char* gloc, const char* gfunc)
@@ -39,7 +69,7 @@ CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const ch
 	D3D10_SHADER_MACRO* xmacros = 0;
 	if (macros)
 	{
-		xmacros = new D3D10_SHADER_MACRO[nummacros+1];
+		xmacros = new D3D10_SHADER_MACRO[nummacros + 1];
 		for (int i = 0; i < nummacros; i++)
 		{
 			xmacros[i].Name = macros[i];
@@ -49,72 +79,29 @@ CShader::CShader(const char* vloc, const char* vfunc, const char* ploc, const ch
 		xmacros[nummacros].Definition = 0;
 	}
 
-	//add depth and stencil buffers 
-
-	/*ID3D10Blob *errorMessage;
-	HRESULT result = D3DX11CompileFromFileA(vloc, xmacros,
-		0,
-		vfunc, "vs_4_0", 0,0,0, &vertexShaderBuffer, &errorMessage,0);
-
-	if(FAILED(result))
-	{
-		if (errorMessage != NULL)
-		{
-			MessageBoxA(GetActiveWindow(), (char*)errorMessage->GetBufferPointer(), "Invalid VS Code", MB_OK);
-			errorMessage->Release();
-			return;
-		}
-		else
-		{
-			MessageBoxA(GetActiveWindow(), "Could not find VS!", "VS Error", MB_OK);
-			return;
-		}
-	}
-
-	result = renderer->device->CreateVertexShader((DWORD*)vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), 0, &vshader);*/
-
 	this->CompileVS(vloc, vfunc, xmacros);
-	
+
 	ID3D10Blob* gsBuf = 0;
 	if (gloc && gfunc)
 		gsBuf = this->CompileGS(gloc, gfunc, xmacros);
-	
+
 	auto pixelShaderBuffer = this->CompilePS(ploc, pfunc, xmacros);
-
-	/*ID3D10Blob *pixelShaderBuffer;
-
-	result = D3DX11CompileFromFileA(ploc, xmacros,
-		0,
-		pfunc, "ps_4_0", 0,0,0, &pixelShaderBuffer, &errorMessage,0);
-
-	if(FAILED(result))
-	{
-		if (errorMessage != NULL)
-		{
-			MessageBoxA(GetActiveWindow(), (char*)errorMessage->GetBufferPointer(), "Invalid PS Code", MB_OK);
-			errorMessage->Release();
-			return;
-		}
-		else
-		{
-			MessageBoxA(GetActiveWindow(), "Could not find PS!", "PS Error", MB_OK);
-			return;
-		}
-	}
-
-	result = renderer->device->CreatePixelShader((DWORD*)pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), 0, &pshader);*/
 
 	this->SetupUniforms(vertexShaderBuffer, pixelShaderBuffer, gsBuf);
 #endif
-};//load from file
+}//load from file
 
-ID3D10Blob* CShader::CompilePS(const char* file, const char* function, void* _macro)
+ID3D10Blob* CShader::CompilePS(const char* file, const char* function, void* _macro, const char* str)
 {
 	D3D10_SHADER_MACRO* macro = (D3D10_SHADER_MACRO*)_macro;
 	ID3D10Blob *pixelShaderBuffer;
 	ID3D10Blob *errorMessage;
-
-	auto result = D3DX11CompileFromFileA(file, macro/*defines*/,
+	//eof has a problem for some reason
+	HRESULT result;
+	if (str)
+		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "ps_4_0", 0, 0, 0, &pixelShaderBuffer, &errorMessage, 0);
+	else
+		result = D3DX11CompileFromFileA(file, macro/*defines*/,
 		0/*include*/,
 		function, "ps_4_0", 0, 0, 0, &pixelShaderBuffer, &errorMessage, 0);
 
@@ -138,13 +125,17 @@ ID3D10Blob* CShader::CompilePS(const char* file, const char* function, void* _ma
 	return pixelShaderBuffer;
 }
 
-ID3D10Blob* CShader::CompileVS(const char* file, const char* function, void* _macro)
+ID3D10Blob* CShader::CompileVS(const char* file, const char* function, void* _macro, const char* str)
 {
 	D3D10_SHADER_MACRO* macro = (D3D10_SHADER_MACRO*)_macro;
 
 	ID3D10Blob *errorMessage;
 
-	auto result = D3DX11CompileFromFileA(file, macro/*defines*/,
+	HRESULT result;
+	if (str)
+		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "vs_4_0", 0, 0, 0, &vertexShaderBuffer, &errorMessage, 0);
+	else
+		result = D3DX11CompileFromFileA(file, macro/*defines*/,
 		0/*include*/,
 		function, "vs_4_0", 0, 0, 0, &vertexShaderBuffer, &errorMessage, 0);
 
@@ -168,14 +159,18 @@ ID3D10Blob* CShader::CompileVS(const char* file, const char* function, void* _ma
 	return vertexShaderBuffer;
 }
 
-ID3D10Blob* CShader::CompileGS(const char* file, const char* function, void* _macro)
+ID3D10Blob* CShader::CompileGS(const char* file, const char* function, void* _macro, const char* str)
 {
 	D3D10_SHADER_MACRO* macro = (D3D10_SHADER_MACRO*)_macro;
 
 	ID3D10Blob *geometryShaderBuffer;
 	ID3D10Blob *errorMessage;
 
-	auto result = D3DX11CompileFromFileA(file, macro/*defines*/,
+	HRESULT result;
+	if (str)
+		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "gs_4_0", 0, 0, 0, &geometryShaderBuffer, &errorMessage, 0);
+	else
+		result = D3DX11CompileFromFileA(file, macro/*defines*/,
 		0/*include*/,
 		function, "gs_4_0", 0, 0, 0, &geometryShaderBuffer, &errorMessage, 0);
 
@@ -221,7 +216,7 @@ CShader::CShader(const char* vs, const char* ps)//load from text
 	HRESULT result = D3DX11CompileFromMemory(vs, strlen(vs), "wat", 0/*defines*/,
 		0/*include*/, "vs_main",
 		"vs_4_0", 0, 0, 0, &vertexShaderBuffer, &errorMessage, 0);
-	if(FAILED(result))
+	if (FAILED(result))
 	{
 		if (errorVertex != NULL)
 		{
@@ -239,7 +234,7 @@ CShader::CShader(const char* vs, const char* ps)//load from text
 	ID3D11PixelShader* PixelShader = NULL; //VS (NEW)
 	ID3D10Blob * pixelShader = NULL;
 	ID3D10Blob* errorPixel = NULL;
-	if(FAILED(result))
+	if (FAILED(result))
 	{
 		if (errorPixel != NULL)
 		{
@@ -254,7 +249,7 @@ CShader::CShader(const char* vs, const char* ps)//load from text
 
 	this->pshader = PixelShader;
 
-	this->SetupUniforms(vertexShaderBuffer,pixelShader);
+	this->SetupUniforms(vertexShaderBuffer, pixelShader);
 #else
 	GLuint vertexShader = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vertexShader, 1, (const char**)&vs, NULL );
@@ -384,9 +379,9 @@ CShader::CShader(const char* vs, const char* ps)//load from text
 
 	//glBindFragDataLocation( shaderProgram, 0, "outColor" );
 
-	glUseProgram( shaderProgram );
+	glUseProgram(shaderProgram);
 #endif
-};
+}
 
 void CShader::BindIL(VertexDeclaration* il)
 {
@@ -398,7 +393,7 @@ void CShader::BindIL(VertexDeclaration* il)
 	if (lo == layouts.end())
 	{
 		ID3D11InputLayout* layout;
-		auto result = renderer->device->CreateInputLayout(il->elements, il->size, vertexShaderBuffer->GetBufferPointer(), 
+		auto result = renderer->device->CreateInputLayout(il->elements, il->size, vertexShaderBuffer->GetBufferPointer(),
 			vertexShaderBuffer->GetBufferSize(), &layout);
 		if (FAILED(result))
 			throw 7;
@@ -532,7 +527,7 @@ CShader* CShader::load_as_resource(const std::string &path, CShader* res)
 	in[23] = 0;
 
 	if (strcmp(in, "#define geometry_shader") == 0)
-		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0,0, path.c_str(), "gs_main");
+		*d = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", 0, 0, 0, path.c_str(), "gs_main");
 	//ok, here I need to load the first bit of the shader text and see what it says to determine what shader type it is
 	//make a copy of uniforms
 	else

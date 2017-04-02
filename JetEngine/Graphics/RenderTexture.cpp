@@ -53,12 +53,15 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 	desc.CPUAccessFlags = 0;
 	desc.MiscFlags = 0;
 
-	ID3D11Texture2D* renderTargetTexture;
-	// Create the render target texture.
-	auto result = renderer->device->CreateTexture2D(&desc, NULL, &renderTargetTexture);
-	if (FAILED(result))
+	ID3D11Texture2D* renderTargetTexture = 0;
+	if (color_format != DXGI_FORMAT_UNKNOWN)
 	{
-		throw 7;
+		// Create the render target texture.
+		auto result = renderer->device->CreateTexture2D(&desc, NULL, &renderTargetTexture);
+		if (FAILED(result))
+		{
+			throw 7;
+		}
 	}
 
 	CRenderTexture* rt = new CRenderTexture;
@@ -86,6 +89,8 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 		if (FAILED(hr))
 			throw 7;
 
+		rt->depth_texture = depthTexture;
+
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 		ZeroMemory(&depthStencilViewDesc, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
 		depthStencilViewDesc.Format = depth_format;// DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -102,7 +107,6 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 			throw 7;
 
 		rt->depth = shadowDepthView;
-		depthTexture->Release();
 	}
 	else
 	{
@@ -115,17 +119,23 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 	shaderResourceViewDesc.Format = color_format;// DXGI_FORMAT_R8G8B8A8_UNORM;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
-	ID3D11RenderTargetView* renderTargetView;
-	result = renderer->device->CreateRenderTargetView(renderTargetTexture, NULL, &renderTargetView);
-	if (FAILED(result))
-		throw 7;
+	ID3D11RenderTargetView* renderTargetView = 0;
+	if (color_format != DXGI_FORMAT_UNKNOWN)
+	{
+		auto result = renderer->device->CreateRenderTargetView(renderTargetTexture, NULL, &renderTargetView);
+		if (FAILED(result))
+			throw 7;
+	}
 
 	rt->color_format = color_format;
 	rt->color = renderTargetView;
 	rt->color_texture = renderTargetTexture;
 	
-	rt->texture = rt->GetColorResourceView();
-	rt->texture->AddRef();
+	if (rt->color)
+	{
+		rt->texture = rt->GetColorResourceView();
+		rt->texture->AddRef();
+	}
 	return rt;
 }
 
@@ -154,5 +164,38 @@ ID3D11ShaderResourceView* CRenderTexture::GetColorResourceView()
 		throw 7;
 
 	this->texture = resourceView;
+	return resourceView;
+}
+
+ID3D11ShaderResourceView* CRenderTexture::GetDepthResourceView()
+{
+	if (this->depth_rv)
+	{
+		this->depth_rv->AddRef();
+		return this->depth_rv;
+	}
+
+	//todo, have some enums definiting types of depth textures
+	//	32 bit float
+	//	24 bit
+	//	16 bit
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	shaderResourceViewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;// color_format;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	shaderResourceViewDesc.Texture2D.MipLevels = 1;
+
+	//this is how to access the texture later
+	ID3D11ShaderResourceView* resourceView;
+	HRESULT hr = renderer->device->CreateShaderResourceView(
+		depth_texture,
+		&shaderResourceViewDesc,
+		&resourceView
+		);
+	if (FAILED(hr))
+		throw 7;
+
+	this->depth_rv = resourceView;
 	return resourceView;
 }

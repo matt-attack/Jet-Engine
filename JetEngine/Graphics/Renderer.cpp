@@ -37,9 +37,7 @@ Renderer::Renderer()
 void Renderer::Init(CRenderer* renderer)
 {
 	shader_ss = resources.get_unsafe<CShader>("Shaders/skinned_shadow.vsh");
-
 	shader_s = resources.get_unsafe<CShader>("Shaders/shadow.vsh");
-
 	shader_sa = resources.get_unsafe<CShader>("Shaders/alpha_shadow.vsh");// renderer->CreateShader
 
 	//create common constant buffers
@@ -62,84 +60,13 @@ void Renderer::Init(CRenderer* renderer)
 
 	for (int i = 0; i < SHADOW_MAP_MAX_CASCADE_COUNT; i++)
 	{
-		//allocate shadow maps
-		D3D11_TEXTURE2D_DESC desc;
-		memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
+		auto drt = CRenderTexture::Create(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D24_UNORM_S8_UINT);// DXGI_FORMAT_R24G8_TYPELESS);
 
-		// Setup the render target texture description.
-		desc.Width = SHADOW_MAP_SIZE;
-		desc.Height = SHADOW_MAP_SIZE;
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R32_FLOAT;
-		desc.SampleDesc.Count = 1;
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-
-		ID3D11Texture2D* renderTargetTexture;
-		// Create the render target texture.
-		/*auto result = renderer->device->CreateTexture2D(&desc, NULL, &renderTargetTexture);
-		if(FAILED(result))
-		{
-		throw 7;
-		}*/
-
-		//this should be MUCH faster
-		D3D11_TEXTURE2D_DESC shadowMapDesc;
-		ZeroMemory(&shadowMapDesc, sizeof(D3D11_TEXTURE2D_DESC));
-		shadowMapDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
-		shadowMapDesc.MipLevels = 1;
-		shadowMapDesc.ArraySize = 1;
-		shadowMapDesc.SampleDesc.Count = 1;
-		shadowMapDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
-		shadowMapDesc.Height = SHADOW_MAP_SIZE;
-		shadowMapDesc.Width = SHADOW_MAP_SIZE;
-
-		HRESULT hr = renderer->device->CreateTexture2D(
-			&shadowMapDesc,
-			nullptr,
-			&renderTargetTexture
-			);
-		if (FAILED(hr))
-			throw 7;
-
-		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-		ZeroMemory(&depthStencilViewDesc, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
-		depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-		ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		shaderResourceViewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-		shaderResourceViewDesc.Texture2D.MipLevels = 1;
-
-		ID3D11DepthStencilView* shadowDepthView;
-		hr = renderer->device->CreateDepthStencilView(
-			renderTargetTexture,
-			&depthStencilViewDesc,
-			&shadowDepthView
-			);
-		if (FAILED(hr))
-			throw 7;
-
-		hr = renderer->device->CreateShaderResourceView(
-			renderTargetTexture,
-			&shaderResourceViewDesc,
-			&this->shadowMapViews[i]
-			);
-		if (FAILED(hr))
-			throw 7;
-
-
-		this->shadowMapTextures[i] = renderTargetTexture;
-		this->shadowMapSurfaces[i] = new CRenderTexture;
-		this->shadowMapSurfaces[i]->color = 0;//renderTargetView;//(renderTargetView,0);
-		this->shadowMapSurfaces[i]->depth = shadowDepthView;//0;
+		this->shadowMapViews[i] = drt->GetDepthResourceView();
+		this->shadowMapTextures[i] = drt->depth_texture;
+		this->shadowMapSurfaces[i] = drt;
 	}
+
 	D3D11_SAMPLER_DESC comparisonSamplerDesc;
 	ZeroMemory(&comparisonSamplerDesc, sizeof(D3D11_SAMPLER_DESC));
 	comparisonSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
@@ -389,7 +316,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	renderer->SetCullmode(CULL_CCW);
 
-	CShader* atest = this->shader_sa;// resources.get_shader("Shaders/alpha_shadow.vsh");
+	CShader* atest = this->shader_sa;
 
 	//unbind PS
 
@@ -448,7 +375,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 			renderer->context->VSSetConstantBuffers(mat.vsslot, 1, &mat.buffer);
 		}
-		
+
 		switch (obj->type)
 		{
 		case Standard:
@@ -506,7 +433,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 				else
 				{
 					renderer->SetShader(atest);
-	
+
 					//need to set vertex shader too...
 					renderer->SetPixelTexture(0, mesh->material->texture);
 					renderer->SetFilter(0, FilterMode::Linear);
@@ -735,75 +662,9 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	renderer->SetFilter(10, FilterMode::Point);
 
 	render->SetMatrix(VIEW_MATRIX, &globalview);
-	Parent* last = 0;//keeps track of what view matix is active
-	IMaterial* lastm = (IMaterial*)-1;
-	for (int i = 0; i < renderqueue.size(); i++)
-	{
-		const RenderCommand& rc = renderqueue[i];
-		//lets fill this with all the data we need, so we dont need
-		//to go back to the source
 
-		//apply material settings
-		bool shaderchange = false;
-		if (lastm != rc.material)
-		{
-			rc.material->Apply(renderer);//make apply not apply the shader
-			lastm = rc.material;
-			shaderchange = true;
-		}
-
-		//find applicable lights then set'em up
-		int num_lights = 0;
-		Light found_lights[6];//max per pixel
-		//move this into an external function to clean up this code
-		//hack for the moment 
-		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
-		const float radius = rc.source ? 10 : rc.radius;
-		//todo: get enemy spawning system and deaths
-		//todo: perhaps allow more lights if necessary
-		for (auto light : this->lights)
-		{
-			if (num_lights < 6 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
-			{
-				//apply it
-				found_lights[num_lights++] = light;
-			}
-		}
-
-		
-		auto oldshdr = renderer->shader;
-
-		//ok, need to select right shader for skinned / nonskinned
-		//todo: also do shader LOD here
-		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights);
-		shaderchange = (oldshdr != renderer->shader);
-
-		//apply per instance values
-		//only need to do this for shader builder shaders
-		if (rc.material_instance.extra)
-			renderer->SetPixelTexture(9, rc.material_instance.extra);
-
-		/* execute render command */
-		CShader* shader = renderer->shader;
-		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights);
-
-		rc.mesh.vb->Bind();//maybe make this more data oriented?
-
-		//todo: improve the speed of these
-		//		shouldnt always be setting input layout
-		//	    and primitive topology
-		if (rc.mesh.ib == 0)
-			renderer->DrawPrimitive(PT_TRIANGLELIST, 0, rc.mesh.primitives);
-		else
-		{
-			rc.mesh.ib->Bind();//make this more data oriented, can definately remove this indirection
-
-			renderer->DrawIndexedPrimitive(PT_TRIANGLELIST, 0, 0, rc.mesh.primitives, rc.mesh.num_indices);
-		}
-
-		this->rdrawn++;
-	}
-
+	//execute all of the render commands
+	this->ProcessQueue(renderqueue);
 
 	//removing old lights
 	for (int i = 0; i < this->lights.size(); i++)
@@ -851,35 +712,8 @@ void Renderer::SetupMaterials(const RenderCommand* rc)
 
 void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed, const Light* light_list)
 {
-	//dirty hack
-	if (shader_changed && shader->cbuffers.find("Terrain") != shader->cbuffers.end())
-	{
-		auto buffer = shader->cbuffers.find("Terrain")->second;
-
-		D3D11_MAPPED_SUBRESOURCE cb;
-		renderer->context->Map(buffer.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
-		struct mdata
-		{
-			Matrix4 world;
-			Matrix4 view;
-			Matrix4 projection;
-			Matrix4 wvp;
-		};
-		auto data = (mdata*)cb.pData;
-		data->view = renderer->view;
-		data->projection = renderer->projection;
-		data->world = Matrix4::Identity();
-		auto wVP = Matrix4::Identity()*renderer->view*renderer->projection;
-		wVP.MakeTranspose();
-		data->wvp = wVP;
-		renderer->context->Unmap(buffer.buffer, 0);
-
-		renderer->context->VSSetConstantBuffers(buffer.vsslot, 1, &buffer.buffer);
-		if (buffer.psslot >= 0)
-			renderer->context->PSSetConstantBuffers(buffer.psslot, 1, &buffer.buffer);
-	}
-
 	//clean this up ok
+	//todo, only do this if the rc source has changed
 	if (shader->buffers.matrices.buffer)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
@@ -1021,7 +855,6 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 {
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
-
 	for (int i = 0; i < renderqueue.size(); i++)
 	{
 		const RenderCommand& rc = renderqueue[i];
@@ -1029,37 +862,76 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		//to go back to the source
 
 		//apply material settings
-		bool shader_changed = false;
+		bool shaderchange = false;
 		if (lastm != rc.material)
 		{
-			rc.material->Apply(renderer);
+			rc.material->Apply(renderer);//make apply not apply the shader
 			lastm = rc.material;
-			shader_changed = true;
+			shaderchange = true;
 		}
 
+		//find applicable lights then set'em up
+		int num_lights = 0;
+		Light found_lights[6];//max per pixel
+		//move this into an external function to clean up this code
+		//hack for the moment 
+		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
+		const float radius = rc.source ? 10 : rc.radius;
+		//todo: get enemy spawning system and deaths
+		//todo: perhaps allow more lights if necessary
+		for (auto light : this->lights)
+		{
+			if (num_lights < 6 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
+			{
+				//apply it
+				found_lights[num_lights++] = light;
+			}
+		}
+
+
 		auto oldshdr = renderer->shader;
+
 		//ok, need to select right shader for skinned / nonskinned
-		rc.material->ApplyShader(rc.mesh.OutFrames, false);//num_lights > 0);
-		//shaderchange = (oldshdr != renderer->shader);
+		//todo: also do shader LOD here
+		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights);
+		shaderchange = (oldshdr != renderer->shader);
 
-
-		//improve this, make it more static
-		/* execute render command */
-		CShader* shader = renderer->shader;
-		//normal mapping, sup
-		//try and bring world shader into the normal shader system
-		Light found_lights[3];//max per pixel
-		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shader_changed, found_lights);
-		renderer->SetShader(shader);
-		renderer->SetPixelTexture(0, rc.material->texture);
-
-
+		//apply per instance values
+		//use me for color and stuffs
 		//only need to do this for shader builder shaders
+		//todo, use materials that have/dont have these so we dont do extra work
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(9, rc.material_instance.extra);
+		if (renderer->shader->cbuffers.find("color") != renderer->shader->cbuffers.end())
+		{
+			unsigned int col = rc.material_instance.color;
+			if (col == 0)
+				col = 0xFFFFFFFF;
+			Vec4 color;//argb
+			color[0] = (col >> 16) & 0xFF;
+			color[1] = (col >> 8) & 0xFF;
+			color[2] = (col)& 0xFF;
+			color[3] = 255;
+			color /= 255;
+
+			//order needs to be rgba
+			renderer->shader->cbuffers["color"].UploadAndSet(&color, 4 * 4);
+		}
+		else
+		{
+			//ID buffer = 0;
+			//renderer->context->PSSetConstantBuffers(2, 1, 0);
+		}
+
+		/* execute render command */
+		CShader* shader = renderer->shader;
+		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
 
+		//todo: improve the speed of these
+		//		shouldnt always be setting input layout
+		//	    and primitive topology
 		if (rc.mesh.ib == 0)
 			renderer->DrawPrimitive(PT_TRIANGLELIST, 0, rc.mesh.primitives);
 		else
@@ -1075,105 +947,105 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 
 void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 {
-	if (this->_shadows)
+	if (this->_shadows == false)
+		return;
+
+	PROFILE("DrawShadows");
+	GPUPROFILE("RenderShadows");
+
+	//setup viewport
+	Viewport vp;
+	renderer->GetViewport(&vp);
+	int ow = vp.Width;
+	int oh = vp.Height;
+	int ox = vp.X;
+	vp.X = 0;
+	vp.Width = SHADOW_MAP_SIZE;
+	vp.Height = SHADOW_MAP_SIZE;
+	renderer->SetViewport(&vp);
+
+	//draw to shadow map
+	CalcShadowMapSplitDepths(shadowMappingSplitDepths, cam, 200);
+	for (unsigned int cascade_i = 0; cascade_i < this->shadowSplits; cascade_i++)
 	{
-		PROFILE("DrawShadows");
-		GPUPROFILE("RenderShadows");
+		//need to adjust shadow maps to fit around objects
+		CCamera tmpCamera = *cam;
+		tmpCamera.SetFar(shadowMappingSplitDepths[cascade_i]);
+		if (cascade_i > 0)
+			tmpCamera.SetNear(shadowMappingSplitDepths[cascade_i - 1]);
 
-		//setup viewport
-		Viewport vp;
-		renderer->GetViewport(&vp);
-		int ow = vp.Width;
-		int oh = vp.Height;
-		int ox = vp.X;
-		vp.X = 0;
-		vp.Width = SHADOW_MAP_SIZE;
-		vp.Height = SHADOW_MAP_SIZE;
-		renderer->SetViewport(&vp);
+		//tmpCamera.doProjection();
+		tmpCamera.DoMatrix();
 
-		//draw to shadow map
-		CalcShadowMapSplitDepths(shadowMappingSplitDepths, cam, 200);
-		for (unsigned int cascade_i = 0; cascade_i < this->shadowSplits; cascade_i++)
+		//build basic frustum that fits the tmpCamera
+		CCamera culling;
+		BuildShadowFrustum(&tmpCamera, culling, this->dirToLight);
+
+		//AABB frustumBB = tmpCamera.GetFrustumAABB();
+		//const BOX &frustumBB = tmpCamera.GetMatrices().GetFrustumBox();
+		//scene.ListObjectsIntersectingSweptBox(objs, frustumBB, g_DirToLight);
+		//need to make list of all renderables in frustum
+		std::vector<Renderable*> locals;
+		for (auto ren : this->renderables)
 		{
-			//need to adjust shadow maps to fit around objects
-			CCamera tmpCamera = *cam;
-			tmpCamera.SetFar(shadowMappingSplitDepths[cascade_i]);
-			if (cascade_i > 0)
-				tmpCamera.SetNear(shadowMappingSplitDepths[cascade_i - 1]);
-
-			//tmpCamera.doProjection();
-			tmpCamera.DoMatrix();
-
-			//build basic frustum that fits the tmpCamera
-			CCamera culling;
-			BuildShadowFrustum(&tmpCamera, culling, this->dirToLight);
-
-			//AABB frustumBB = tmpCamera.GetFrustumAABB();
-			//const BOX &frustumBB = tmpCamera.GetMatrices().GetFrustumBox();
-			//scene.ListObjectsIntersectingSweptBox(objs, frustumBB, g_DirToLight);
-			//need to make list of all renderables in frustum
-			std::vector<Renderable*> locals;
-			for (auto ren : this->renderables)
+			//submit to render queue
+			if (ren->castsShadows && ren->parent == cam->parent)
 			{
-				//submit to render queue
-				if (ren->castsShadows && ren->parent == cam->parent)
+				//need to cull against light dir
+				if (culling.BoxInFrustumSidesAndFar(ren->aabb))
 				{
-					//need to cull against light dir
-					if (culling.BoxInFrustumSidesAndFar(ren->aabb))
+					if (ren->updated == false)
 					{
-						if (ren->updated == false)
-						{
-							//if we have an entity, update it before rendering
-							if (ren->entity)
-								ren->entity->PreRender();
-							ren->updated = true;
-						}
-						locals.push_back(ren);
+						//if we have an entity, update it before rendering
+						if (ren->entity)
+							ren->entity->PreRender();
+						ren->updated = true;
 					}
+					locals.push_back(ren);
 				}
 			}
-
-			//refine matrix to fit all meshes tightly
-			CalcShadowMapMatrices(
-				shadowMapViewProjs[cascade_i],
-				shadowMapTexXforms[cascade_i],
-				&tmpCamera, &locals, cascade_i);
-
-			//draw each
-			RenderShadowMap(cascade_i, &locals, shadowMapViewProjs[cascade_i]);
 		}
 
-		//renderer->context->OMSetRenderTargets(1, &renderer->renderTargetView, renderer->depthStencilView);
+		//refine matrix to fit all meshes tightly
+		CalcShadowMapMatrices(
+			shadowMapViewProjs[cascade_i],
+			shadowMapTexXforms[cascade_i],
+			&tmpCamera, &locals, cascade_i);
 
-		vp.X = ox;
-		vp.Width = ow;
-		vp.Height = oh;
-		renderer->SetViewport(&vp);
-		/*if (showdebug > 1)
-		{
-		//draw shadow maps
-		renderer->SetTexture(0,this->shadowMapViews[0]);
-		Rect r(300,600,0,300);
-		renderer->DrawRect(&r,0xFFFFFFF);
-
-		if (this->shadowSplits > 1)
-		{
-		renderer->SetTexture(0,this->shadowMapViews[1]);
-		r = Rect(300,600,300,600);
-		renderer->DrawRect(&r,0xFFFFFFF);
-		}
-		if (this->shadowSplits > 2)
-		{
-		renderer->SetTexture(0,this->shadowMapViews[2]);
-		r = Rect(0,300,0,300);
-		renderer->DrawRect(&r,0xFFFFFFF);
-		}
-		if (this->shadowSplits > 3)
-		{
-		renderer->SetTexture(0,this->shadowMapViews[3]);
-		r = Rect(0,300,300,600);
-		renderer->DrawRect(&r,0xFFFFFFF);
-		}
-		}*/
+		//draw each
+		RenderShadowMap(cascade_i, &locals, shadowMapViewProjs[cascade_i]);
 	}
+
+	//renderer->context->OMSetRenderTargets(1, &renderer->renderTargetView, renderer->depthStencilView);
+
+	vp.X = ox;
+	vp.Width = ow;
+	vp.Height = oh;
+	renderer->SetViewport(&vp);
+	/*if (showdebug > 1)
+	{
+	//draw shadow maps
+	renderer->SetTexture(0,this->shadowMapViews[0]);
+	Rect r(300,600,0,300);
+	renderer->DrawRect(&r,0xFFFFFFF);
+
+	if (this->shadowSplits > 1)
+	{
+	renderer->SetTexture(0,this->shadowMapViews[1]);
+	r = Rect(300,600,300,600);
+	renderer->DrawRect(&r,0xFFFFFFF);
+	}
+	if (this->shadowSplits > 2)
+	{
+	renderer->SetTexture(0,this->shadowMapViews[2]);
+	r = Rect(0,300,0,300);
+	renderer->DrawRect(&r,0xFFFFFFF);
+	}
+	if (this->shadowSplits > 3)
+	{
+	renderer->SetTexture(0,this->shadowMapViews[3]);
+	r = Rect(0,300,300,600);
+	renderer->DrawRect(&r,0xFFFFFFF);
+	}
+	}*/
 }

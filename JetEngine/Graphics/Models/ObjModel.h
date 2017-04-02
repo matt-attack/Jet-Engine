@@ -47,7 +47,7 @@ public:
 	Animation* animation;
 	char* name;
 
-	Vec4 color;
+	unsigned int color = 0;
 
 	ModelData* t;
 

@@ -295,7 +295,7 @@ void Animate(ModelData* m, JointTransform* JointTransforms, Matrix3x4* OutFrames
 			else OutFrames[i] = mat;
 		}
 	}
-};
+}
 
 void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 {
@@ -338,7 +338,7 @@ void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 			else this->OutFrames[i] = mat;
 		}
 	}
-};
+}
 
 void ObjModel::Animate(Animation* anim, float curframe)
 {
@@ -384,7 +384,7 @@ void ObjModel::Animate(Animation* anim, float curframe)
 			else this->OutFrames[i] = mat;
 		}
 	}
-};
+}
 
 void ObjModel::UpdateAnimations()
 {
@@ -431,13 +431,9 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.OutFrames = this->OutFrames;
 	else
 		rc.mesh.OutFrames = 0;
-	//if (this->material->normal_map)
 	rc.mesh.vb = &this->t->vbt;// vb;
-	//else
-	//	rc.mesh.vb = &this->t->vb;
-	//make it select right vb for shader used
-	//	if it doesnt have normal map
-	//		dont use vbt
+	rc.material_instance.color = this->color;
+
 	for (int i = 0; i < t->num_meshes; i++)
 	{
 		Mesh* mesh = &t->meshes[i];
@@ -466,7 +462,7 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		queue->push_back(rc);
 	}*/
 	//this->DebugRender(render);
-};
+}
 
 void ObjModel::DebugRender(CRenderer* render)
 {

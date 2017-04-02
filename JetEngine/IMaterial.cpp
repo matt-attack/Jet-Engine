@@ -5,6 +5,8 @@
 #include "Graphics/Renderable.h"
 #include "ResourceManager.h"
 
+#include <fstream>
+
 std::map<std::string, IMaterial*> materials;
 
 const int num_builder_options = 5;
@@ -13,7 +15,9 @@ class ShaderBuilder : public Resource
 	std::string path;
 
 public:
-	CShader* shaders[1 << num_builder_options];
+
+	std::map<int, CShader*[1 << num_builder_options]> shaders;
+	//CShader* shaders[1 << num_builder_options];
 
 private:
 	std::map<std::string, std::string> defines;//set whenever you call LoadShader with those defines
@@ -21,8 +25,7 @@ public:
 
 	ShaderBuilder()
 	{
-		for (int i = 0; i < (1 << num_builder_options); i++)
-			shaders[i] = 0;
+		
 	}
 
 	~ShaderBuilder()
@@ -33,11 +36,15 @@ public:
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)
 	{
-		if (this->path.length())//shaders[0])
+		if (this->path.length())
 		{
-			for (int i = 0; i < (1 << num_builder_options); i++)
-				if (this->shaders[i])
-					this->LoadShader(i, this->defines);
+			for (auto& shader : this->shaders)
+				for (int i = 0; i < (1 << num_builder_options); i++)
+					if (shader.second[i])
+					{
+						delete shader.second[i];
+						shader.second[i] = 0;// this->LoadShader(i, this->defines, this->surface_shader);
+					}
 
 			return;
 		}
@@ -46,12 +53,13 @@ public:
 
 	void InvalidateCache()
 	{
-		for (int i = 0; i < (1 << num_builder_options); i++)
-			if (this->shaders[i])
-			{
-				delete this->shaders[i];
-				this->shaders[i] = 0;
- 			}
+		for (auto& shader : this->shaders)
+			for (int i = 0; i < (1 << num_builder_options); i++)
+				if (shader.second[i])
+				{
+					delete shader.second[i];
+					shader.second[i] = 0;
+				}
 	}
 
 	static ShaderBuilder* load_as_resource(const std::string &path, ShaderBuilder* res)
@@ -67,21 +75,24 @@ public:
 		return d;
 	}
 
-	CShader* GetShader(int id, std::map<std::string, std::string>& defines)
+	CShader* GetShader(int id, std::map<std::string, std::string>& defines, std::string& surface_shader)
 	{
-		if (this->shaders[id])
-			return this->shaders[id];
+		//get a key
+		int key = surface_shader.length();
+		auto res = shaders.find(key);
+		if (res != shaders.end() && res->second[id])
+			return res->second[id];
 
-		this->LoadShader(id, defines);
+		this->shaders[key][id] = this->LoadShader(id, defines, surface_shader);
 
-		return this->shaders[id];
+		return this->shaders[key][id];
 	}
 
-	void LoadShader(int id, std::map<std::string, std::string>& defines)
+private:
+	std::string surface_shader;
+	CShader* LoadShader(int id, std::map<std::string, std::string>& defines, std::string& surface_shader)
 	{
-		if (this->shaders[id] == 0)
-			this->shaders[id] = new CShader;
-
+		this->surface_shader = surface_shader;
 		this->defines = defines;
 
 		//add defines to definitions list
@@ -112,19 +123,48 @@ public:
 			strcpy(definitions[size++], ii.second.c_str());
 		}
 
-		auto shader = CShader(path.c_str(), "vs_main", path.c_str(), "ps_main", list, definitions, size);
+		//dont do this, need to new it or destruct then placement new
+		//load in the shader from the file
+		bool add_dummy = this->surface_shader.find("SurfaceShader") == -1;
+		const char empty_surface[] = "void SurfaceShader(inout VS_OUTPUT In) {}";
+		std::ifstream t;
+		int length;
+		t.open(path, std::ios::binary | std::ios::ate);      // open input file
+		t.seekg(0, std::ios::end);    // go to the end
+		length = t.tellg();           // report location (this is the length)
+		t.seekg(0, std::ios::beg);    // go back to the beginning
+		int surface_len = !add_dummy ? this->surface_shader.length() : this->surface_shader.length() + sizeof(empty_surface);
+		char* buffer = new char[length + 1 + surface_len];    // allocate memory for a buffer of appropriate dimension
+		t.read(buffer, length);       // read the whole file into the buffer
+		t.close();                    // close file handle
+		buffer[length] = 0;
+
+		//need to append the surface shader if we have one and use it
+		if (this->surface_shader.length())
+			strcpy(&buffer[length], this->surface_shader.c_str());
+		
+		if (add_dummy)
+		{
+			//add dummy surface shader
+			strcpy(&buffer[length], empty_surface);
+		}
+		
+		//need to fix the includes
+		auto shader = new CShader(buffer, path, "vs_main", "ps_main", list, definitions, size);
+
+		delete[] buffer;
 
 		//free the defines
 		for (int i = size; i > size - this->defines.size(); i--)
 		{
-			delete[] list[i-1];
-			delete[] definitions[i-1];
+			delete[] list[i - 1];
+			delete[] definitions[i - 1];
 		}
 
-		if (shader.vshader == 0 || shader.pshader == 0)
-			return;//epic fail
+		if (shader->vshader == 0 || shader->pshader == 0)
+			return 0;//epic fail
 
-		*this->shaders[id] = shader;
+		return shader;
 	}
 };
 
@@ -232,6 +272,7 @@ void IMaterial::Update(CRenderer* renderer)
 	{
 		auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
 
+		//need shaderbuilder to hold a bunch of shaders, one for each surface shader
 		//these are static material values
 		int id = (this->alphatest ? ALPHA_TEST : 0) |
 			(this->normal_map ? NORMAL_MAP : 0) |
@@ -241,11 +282,12 @@ void IMaterial::Update(CRenderer* renderer)
 		if (r._shadows)
 			id |= SHADOWS;
 
+		//supply the surface shader here and have it pick from the right list based on that
 		//these are shaders that will be used depending on lighting and scene configurations
-		this->shader_ptr = shaders->GetShader(id, this->defines);
-		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS, this->defines);
-		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING), this->defines);
-		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING), this->defines);
+		this->shader_ptr = shaders->GetShader(id, this->defines, this->surface_shader);
+		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS, this->defines, this->surface_shader);
+		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING), this->defines, this->surface_shader);
+		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING), this->defines, this->surface_shader);
 
 		shaders->Release();
 	}
@@ -290,6 +332,38 @@ bool read_bool(const std::string& in)
 		return false;
 	return true;
 }
+#include <direct.h>
+std::string get_working_path()
+{
+	char temp[512];
+	return (getcwd(temp, 512) ? std::string(temp) : std::string(""));
+}
+
+#include <Windows.h>
+
+std::vector<std::string> get_all_files_names_within_folder(std::string folder)
+{
+	std::vector<std::string> names;
+	std::string search_path = folder + "*.*";
+	WIN32_FIND_DATA fd;
+	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+			// read all (real) files in current folder
+			// , delete '!' read other 2 default folder . and ..
+			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+				names.push_back(fd.cFileName);
+			}
+		} while (::FindNextFile(hFind, &fd));
+		::FindClose(hFind);
+	}
+	return names;
+}
+//new idea
+//todo: shader stage passes
+//can have a stage for each kind of shader stuff, so can make it easy to add things like fog to all shaders
+//also can be used for shadows and lighting
+#include <iostream>
 IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)//Load(const char* name)
 {
 	//ok, lets get auto material reloading
@@ -298,31 +372,50 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 	auto mat = res;// new IMaterial((char*)name);
 
 	std::string name = path;
-	int offset = name.find_last_of('/');
-	name = name.substr(offset, name.length()-offset);
+	int offset = name.find_last_of('/') +1;
+	if (offset == 0)
+		offset = name.find_last_of('\\')+1;
+	auto pathh = get_working_path();
+	auto filess = get_all_files_names_within_folder("Content/");
+	name = name.substr(offset, name.length() - offset);
 
-	new (mat) IMaterial(name.c_str());
+	//need to preserve children
+	auto old = mat->children;
+
+	new (mat)IMaterial(name.c_str());
+
+	//restore children
+
+	mat->children = old;
+
 	//setup defaults here
 	mat->alpha = false;
 	mat->alphatest = false;
 	mat->filter = FilterMode::Linear;
 	mat->depthhack = false;
 	mat->cullmode = CULL_CW;
-	
-	mat->shader_name = "Shaders/ubershader.txt";// "Shaders/generic.txt";
+
+	mat->shader_name = "Shaders/ubershader.txt";
 	mat->shader_builder = true;
 	mat->skinned = true;//this doesnt always need to be true
 
 	std::string realname = "Content/";
 	realname += name;
-	realname += ".mat";
-	auto file = std::ifstream(realname);
+	//realname += ".mat";
+	//FILE* f = fopen(realname.c_str(), "rb");
+	auto file = std::ifstream(realname, std::ios::binary /*| std::ios::ate*/);
+	//char a = file.get();
 	std::string line;
+	//std::cout << "Error code: " << strerror(errno);
 	while (std::getline(file, line))
 	{
 		std::istringstream iss(line);
 		std::string a, b;
-		if (!(iss >> a >> b)) { break; } // error
+		if (!(iss >> a/* >> b*/)) {
+			break;
+		} // error
+
+		iss >> b;
 
 		// process pair (a,b)
 		if (a == "normal:")
@@ -333,12 +426,62 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 			mat->alpha = read_bool(b);
 		else if (a == "alpha_test:")
 			mat->alphatest = read_bool(b);
+		else if (a == "include:")
+		{
+			mat->base_material = b;
+			//ok, todo lets include this material information
+
+			auto base_mat = resources.get_unsafe<IMaterial>(b);
+			if (std::find(base_mat->children.begin(), base_mat->children.end(), mat) == base_mat->children.end())
+				base_mat->children.push_back(mat);
+
+			//ok, now inherit information from it
+			mat->surface_shader = base_mat->surface_shader;
+			mat->diffuse = base_mat->diffuse;
+			mat->alpha = base_mat->alpha;
+			mat->alphatest = base_mat->alphatest;
+			mat->normal = base_mat->normal;
+		}
 		else if (a == "cull:")
+		{
 			if (!read_bool(b))
 				mat->cullmode = CULL_NONE;
+		}
+		else if (a == "surface:")
+		{
+			int start = file.tellg();
+			file.seekg(0, file.end);
+			int length = file.tellg();
+			length -= start;
+			file.seekg(start, file.beg);
+
+			if (length == 0)
+				continue;
+
+			char * buffer = new char[length + 1];
+
+			// read data as a block:
+			file.read(buffer, length);
+			buffer[length] = 0;
+			//parse in the rest of the lines as the surface shader
+
+			res->surface_shader = buffer;
+			
+			//dooo itt
+			delete[] buffer;
+			//surface shader is only for shaderbuilder stuff
+		}
 		//else if (a == "cast_shadows:")
 		//	mat->
 	}
+
+	//force update of children
+	for (int i = 0; i < res->children.size(); i++)
+	{
+		IMaterial::load_as_resource("Content/"+res->children[i]->name, res->children[i]);
+	}
+
+	//figure out how to put the surface shader into the material
 	return mat;
 }
 
@@ -350,5 +493,5 @@ void IMaterial::SetDefine(const std::string& name, const std::string& value)
 	auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
 
 	//apply the changes
-	shaders->InvalidateCache();	
+	shaders->InvalidateCache();
 }

@@ -578,7 +578,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				IMaterial* mat = 0;
 				if (n.length() > 4 && n[n.length() - 4] != '.')//n.substr(n.length() - 4, 4) == ".mat")
 				{
-					mat = resources.get_unsafe<IMaterial>(material);
+					mat = resources.get_unsafe<IMaterial>(n+".mat");
 				}
 				else//legacy method
 				{

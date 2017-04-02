@@ -47,10 +47,10 @@ public:
 	//void SetLookAt(Vec3 pos);
 
 	//frustum tests
-	bool SphereInFrustum(Vec3* pPosition, float radius);
-	bool BoxInFrustum(const AABB &b);
-	bool BoxInFrustumSides(const AABB &b);
-	bool BoxInFrustumSidesAndFar(const AABB &b);
+	bool SphereInFrustum(Vec3* pPosition, float radius) const;
+	bool BoxInFrustum(const AABB &b) const;
+	bool BoxInFrustumSides(const AABB &b) const;
+	bool BoxInFrustumSidesAndFar(const AABB &b) const;
 
 	//builds the frustum
 	void BuildViewFrustum();

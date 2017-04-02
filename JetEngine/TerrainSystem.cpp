@@ -71,6 +71,7 @@ class QuadTreeNode
 	friend class HeightmapTerrainSystem;
 	TerrainPatch* patch;
 	QuadTreeNode* parent;
+	HeightmapTerrainSystem* root;
 public:
 	int x, y;
 	int size;
@@ -82,8 +83,9 @@ public:
 	QuadTreeNode* southwest;
 	QuadTreeNode* southeast;
 
-	QuadTreeNode(QuadTreeNode* parent, int x, int y, int size)
+	QuadTreeNode(HeightmapTerrainSystem* root, QuadTreeNode* parent, int x, int y, int size)
 	{
+		this->root = root;
 		this->parent = parent;
 		northeast = 0;
 		northwest = 0;
@@ -110,10 +112,10 @@ public:
 
 	void Subdivide()
 	{
-		northwest = new QuadTreeNode(this, x, y, size / 2);
-		northeast = new QuadTreeNode(this, x + size*TerrainScale / 2, y, size / 2);
-		southwest = new QuadTreeNode(this, x, y + size*TerrainScale / 2, size / 2);
-		southeast = new QuadTreeNode(this, x + size*TerrainScale / 2, y + size*TerrainScale / 2, size / 2);
+		northwest = new QuadTreeNode(root, this, x, y, size / 2);
+		northeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y, size / 2);
+		southwest = new QuadTreeNode(root, this, x, y + size*TerrainScale / 2, size / 2);
+		southeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y + size*TerrainScale / 2, size / 2);
 	}
 
 	void RegenVertices(float* data)
@@ -291,7 +293,7 @@ public:
 			//if (this->patch->level == 8)
 			//return;
 			//render myself
-			this->patch->Render(renderer, 0, queue);
+			this->patch->Render(renderer, 0, queue, root);
 		}
 	}
 
@@ -464,9 +466,9 @@ class QuadTree
 	QuadTreeNode* root;
 
 public:
-	QuadTree(int x, int y, int size)
+	QuadTree(int x, int y, int size, HeightmapTerrainSystem* _root)
 	{
-		root = new QuadTreeNode(0, x, y, size);
+		root = new QuadTreeNode(_root, 0, x, y, size);
 		root->northeast = 0;
 		root->northwest = 0;
 		root->southeast = 0;
@@ -496,6 +498,8 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 {
 	this->castsShadows = false;
 
+	this->matrix = Matrix4::Identity();
+
 	grass = 0;
 	hmapt = 0;
 	hmapv = 0;
@@ -517,7 +521,7 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 	this->grass->Release();
 	this->rock->Release();
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		for (int x = 0; x < world_size / patch_size; x++)
 		{
@@ -881,14 +885,14 @@ void HeightmapTerrainSystem::SetupChunks()
 	//world_size = 1024 * 2;
 
 	//for number of players
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		grid[i] = new QuadTree*[(world_size / patch_size)*(world_size / patch_size)];
 		for (int x = 0; x < world_size / patch_size; x++)
 		{
 			for (int y = 0; y < world_size / patch_size; y++)
 			{
-				grid[i][x*(world_size / patch_size) + y] = new QuadTree(x*patch_size*TerrainScale, y*patch_size*TerrainScale, 512);
+				grid[i][x*(world_size / patch_size) + y] = new QuadTree(x*patch_size*TerrainScale, y*patch_size*TerrainScale, 512, this);
 			}
 		}
 	}
@@ -1127,7 +1131,7 @@ void HeightmapTerrainSystem::SetHeight(int x, int y, float z)
 
 void HeightmapTerrainSystem::UpdateHeights()
 {
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		//grid[i] = new QuadTree*[(world_size / patch_size)*(world_size / patch_size)];
 		for (int x = 0; x < world_size / patch_size; x++)

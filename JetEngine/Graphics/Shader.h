@@ -71,9 +71,9 @@ public:
 
 	void BindIL(VertexDeclaration* il);
 
-	ID3D10Blob* CompileVS(const char* file, const char* function, void* macro);
-	ID3D10Blob* CompilePS(const char* file, const char* function, void* macro);
-	ID3D10Blob* CompileGS(const char* file, const char* function, void* macro);
+	ID3D10Blob* CompileVS(const char* filename, const char* function, void* macro, const char* str = 0);
+	ID3D10Blob* CompilePS(const char* filename, const char* function, void* macro, const char* str = 0);
+	ID3D10Blob* CompileGS(const char* filename, const char* function, void* macro, const char* str = 0);
 
 public:
 	UniformBuffers buffers;
@@ -82,7 +82,8 @@ public:
 	CShader() {};
 	CShader(const char* vs, const char* ps);
 	CShader(const char* vloc, const char* vfunc, const char* ploc, const char* pfunc, char** macros = 0, char** macrodefinitions = 0, int nummacros = 0, const char* gloc = 0, const char* gfunc = 0);
-	
+	CShader(const char* source, std::string filename, const char* vfunc, const char* pfunc, char** macros = 0, char** macrodefinitions = 0, int nummacros = 0);
+
 	~CShader()
 	{
 #ifndef USEOPENGL

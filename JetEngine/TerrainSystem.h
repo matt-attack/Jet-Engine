@@ -21,13 +21,13 @@ public:
 
 class TerrainMaterial;
 class QuadTree;
-class HeightmapTerrainSystem : public ITerrainSystem, Renderable
+class HeightmapTerrainSystem : public ITerrainSystem, public Renderable
 {
 	int temp_player;//used for when waiting to be rendered to
 
 	int world_size;//heightmap size
 	int patch_size;//patchsize
-	QuadTree** grid[2];
+	QuadTree** grid[4];
 	ID3D11SamplerState* sampler, *textureSampler;
 
 	ID3D11Texture2D* hmapt;

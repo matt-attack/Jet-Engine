@@ -681,8 +681,9 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam)
 	r->context->DrawIndexed(ibuffer.size / 2, 0, 0);
 }
 
+#include "TerrainSystem.h"
 extern IMaterial* terrain_mat;
-void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>* queue)
+void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>* queue, HeightmapTerrainSystem* root)
 {
 	RenderCommand rc;
 	rc.mesh.ib = &this->ibuffer;
@@ -692,7 +693,7 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>
 	rc.mesh.primitives = ibuffer.size / 6;
 	rc.material = terrain_mat;
 	rc.alpha = false;
-	rc.source = 0;
+	rc.source = static_cast<Renderable*>(root);
 	rc.material_instance.extra = 0;
 	rc.position = Vec3(this->wx + PatchSize / 2, (this->maxy + this->miny) / 2, this->wy + PatchSize / 2);
 	rc.radius = max((this->maxy - this->miny)/2, PatchSize);

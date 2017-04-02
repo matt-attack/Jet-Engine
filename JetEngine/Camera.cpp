@@ -138,7 +138,7 @@ void CCamera::DoMatrixNoRot()
 	BuildViewFrustum();
 }
 
-bool CCamera::SphereInFrustum(Vec3* pPosition, float radius)
+bool CCamera::SphereInFrustum(Vec3* pPosition, float radius) const
 {
 	for (int i = 0; i < 6; i++)
 	{
@@ -152,7 +152,7 @@ bool CCamera::SphereInFrustum(Vec3* pPosition, float radius)
 };
 
 //dist normal.dotProduct(point) + distance(of plane)
-bool CCamera::BoxInFrustum(const AABB &b)
+bool CCamera::BoxInFrustum(const AABB &b) const
 {
 	Vec3 P;
 	Vec3 Q;
@@ -225,7 +225,7 @@ AABB CCamera::GetFrustumAABB()
 	return bb;
 }
 
-bool CCamera::BoxInFrustumSidesAndFar(const AABB &b)
+bool CCamera::BoxInFrustumSidesAndFar(const AABB &b) const
 {
 	Vec3 P;
 	Vec3 Q;
@@ -272,7 +272,7 @@ bool CCamera::BoxInFrustumSidesAndFar(const AABB &b)
 	return true;
 }
 
-bool CCamera::BoxInFrustumSides(const AABB &b)
+bool CCamera::BoxInFrustumSides(const AABB &b) const
 {
 	Vec3 P;
 	Vec3 Q;

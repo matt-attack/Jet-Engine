@@ -48,6 +48,11 @@ public:
 	std::string normal;
 	std::string shader_name;
 
+	std::string surface_shader;//if we want a custom one
+
+	std::string base_material;//what we include from
+	std::vector<IMaterial*> children;//list of materials that include from us
+
 private:
 	//custom defines/settings for shaders
 	//when this changes need to invalidate shaders and regenerate
@@ -88,7 +93,10 @@ public:
 	}
 
 	//resource stuff
-	virtual void Reload(ResourceManager* mgr, const std::string& filename) {};
+	virtual void Reload(ResourceManager* mgr, const std::string& filename) 
+	{
+		this->load_as_resource(filename, this);
+	};
 	static IMaterial* load_as_resource(const std::string &path, IMaterial* res);
 };
 

@@ -223,7 +223,7 @@ public:
 		this->d /= l;
 	}
 
-	float Dot(Vec3 pos)
+	float Dot(Vec3 pos) const
 	{
 		return this->a*(pos.x) + this->b*(pos.y) + this->c*(pos.z) + this->d;
 	}
