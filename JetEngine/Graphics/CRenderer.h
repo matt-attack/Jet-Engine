@@ -335,8 +335,8 @@ public:
 
 	void DrawFullScreenQuad();
 	void DrawRect(Rect* rct, COLOR color, bool setshader = true);
-	void DrawRectUV(Rect* rct, float minu, float maxu, float minv, float maxv, COLOR vertexColor);
-	void DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom_left, Vec2 bottom_right, COLOR color);
+	void DrawRectUV(Rect* rct, float minu, float maxu, float minv, float maxv, COLOR vertexColor, bool set_shader = true);
+	void DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom_left, Vec2 bottom_right, COLOR color, bool set_shader = true);
 
 	void ClipToScreenPosition(float &x, float &y);
 	void ScreenToClipPosition(float &x, float &y);

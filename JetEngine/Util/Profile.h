@@ -17,6 +17,9 @@ struct Prof
 	float frametotal;
 	float averageframetotal;
 
+	INT64 start;
+	INT64 end;
+
 	int callLevel;
 
 	Prof* parent;
@@ -26,7 +29,16 @@ struct Prof
 	std::string name;
 };
 
-extern std::map<std::string,Prof*> Profiles;
+struct ProfileKey
+{
+	char* name;
+	long addr;
+	bool operator<(const ProfileKey& other) const
+	{
+		return name == other.name ? addr < other.addr : name < other.name;
+	}
+};
+extern std::map<ProfileKey,Prof*> Profiles;
 extern std::vector<Prof*> ProfileList;
 
 #ifndef _WIN32
@@ -38,10 +50,12 @@ class StackProfile
 	int level;
 public:
 	INT64 start;
+	
 	char* name;
+	void* addr;
 	
 	StackProfile() {};
-	StackProfile(char* name);
+	StackProfile(char* name, void* addr);
 
 	~StackProfile();
 };
@@ -97,7 +111,8 @@ public:
 void ProfileStartFrame();//recalculates per frame averages, need to mess with this to handle server stuff
 void ProfilesDraw();
 void ProfileExit();//saves profile information to file
-#define PROFILE(name) StackProfile stackPrOf(name)
+#define PROFILE(name) StackProfile stackPrOf(name, _ReturnAddress())
+#define RPROFILE(name) StackProfile stackPrOf(name, 0)
 
 #define GPUPROFILE(name) StackProfileGPU stackPrOf2(name)
 #define GPUPROFILE2(name) StackProfileGPU stackPrOf22(name)

@@ -31,8 +31,8 @@ private:
 	bool needs_tangent = false;
 public:
 	FilterMode filter;
-	Texture texture;
-	Texture normal_map;
+	Texture texture = 0;
+	Texture normal_map = 0;
 
 	CullMode cullmode;
 

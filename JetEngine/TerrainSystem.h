@@ -25,6 +25,11 @@ class HeightmapTerrainSystem : public ITerrainSystem, public Renderable
 {
 	int temp_player;//used for when waiting to be rendered to
 
+public:
+	CRenderTexture* indirection_texture;
+	CRenderTexture* tile_texture;
+private:
+
 	int world_size;//heightmap size
 	int patch_size;//patchsize
 	QuadTree** grid[4];
@@ -52,7 +57,8 @@ public:
 	HeightmapTerrainSystem();
 	~HeightmapTerrainSystem();
 
-	CTexture* grass, *rock;
+	CTexture* grass, *rock, *snow;
+	CTexture* road;
 	CTexture* nmap;
 
 	void Load(float terrain_scale);
@@ -81,6 +87,17 @@ public:
 	float GetHeight(float x, float y);
 	float GetHeightAndNormal(float x, float y, Vec3& normal);
 	float GetHeightAndVectors(float x, float y, Vec3& normal, Vec3& xtangent, Vec3& ytangent);
+
+	//atlas management stuff
+	std::vector<int> free_tiles;//absolutely free ones
+	std::vector<int> unused_tiles;//ones that we rendered to but can go back to so only use these if we need a better one
+
+	//this renders the tile in as well as fills in the indirection texture when we are done
+	int RenderTile(int x, int y, int scale, int id = -1);//returns the tile number
+
+	void MarkTileAsUnused(int num);
+
+	void MarkTileFreed(int num);
 
 private:
 	void SetupChunks();

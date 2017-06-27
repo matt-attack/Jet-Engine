@@ -147,6 +147,9 @@ ID3D11ShaderResourceView* CRenderTexture::GetColorResourceView()
 		return this->texture;
 	}
 
+	if (this->color_texture == 0)
+		throw 7;
+
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;

@@ -185,7 +185,7 @@ void FoliageRenderer::AddModel(const char* name)
 
 void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 {
-	PROFILE("particle render");
+	PROFILE("foliage render");
 
 	ID3D11DeviceContext* dc = renderer->context;
 
@@ -406,6 +406,7 @@ void FoliageRenderer::GenerateImpostors()
 	renderer->SetRenderTarget(0, &oldrt);
 	renderer->SetViewport(&old);
 
+	//todo add generate mips flag
 	//todo: make this work
-	renderer->context->GenerateMips(this->texture->texture);
+	//renderer->context->GenerateMips(this->texture->texture);
 }

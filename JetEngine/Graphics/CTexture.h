@@ -12,6 +12,7 @@ class CTexture: public Resource
 	friend class CRenderer;
 
 public:
+	int check = 0x55555555;
 	ID3D11ShaderResourceView* texture;
 	ID3D11Texture2D* data;
 

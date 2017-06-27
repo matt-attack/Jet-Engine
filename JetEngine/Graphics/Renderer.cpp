@@ -323,7 +323,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 	//lets do a little hack since we dont need the pixel shaders
 	this->shader_s->pshader = 0;
 	this->shader_ss->pshader = 0;
-
+	//ok, this is difficult to do, need to extract actual renderering from submitting the commands
 	CShader* shader;
 	Matrix4 shadowmat = viewProj.Transpose();
 	for (auto obj : *objs)
@@ -511,7 +511,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 
 void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's parent is the same as the cameras, just render nicely
 {
-	PROFILE("RendererProcess");
+	RPROFILE("RendererProcess");
 	GPUPROFILEGROUP("Renderer::Render");
 
 	//execute pre-frame commands (from other threads and such
@@ -563,6 +563,8 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	Vec3 worldcampos = globalview.GetTranslation();
 
+	this->current_matrix = 0;
+
 	/* 1. CULL AND SUBMIT STAGE*/
 	for (unsigned int i = 0; i < this->renderables.size(); i++)//loop through all renderables to calculate sorting factors
 	{
@@ -582,7 +584,16 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			}
 
 			//push children renderables to list and process
+			int old_size = renderqueue.size();
 			r->Render(cam, &renderqueue);
+
+			//update matrices
+			/*for (int i = old_size; i < renderqueue.size(); i++)
+			{
+				auto ptr = &this->matrix_block[this->current_matrix++];
+				renderqueue[i].transform = ptr;
+				*ptr = renderqueue[i].source->matrix;
+			}*/
 
 			//update predraw hooks
 			if (r->updated == false)
@@ -601,6 +612,10 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	//all transform heirachys so add dirty flags
 	//ok, to draw shadows, we need to make sure we are in right area, then apply world*shadowvp as the world*view*projection matrix
 	Matrix4 shadowMapViewProjs[SHADOW_MAP_MAX_CASCADE_COUNT];
+
+	//clear resources
+	ID3D11ShaderResourceView* stuff[4] = { 0 };
+	renderer->context->PSSetShaderResources(1, shadowSplits, stuff);
 
 	//could try and only draw this every other frame on low end computers
 	this->RenderShadowMaps(shadowMapViewProjs, cam);
@@ -714,6 +729,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 {
 	//clean this up ok
 	//todo, only do this if the rc source has changed
+	auto matrix = &rc->source->matrix;// rc->transform;
 	if (shader->buffers.matrices.buffer)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
@@ -726,10 +742,10 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		data->world = rc->source->matrix.Transpose();
+		data->world = matrix->Transpose();
 		data->view = renderer->view.Transpose();
 		data->projection = renderer->projection.Transpose();
-		auto wVP = rc->source->matrix*renderer->view*renderer->projection;
+		auto wVP = (*matrix)*renderer->view*renderer->projection;
 		wVP.MakeTranspose();
 		data->wvp = wVP;
 
@@ -749,7 +765,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		auto wVP = rc->source->matrix*renderer->view*renderer->projection;
+		auto wVP = (*matrix)*renderer->view*renderer->projection;
 		wVP.MakeTranspose();
 		data->wvp = wVP;
 		renderer->context->Unmap(shader->buffers.wvp.buffer, 0);

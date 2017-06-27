@@ -66,6 +66,7 @@ struct RenderCommand
 	IMaterial* material;
 	MaterialInstanceBlock material_instance;
 	RMesh mesh;
+	Matrix4* transform;
 	Renderable* source;//used to get positioning data
 	bool alpha;//use this for flags
 	float dist;//for sorting

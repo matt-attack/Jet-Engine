@@ -31,8 +31,10 @@ class CShader;
 class Renderer
 {
 	//have several lists of renderables
+public:
 	std::vector<Renderable*> renderables;
-
+private:
+	
 	CShader *shader_s, *shader_ss, *shader_sa;
 	Vec3 ambient_bottom, ambient_range;
 
@@ -62,6 +64,11 @@ private:
 	std::queue<std::function<void()>> todo;
 
 public:
+	int current_matrix;
+	Matrix4 matrix_block[2000];//todo: allocate these on heap
+	std::queue<std::function<void(int)>> render_tasks;
+
+public:
 	int rcount;
 	int rdrawn;
 
@@ -89,6 +96,14 @@ public:
 	}
 
 	Renderer();
+
+	std::mutex mutex;
+	void Wait()
+	{
+		//wait for the mutex to be unused
+		mutex.lock();
+		mutex.unlock();
+	}
 
 	void Init(CRenderer* renderer);
 

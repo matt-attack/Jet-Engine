@@ -6,10 +6,10 @@ class CRenderTexture: public CTexture
 public:
 	bool created;
 	friend class CRenderer;
-	ID3D11RenderTargetView* color;
-	ID3D11DepthStencilView* depth;
-	ID3D11Texture2D* color_texture;
-	ID3D11Texture2D* depth_texture;
+	ID3D11RenderTargetView* color = 0;
+	ID3D11DepthStencilView* depth = 0;
+	ID3D11Texture2D* color_texture = 0;
+	ID3D11Texture2D* depth_texture = 0;
 
 	ID3D11ShaderResourceView* depth_rv = 0;
 

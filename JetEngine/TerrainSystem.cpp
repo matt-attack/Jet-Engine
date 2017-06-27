@@ -25,6 +25,7 @@ class TerrainMaterial : public IMaterial
 public:
 	ID3D11SamplerState* sampler, *textureSampler;
 	CTexture *nmap, *grass, *rock;
+	CTexture *indirection, *tiles;
 	TerrainMaterial() : IMaterial("Terrain")
 	{
 
@@ -40,12 +41,22 @@ public:
 		renderer->context->PSSetSamplers(0, 1, &this->sampler);
 		renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
 		renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
-		renderer->context->PSSetShaderResources(6, 1, &grass->texture);
-		renderer->context->PSSetShaderResources(7, 1, &rock->texture);
+		//renderer->context->PSSetShaderResources(6, 1, &grass->texture);
+		//renderer->context->PSSetShaderResources(7, 1, &rock->texture);
 
-		renderer->SetPrimitiveType(PT_TRIANGLELIST);
+		//renderer->SetPrimitiveType(PT_TRIANGLELIST);
+		renderer->SetCullmode(CULL_CW);
 
 		renderer->EnableAlphaBlending(false);
+		//renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
+		//renderer->context->PSSetSamplers(0, 1, &this->sampler);
+
+		renderer->SetFilter(5, FilterMode::Point);
+
+		//renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
+
+		renderer->context->PSSetShaderResources(6, 1, &this->indirection->texture);
+		renderer->context->PSSetShaderResources(7, 1, &this->tiles->texture);
 	}
 };
 
@@ -75,6 +86,8 @@ class QuadTreeNode
 public:
 	int x, y;
 	int size;
+
+	int tile_id = -1;
 
 	AABB aabb;
 
@@ -108,10 +121,16 @@ public:
 		delete this->northwest;
 		delete this->southeast;
 		delete this->southwest;
+
+		if (tile_id >= 0)
+			this->root->MarkTileFreed(this->tile_id);
 	}
 
 	void Subdivide()
 	{
+		//512 is highest level which is 1/4th the size of the border
+		//512 = 
+		//virtual texture is 64 tiles across
 		northwest = new QuadTreeNode(root, this, x, y, size / 2);
 		northeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y, size / 2);
 		southwest = new QuadTreeNode(root, this, x, y + size*TerrainScale / 2, size / 2);
@@ -219,6 +238,7 @@ public:
 				this->aabb.min.y = this->patch->miny;
 				this->aabb.max.y = this->patch->maxy;
 
+
 				//this is bad, but oh well
 				int lod = this->GetLOD(cam);
 				/*bool xi = false, xd = false, yi = false, yd = false;
@@ -285,11 +305,14 @@ public:
 				this->aabb.min.y = this->patch->miny;
 				this->aabb.max.y = this->patch->maxy;
 
+				this->tile_id = this->root->RenderTile(x / (32 * TerrainScale), y / (32 * TerrainScale), size / 32);
+
 				//this is bad, but oh well
 				int lod = this->GetLOD(cam);
 
 				this->patch->GenerateIndices(lod, true, true, true, true);
 			}
+
 			//if (this->patch->level == 8)
 			//return;
 			//render myself
@@ -344,6 +367,10 @@ public:
 				delete this->northwest;
 				delete this->southwest;
 				delete this->southeast;
+
+				if (this->tile_id >= 0)
+					this->root->RenderTile(x / (32 * TerrainScale), y / (32 * TerrainScale), size*TerrainScale / (32 * TerrainScale), this->tile_id);
+
 
 				this->northeast = this->northwest = this->southeast = this->southwest = 0;
 				state = 0;
@@ -505,7 +532,7 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 	hmapv = 0;
 	need_to_reload_normals = false;
 	patch_size = 512;
-	
+
 
 	this->heights = 0;
 }
@@ -552,7 +579,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, std::vector<RenderCommand>* qu
 void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 {
 	PROFILE("Terrian Render");
-	GPUPROFILE("Terrain Render");
+	//GPUPROFILE("Terrain Render");
 
 	this->temp_player = player;
 
@@ -561,6 +588,134 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 	{
 		done = true;
 		this->GenerateNormals();
+
+		Viewport oldvp;
+		renderer->GetViewport(&oldvp);
+		auto ort = renderer->GetRenderTarget(0);
+
+
+		//draw into the tile texture with tile numbers (and colors
+		renderer->SetRenderTarget(0, this->tile_texture);
+		Viewport vp;
+
+		renderer->SetPixelTexture(0, 0);
+
+		renderer->EnableAlphaBlending(false);
+
+		const int tile_size = 256;
+		const int map_w = 4096;
+		vp.Height = vp.Width = 4096;
+		vp.X = vp.Y = 0;
+		vp.MinZ = 0;
+		vp.MaxZ = 1;
+		renderer->SetViewport(&vp);
+		srand(5);
+		//drawrect needs to use the viewport size, not the backbuffer!
+		this->tile_texture->Clear(1, 1, 1, 1);
+		for (int x = 0; x < map_w / tile_size; x++)
+		{
+			for (int y = 0; y < map_w / tile_size; y++)
+			{
+				Rect r;
+				r.bottom = tile_size * x;
+				r.top = tile_size * (x + 1);
+				r.right = tile_size * y;
+				r.left = tile_size * (y + 1);
+				renderer->DrawRect(&r, COLOR_ARGB(255, rand() % 256, rand() % 256, rand() % 256));
+				std::string num = std::to_string(x * 16 + y);
+				renderer->DrawText(r.right + 50, r.bottom + 50, num.c_str(), COLOR_ARGB(255, 0, 0, 0));
+			}
+		}
+
+		//setup the free tile list
+		for (int i = 0; i < 256; i++)
+			this->free_tiles.push_back(i);
+
+		//now draw into indirection texture with random indices
+		renderer->SetRenderTarget(0, this->indirection_texture);
+		vp.Height = vp.Width = 2048 / PatchSize;
+		vp.X = vp.Y = 0;
+		vp.MinZ = 0;
+		vp.MaxZ = 1;
+		renderer->SetViewport(&vp);
+		this->indirection_texture->Clear(1, 0, 1, 1);
+		for (int x = 0; x < 2048 / PatchSize; x++)
+		{
+			for (int y = 0; y < 2048 / PatchSize; y++)
+			{
+				Rect r;
+				r.bottom = x;
+				r.top = x + 1;
+				r.right = y;
+				r.left = y + 1;
+				//use r and g for offset, a for scale
+				int tileno = rand() % 256;
+				int offx = (tileno / 16);// *(16.0f / 4096.0f);
+				int offy = (tileno % 16);// *(16.0f / 4096.0f);
+				int scale = 1;
+				renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
+			}
+		}
+
+		/*{
+			int x = 4;
+			int y = 4;
+			Rect r;
+			r.bottom = x;
+			r.top = x + 2;
+			r.right = y;
+			r.left = y + 2;
+			//use r and g for offset, a for scale
+			int tileno = rand() % 256;
+			int offx = (tileno / 16);// *(16.0f / 4096.0f);
+			int offy = (tileno % 16);// *(16.0f / 4096.0f);
+			int scale = 2;
+			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
+			}
+			{
+			int x = 0;
+			int y = 0;
+			Rect r;
+			r.bottom = x;
+			r.top = x + 4;
+			r.right = y;
+			r.left = y + 4;
+			//use r and g for offset, a for scale
+			int tileno = rand() % 256;
+			int offx = (tileno / 16);// *(16.0f / 4096.0f);
+			int offy = (tileno % 16);// *(16.0f / 4096.0f);
+			int scale = 4;
+			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
+			}*/
+
+		/*{
+			int x = 0;
+			int y = 0;
+			Rect r;
+			r.bottom = x;
+			r.top = x + 64;
+			r.right = y;
+			r.left = y + 64;
+			//use r and g for offset, a for scale
+			int tileno = rand() % 256;
+			int offx = (tileno / 16);// *(16.0f / 4096.0f);
+			int offy = (tileno % 16);// *(16.0f / 4096.0f);
+			int scale = 64;
+			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
+			}*/
+
+		//ok, lets start by clearing the texture to all use the L0 level (later we will optimize this to be better looking with one 2048x2048 texture or something)
+		//this->indirection_texture->Clear(1, 16.0f/255.0f, 0, 0);
+
+		//now request that one
+		this->RenderTile(0, 0, 64);
+
+		//this->RenderTile(0, 0, 1);
+
+		//restore viewport
+		renderer->SetViewport(&oldvp);
+
+		renderer->SetRenderTarget(0, &ort);
 	}
 
 	if (this->need_to_reload_normals)
@@ -575,7 +730,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 	r.AddRenderable(this);
 
 	flipper++;// = 0;
-
+	//todo: later move the update outside of render
 	auto grid = this->grid[player];
 	for (int x = 0; x < world_size / patch_size; x++)
 	{
@@ -586,12 +741,165 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
 		}
 	}
+	//this->indirection_texture->Clear(1, 64.0f / 255.0f, 0, 0);
 
+	//this->RenderTile(0, 0, 64, 255);
+
+	//this->RenderTile(0, 0, 32, 254);
+	//this->RenderTile(32, 0, 32, 254);
 	//renderer->EnableAlphaBlending(true);
 	//renderer->SetTexture(0, rtview);
 	//Rect r(0, 600, 400, 1000);
 	//renderer->DrawRect(&r, 0xFFFFFFF);
 	//renderer->EnableAlphaBlending(false);
+}
+
+int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
+{
+	std::swap(x, y);
+
+	//x /= 2;
+	//y /= 2;
+	//remove it from the list
+	if (x%scale != 0)
+		throw 7;
+	if (y%scale != 0)
+		throw 7;
+
+	int num = id;
+	if (id == -1)
+	{
+		if (this->free_tiles.size())
+		{
+			num = this->free_tiles.back();
+			this->free_tiles.pop_back();
+		}
+		else if (this->unused_tiles.size())
+		{
+			num = this->unused_tiles.back();
+			this->unused_tiles.pop_back();
+		}
+	}
+
+	if (num == -1)
+		return -1;//we couldnt find a free tile
+	//throw 7;//we couldnt find a free tile :S
+	//num = 128;
+
+	//ok, now render the terrain here
+	Viewport oldvp, vp;
+	renderer->GetViewport(&oldvp);
+	auto ort = renderer->GetRenderTarget(0);
+
+	renderer->SetPixelTexture(0, 0);
+
+	renderer->EnableAlphaBlending(false);
+	//if (num != id)
+	{
+		//draw into the tile texture with tile numbers (and colors
+		renderer->SetRenderTarget(0, this->tile_texture);
+
+		const int tile_size = 256;
+		const int map_w = 4096;
+		vp.Height = vp.Width = 4096;
+		vp.X = vp.Y = 0;
+		vp.MinZ = 0;
+		vp.MaxZ = 1;
+		renderer->SetViewport(&vp);
+
+		renderer->SetShader(resources.get_unsafe<CShader>("Shaders/generate_tile.shdr"));
+
+		struct data
+		{
+			Vec4 position;
+			float scale;
+		} td;
+		td.position = Vec4(x,y,0,0);
+		td.scale = scale;
+		renderer->shader->cbuffers["Data"].UploadAndSet(&td, sizeof(data));
+
+
+		//set textures
+		renderer->SetPixelTexture(0, this->nmap);
+		renderer->SetPixelTexture(1, this->rock);
+		renderer->SetPixelTexture(2, this->grass);
+
+		
+
+		//draw quad
+
+		int tileno = num;// rand() % 256;
+		int offx = (tileno / 16);// *(16.0f / 4096.0f);
+		int offy = (tileno % 16);// *(16.0f / 409	6.0f);
+
+		Rect r;
+		r.bottom = tile_size * offx;
+		r.top = tile_size * (offx + 1);
+		r.right = tile_size * offy;
+		r.left = tile_size * (offy + 1);
+
+		//lets use UV to encode where in the map we go
+		//use r and g for offset, a for scale
+		//and get world space pos in this shader
+		//need to figure out whats wrong with this
+		float umin = x * 32;
+		float umax = (x + scale) * 32;
+		std::swap(umin, umax);
+		float vmin = y * 32;
+		float vmax = (y + scale) * 32;
+		std::swap(vmin, vmax);
+		renderer->DrawRectUV(&r, Vec2(umin, vmin), Vec2(umin, vmax), Vec2(umax, vmin), Vec2(umax, vmax), COLOR_ARGB(255, 255, 255, 255), false);
+		//renderer->DrawRectUV(&r, x*32, (x+scale)*32, y*32, (y+scale)*32, COLOR_ARGB(255, 255, 255, 255), false);
+
+		//draw it here
+
+		//lets draw a road going through the map
+
+		to start I guess we can have a road going straight through the middle of each tile
+		ok, I guess each tile needs to own the vector data
+	}
+
+	renderer->SetPixelTexture(0, 0);
+
+
+	//then mark it in the indirection texture
+	{
+		renderer->SetRenderTarget(0, this->indirection_texture);
+		vp.Height = vp.Width = 2048 / PatchSize;
+		vp.X = vp.Y = 0;
+		vp.MinZ = 0;
+		vp.MaxZ = 1;
+		renderer->SetViewport(&vp);
+
+		Rect r;
+		r.bottom = x;
+		r.top = x + scale;
+		r.right = y;
+		r.left = y + scale;
+		//use r and g for offset, a for scale
+		int tileno = num;// rand() % 256;
+		int offx = (tileno / 16);// *(16.0f / 4096.0f);
+		int offy = (tileno % 16);// *(16.0f / 409	6.0f);
+		renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
+	}
+
+	//restore viewport
+	renderer->SetViewport(&oldvp);
+	renderer->SetRenderTarget(0, &ort);
+
+	return num;
+}
+
+void HeightmapTerrainSystem::MarkTileAsUnused(int num)
+{
+	if (num >= 0)
+		this->unused_tiles.push_back(num);
+}
+
+void HeightmapTerrainSystem::MarkTileFreed(int num)
+{
+	if (num >= 0)
+		this->free_tiles.push_back(num);
 }
 
 struct HeightMapInfo
@@ -877,13 +1185,12 @@ void HeightmapTerrainSystem::LoadHeightmap(const char* file)
 	this->heights_ds[ds_index] = this->heights[index];
 	}
 	}*/
+
 	this->SetupChunks();
 }
 
 void HeightmapTerrainSystem::SetupChunks()
 {
-	//world_size = 1024 * 2;
-
 	//for number of players
 	for (int i = 0; i < 4; i++)
 	{
@@ -923,14 +1230,16 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 	this->my_material = mt;
 
 	terrain_mat = this->material;
-	
+
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
 	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
 	terrain_vd = this->vertex_declaration;
 
-	grass = resources.get_unsafe<CTexture>("snow.jpg");
+	grass = resources.get_unsafe<CTexture>("grass.jpg");
+	snow = resources.get_unsafe<CTexture>("snow.jpg");
 	rock = resources.get_unsafe<CTexture>("rock.png");
+	road = resources.get_unsafe<CTexture>("road.jpg");
 	//implement teh texturing
 
 	nmap = 0;
@@ -995,10 +1304,20 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 			throw 7;
 	}
 
+	//world_size = 1024 * 2;
+	const int size = 2048;
+	this->tile_texture = CRenderTexture::Create(2048 * 2, 2048 * 2, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
+	//this gives 256 tiles, can reduce it later if necessary
+
+	//color texture
+	this->indirection_texture = CRenderTexture::Create(size / 32, size / 32, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
+
 	mt->grass = grass;
 	mt->rock = rock;
 	mt->sampler = this->sampler;
 	mt->textureSampler = this->textureSampler;
+	mt->indirection = this->indirection_texture;
+	mt->tiles = this->tile_texture;
 }
 
 inline float linearInterpolation(float x0, float x1, float t)

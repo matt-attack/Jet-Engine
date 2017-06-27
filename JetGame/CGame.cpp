@@ -241,7 +241,7 @@ void CGame::Resume()
 void CGame::Update()
 {
 	ProfileStartFrame();
-	PROFILE("FrameTime");
+	RPROFILE("FrameTime");
 	GPUPROFILE("FrameTime");
 
 	//delete old states
@@ -337,11 +337,11 @@ void CGame::Draw()
 #endif
 
 		float rft = 0;
-		if (Profiles.find("FrameTime") != Profiles.end())
-			rft = Profiles["FrameTime"]->average;
+		if (Profiles.find({ "FrameTime", 0 }) != Profiles.end())
+			rft = Profiles[{"FrameTime", 0}]->average;
 		float rp = 0;
-		if (Profiles.find("RendererProcess") != Profiles.end())
-			rp = Profiles["RendererProcess"]->average;
+		if (Profiles.find({"RendererProcess", 0}) != Profiles.end())
+			rp = Profiles[{"RendererProcess", 0}]->average;
 		renderer->DrawStats(1 / this->timer.GetFPS(), rft, mem, rp);
 
 		if (showdebug >= 2)
@@ -351,6 +351,7 @@ void CGame::Draw()
 	renderer->ResetStats();
 
 	{
+		PROFILE("Present");
 		GPUPROFILE("Present");
 		renderer->Present();//exclude this from rft
 	}

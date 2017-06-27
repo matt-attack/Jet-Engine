@@ -332,33 +332,7 @@ bool read_bool(const std::string& in)
 		return false;
 	return true;
 }
-#include <direct.h>
-std::string get_working_path()
-{
-	char temp[512];
-	return (getcwd(temp, 512) ? std::string(temp) : std::string(""));
-}
 
-#include <Windows.h>
-
-std::vector<std::string> get_all_files_names_within_folder(std::string folder)
-{
-	std::vector<std::string> names;
-	std::string search_path = folder + "*.*";
-	WIN32_FIND_DATA fd;
-	HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);
-	if (hFind != INVALID_HANDLE_VALUE) {
-		do {
-			// read all (real) files in current folder
-			// , delete '!' read other 2 default folder . and ..
-			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-				names.push_back(fd.cFileName);
-			}
-		} while (::FindNextFile(hFind, &fd));
-		::FindClose(hFind);
-	}
-	return names;
-}
 //new idea
 //todo: shader stage passes
 //can have a stage for each kind of shader stuff, so can make it easy to add things like fog to all shaders
@@ -375,8 +349,7 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 	int offset = name.find_last_of('/') +1;
 	if (offset == 0)
 		offset = name.find_last_of('\\')+1;
-	auto pathh = get_working_path();
-	auto filess = get_all_files_names_within_folder("Content/");
+	
 	name = name.substr(offset, name.length() - offset);
 
 	//need to preserve children

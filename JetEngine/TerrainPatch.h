@@ -8,7 +8,7 @@ extern float TerrainScale;
 
 enum TerrainDefs
 {
-	PatchSizePower = 6,//2^x = PatchSize
+	PatchSizePower = 5,//2^x = PatchSize
 	PatchSize = 1 << PatchSizePower,// 32,//16,
 
 	//PatchMaxDensity = PatchSize,//32,//56 for 64,//32 for 32,//24 for size of 16

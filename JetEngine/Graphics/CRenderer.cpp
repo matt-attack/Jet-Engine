@@ -203,6 +203,8 @@ void CRenderer::GetViewport(Viewport* vp)
 
 void CRenderer::SetViewport(Viewport* vp)
 {
+	this->xres = vp->Width;
+	this->yres = vp->Height;
 #ifndef USEOPENGL
 	unsigned int viewports = 1;
 	D3D11_VIEWPORT viewport;
@@ -230,7 +232,11 @@ void CRenderer::SetPixelTexture(int stage, CTexture* tex)
 	if (tex && tex->texture == 0)
 		throw 7;
 	if (tex)
+	{
+		if (tex->check != 0x55555555)
+			throw 7;
 		context->PSSetShaderResources(stage, 1, &tex->texture);
+	}
 	//throw 7;
 	if (tex)
 		this->current_texture = tex->texture;
@@ -667,7 +673,7 @@ void CRenderer::Init(int scrx, int scry)
 	auto level = D3D_FEATURE_LEVEL_11_0;
 	unsigned int flags = 0;
 #ifdef _DEBUG
-	//flags |= D3D11_CREATE_DEVICE_DEBUG;
+	flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	auto res = D3D11CreateDeviceAndSwapChain(
 		0, D3D_DRIVER_TYPE_HARDWARE, NULL/*software*/,
@@ -679,6 +685,13 @@ void CRenderer::Init(int scrx, int scry)
 	{
 		printf("DX11 Initialization Failed\n");
 	}
+
+	DXGI_SWAP_CHAIN_DESC desc;
+	chain->GetDesc(&desc);
+
+	yres = desc.BufferDesc.Height;
+	xres = desc.BufferDesc.Width;
+
 
 	//if (msaa_count > 1)
 	{
@@ -1158,6 +1171,13 @@ void CRenderer::Resize(int xres, int yres)
 	if (FAILED(result))
 		throw 7;
 
+	//get the new size
+	DXGI_SWAP_CHAIN_DESC desc;
+	chain->GetDesc(&desc);
+
+	this->xres = xres = desc.BufferDesc.Width;
+	this->yres = yres = desc.BufferDesc.Height;
+
 	D3D11_VIEWPORT viewport;
 	viewport.Height = yres;
 	viewport.Width = xres;
@@ -1374,7 +1394,7 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 
 			i++;
 			elm = &sh->elements[i];
-}
+		}
 	}
 	//GLenum e = glGetError();
 	//if (e)
@@ -1638,7 +1658,7 @@ void CRenderer::DrawFullScreenQuad()
 //ok, give each shader multiple input topologys, then each vb indexes into
 //the array to get the right one to use
 
-void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float maxv, COLOR color)
+void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float maxv, COLOR color, bool shader)
 {
 #ifndef USEOPENGL
 	//add a shader for rects
@@ -1743,10 +1763,14 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 
 	this->SetCullmode(CULL_NONE);
 	//d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-	if (this->current_texture == 0)
-		this->SetShader(15);
-	else
-		this->SetShader(16);
+
+	if (shader)
+	{
+		if (this->current_texture == 0)
+			this->SetShader(15);
+		else
+			this->SetShader(16);
+	}
 
 	//this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
 	this->rectangle_v_buffer.Bind();
@@ -1831,7 +1855,7 @@ void CRenderer::DrawRectUV(Rect* rct, float minu, float maxu, float minv, float 
 }
 
 
-void CRenderer::DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom_left, Vec2 bottom_right, COLOR color)
+void CRenderer::DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom_left, Vec2 bottom_right, COLOR color, bool shader)
 {
 #ifndef USEOPENGL
 	//add a shader for rects
@@ -1936,10 +1960,13 @@ void CRenderer::DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom
 
 	this->SetCullmode(CULL_NONE);
 	//d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-	if (this->current_texture == 0)
-		this->SetShader(15);
-	else
-		this->SetShader(16);
+	if (shader)
+	{
+		if (this->current_texture == 0)
+			this->SetShader(15);
+		else
+			this->SetShader(16);
+	}
 
 	this->rectangle_v_buffer.Bind();
 
@@ -2102,7 +2129,7 @@ void CRenderer::DrawGraph()
 		r.right += 2;
 	}
 	this->SetFont("Arial", 20);
-	}
+}
 
 void CRenderer::DrawText(int x, int y, const char* text, COLOR color)
 {

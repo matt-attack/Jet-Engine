@@ -60,9 +60,9 @@ public:
 	int Constants[10];
 #else
 
-	ID3D11VertexShader* vshader;
-	ID3D11PixelShader* pshader;
-	ID3D11GeometryShader* gshader;
+	ID3D11VertexShader* vshader = 0;
+	ID3D11PixelShader* pshader = 0;
+	ID3D11GeometryShader* gshader = 0;
 
 	ID3D10Blob* vertexShaderBuffer;//used for generation of layouts
 #endif
