@@ -1,0 +1,150 @@
+
+#ifdef POINT_LIGHTS
+#define NUM_POINT 3
+#endif
+
+//lighting data
+struct PointLight
+{
+	float4 position;
+	float3 color;
+};
+
+cbuffer Lighting
+{
+	float3 LightDirection;
+	float3 LightColor;
+	float3 AmbientDown;
+	float3 AmbientRange;
+#ifdef NUM_POINT
+	PointLight lights[NUM_POINT];
+#endif
+};
+
+#ifdef SHADOWS
+//shadow samplers and textures
+cbuffer Shadow
+{
+	float4 ShadowSplits;
+	float4x4 ShadowMats[3];
+};
+
+SamplerComparisonState ShadowSampler : register(s3)
+{
+   // sampler state
+   Filter = COMPARISON_MIN_MAG_MIP_POINT;
+   AddressU = BORDER;
+   AddressV = BORDER;
+   BorderColor = float4(1,1,1,1);
+
+   // sampler comparison state
+   ComparisonFunc = LESS_EQUAL;
+};
+
+Texture2D Texture  : register(t1);
+sampler TextureSampler : register(s1) = sampler_state
+{
+	Texture = (Texture);
+};
+
+Texture2D Texture3  : register(t2);
+sampler TextureSampler3 : register(s2) = sampler_state
+{
+	Texture = (Texture3);
+};
+
+Texture2D Texture4  : register(t3);
+sampler TextureSampler4 : register(s3) = sampler_state
+{
+	Texture = (Texture4);
+};
+#endif
+
+//do not use me, I am an internal function
+float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldPos)
+{
+	//2x2 PCF
+	/*float visibility = 1.0f;
+	float4 lightingPosition =  mul(float4(WorldPos.xyz,1), ShadowMats[iCurrentCascadeIndex]);
+	for (int i = 0; i < 4; i++)
+	{
+		//visibility += tex2Dproj(tex, float4(lightingPosition.xy + (pcf2[i]/1024.0f) * lightingPosition.w, lightingPosition.z, lightingPosition.w));
+		if ( tex2D( tex, lightingPosition.xy + pcf2[i]/1024.0f ).r  <  lightingPosition.z - 0.00005 )
+		{
+			visibility-=0.15f;
+		}
+	}
+	//visibility /= 4;
+	rl *= min(visibility,l);*/
+
+	//standard 1 sample
+	float4 lightingPosition = mul(float4(WorldPos,1), ShadowMats[iCurrentCascadeIndex]);
+	float shadowdepth = float(tex.SampleCmpLevelZero(ShadowSampler, lightingPosition.xy, lightingPosition.z - 0.001));//*0.8;
+	//rl *= l*shadowdepth;// + AmbientColor;
+	//if (shadowdepth == 0)//+ 0.002 < lightingPosition.z)
+		//rl *= (AmbientColor-l)*(1-shadowdepth)+l;// + l;//AmbientColor
+	//else
+		//rl *= l;
+
+	return rl*shadowdepth;
+}
+
+const static float CASCADE_COUNT_FLAG = 3;
+float calculate_shadow(float3 WorldPos, float Depth, float Dot)
+{
+#ifdef SHADOWS
+	float4 vCurrentPixelDepth = Depth;
+	float4 fComparison = ( vCurrentPixelDepth > ShadowSplits);
+	float fIndex = dot(
+		float4( CASCADE_COUNT_FLAG > 0,
+		CASCADE_COUNT_FLAG > 1,
+		CASCADE_COUNT_FLAG > 2,
+		CASCADE_COUNT_FLAG > 3)
+		, fComparison );
+	fIndex = min( fIndex, CASCADE_COUNT_FLAG );
+	int iCurrentCascadeIndex = (int)fIndex;
+	
+	float rl = Dot;
+	if (iCurrentCascadeIndex == 0)
+	{
+		rl = SampleMap(Texture, 0, rl, WorldPos);
+		//return float4(1,0,1,1);
+	}
+	else if (iCurrentCascadeIndex == 1)
+	{
+		rl = SampleMap(Texture3, 1, rl, WorldPos);
+		//return float4(1,0,0,1);
+	}
+	else if (iCurrentCascadeIndex == 2)
+	{
+		rl = SampleMap(Texture4, 2, rl, WorldPos);
+		//return float4(1,1,0,1);
+	}
+	else
+	{
+		rl = Dot;
+	}
+	return rl;
+#else
+	return rl;
+#endif
+}
+
+float3 calculate_light(float3 WorldPos, float3 normal)
+{
+	float3 light = float3(0,0,0);
+#ifdef NUM_POINT
+	for (int i = 0; i < NUM_POINT; i++)
+	{
+		float3 pos = lights[i].position;
+		float dist = distance(pos, WorldPos);
+		float3 dir = normalize(pos - WorldPos);
+		float radius = lights[i].position.w;
+		float d = (1-pow(dist/radius,4))*dot(dir, normal);
+		if (dist < radius & d > 0)
+			light += lights[i].color*d;
+	} 
+#endif
+
+	return light;
+}

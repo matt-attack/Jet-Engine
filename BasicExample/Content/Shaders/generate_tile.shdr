@@ -1,0 +1,84 @@
+struct VS_INPUT
+{
+	float2 Position   : POSITION;
+	float4 color : COLOR0;
+	float2 Texture    : TEXCOORD;
+};
+
+//Vertex shader output structure
+struct VS_OUTPUT
+{
+	float4 Position   : SV_Position;
+	float2 TexCoord   : TEXCOORD;
+};
+
+//float4 Color;
+cbuffer Data
+{
+	float4 position;
+	float scale;
+};
+
+
+Texture2D nmap : register(t0);
+Texture2D rock : register(t1);
+Texture2D grass : register(t2);
+Texture2D snow : register(t3);
+Texture2D height : register(t4);
+Texture2D noise : register(t5);
+
+Texture2D Texture;
+SamplerState TextureSampler;
+
+VS_OUTPUT vs_main( in VS_INPUT In )
+{
+	VS_OUTPUT Out;
+
+	Out.Position = float4(In.Position.xy,0,1);
+	Out.TexCoord = In.Texture;
+
+	return Out;
+};
+
+float3 PackNormal(float3 normal)
+{
+	return normal*0.5f+0.5f;
+}
+
+
+float4 ps_main( in VS_OUTPUT In) : SV_Target
+{
+	float2 off = In.TexCoord/2048;//position.ar/2048;
+	//off += position.rg/4.0;
+	//off += scale/20.0;
+	//off.y = -off.y;
+	//off.y = 1-off.y;
+	//scale = 0;
+	//off.x = 0;
+	//return float4(0, off, 1);
+	float4 n = nmap.Sample(TextureSampler, off.yx).rgba;
+	float3 normal = normalize(n.xyz*2-float3(1,1,1));
+	
+	float4 no = noise.Sample(TextureSampler, off.yx*70);
+	float h = height.Sample(TextureSampler, off.yx).r;
+	if (h > 240 - n.y*5)
+		return float4(1,1,1,1);
+	//return float4(1,1,1,1)*h;
+	//return float4(normal, 1)*n.a;
+	if (normal.y - no.r*0.2 < 0.7)
+		return rock.Sample(TextureSampler, off*80.0)*n.a;
+	return grass.Sample(TextureSampler, off*80.0)*n.a;//*normal.y;
+	//float off = 1.0f/Resolution;
+	//float s00 = Texture.Sample(TextureSampler, In.TexCoord+float2(0,0)).r;//this->heights[iy * 2048 + ix];
+	//float s01 = Texture.Sample(TextureSampler, In.TexCoord+float2(off,0)).r;//this->heights[iy * 2048 + ix + 1];
+	//float s10 = Texture.Sample(TextureSampler, In.TexCoord+float2(0,off)).r;//this->heights[(iy + 1) * 2048 + ix];
+	//float s11 = Texture.Sample(TextureSampler, In.TexCoord+float2(off,off)).r;//this->heights[(iy + 1) * 2048 + ix + 1];
+	
+
+	//float3 pos = float3(In.TexCoord.x, Texture.Sample(TextureSampler, In.TexCoord).r, In.TexCoord.y);// + 2*vecto;
+	
+	//return float4(1,1,1,1);
+	return float4(1,normal);//*scale;
+	
+	//return float4(PackNormal(normal), light);
+};
