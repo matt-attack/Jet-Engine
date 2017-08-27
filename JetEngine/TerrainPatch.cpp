@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-float TerrainScale = 2.0;
+float TerrainScale = 1.0;
 
 #undef min
 

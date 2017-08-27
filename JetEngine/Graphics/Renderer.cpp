@@ -63,7 +63,7 @@ void Renderer::Init(CRenderer* renderer)
 		auto drt = CRenderTexture::Create(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D24_UNORM_S8_UINT);// DXGI_FORMAT_R24G8_TYPELESS);
 
 		this->shadowMapViews[i] = drt->GetDepthResourceView();
-		this->shadowMapTextures[i] = drt->depth_texture;
+		this->shadowMapTextures[i] = drt->texture_depth;
 		this->shadowMapSurfaces[i] = drt;
 	}
 
@@ -213,14 +213,17 @@ void Renderer::CalcShadowMapMatrices(
 			float ynear = cam->_near*tan(cam->_fov / 2.0f);
 			float xnear = ynear*cam->_aspectRatio;
 
-			boxCorners[0] = view*(cam->_pos + cam->_right*xnear + cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-			boxCorners[1] = view*(cam->_pos + cam->_right*xnear - cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-			boxCorners[2] = view*(cam->_pos + cam->_right*xfar + cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-			boxCorners[3] = view*(cam->_pos - cam->_right*xnear - cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-			boxCorners[4] = view*(cam->_pos - cam->_right*xnear + cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-			boxCorners[5] = view*(cam->_pos + cam->_right*xfar - cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-			boxCorners[6] = view*(cam->_pos - cam->_right*xfar + cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-			boxCorners[7] = view*(cam->_pos - cam->_right*xfar - cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+			Vec3 _right = cam->GetRight();
+			Vec3 _lookAt = cam->GetForward();
+			Vec3 _upDir = cam->GetUp();
+			boxCorners[0] = view*(cam->_pos + _right*xnear + _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+			boxCorners[1] = view*(cam->_pos + _right*xnear - _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+			boxCorners[2] = view*(cam->_pos + _right*xfar + _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+			boxCorners[3] = view*(cam->_pos - _right*xnear - _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
+			boxCorners[4] = view*(cam->_pos - _right*xnear + _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
+			boxCorners[5] = view*(cam->_pos + _right*xfar - _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+			boxCorners[6] = view*(cam->_pos - _right*xfar + _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+			boxCorners[7] = view*(cam->_pos - _right*xfar - _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
 
 			for (unsigned int corner_i = 0; corner_i < 8; corner_i++)
 			{
@@ -398,7 +401,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 				if (mat.buffer)
 				{
 					D3D11_MAPPED_SUBRESOURCE cb;
-					int bones = model->t->num_joints;
+					int bones = model->data->num_joints;
 					renderer->context->Map(mat.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
 					struct mdata2
 					{
@@ -416,10 +419,10 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 		case Indexed:
 		{
 			ObjModel* model = static_cast<ObjModel*>(obj);
-			model->t->vb.Bind();
-			for (int i = 0; i < model->t->num_meshes; i++)
+			model->data->vb.Bind();
+			for (int i = 0; i < model->data->num_meshes; i++)
 			{
-				Mesh* mesh = &model->t->meshes[i];
+				Mesh* mesh = &model->data->meshes[i];
 				mesh->ib->Bind();
 
 				if (mesh->material->alphatest == false)
@@ -483,16 +486,20 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 	float ztotal = cam->_far - cam->_near;
 	float ynear = cam->_near*tan(cam->_fov / 2.0f);
 	float xnear = ynear*cam->_aspectRatio;
+	
+	Vec3 _right = cam->GetRight();
+	Vec3 _upDir = cam->GetUp();
+	Vec3 _lookAt = cam->GetForward();
 
 	Vec3 boxCorners[8];
-	boxCorners[0] = view*(cam->_pos + cam->_right*xnear + cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-	boxCorners[1] = view*(cam->_pos + cam->_right*xnear - cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-	boxCorners[2] = view*(cam->_pos + cam->_right*xfar + cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[3] = view*(cam->_pos - cam->_right*xnear - cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-	boxCorners[4] = view*(cam->_pos - cam->_right*xnear + cam->_upDir*ynear + cam->_lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-	boxCorners[5] = view*(cam->_pos + cam->_right*xfar - cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[6] = view*(cam->_pos - cam->_right*xfar + cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[7] = view*(cam->_pos - cam->_right*xfar - cam->_upDir*yfar + cam->_lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[0] = view*(cam->_pos + _right*xnear + _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+	boxCorners[1] = view*(cam->_pos + _right*xnear - _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+	boxCorners[2] = view*(cam->_pos + _right*xfar + _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[3] = view*(cam->_pos - _right*xnear - _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
+	boxCorners[4] = view*(cam->_pos - _right*xnear + _upDir*ynear + _lookAt*cam->_near);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
+	boxCorners[5] = view*(cam->_pos + _right*xfar - _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[6] = view*(cam->_pos - _right*xfar + _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[7] = view*(cam->_pos - _right*xfar - _upDir*yfar + _lookAt*cam->_far);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
 
 	for (unsigned int corner_i = 0; corner_i < 8; corner_i++)
 	{
@@ -830,7 +837,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 	if (shader->buffers.skinning.buffer && rc->mesh.OutFrames)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
-		int bones = static_cast<ObjModel*>(rc->source)->t->num_joints;
+		int bones = static_cast<ObjModel*>(rc->source)->data->num_joints;
 		renderer->context->Map(shader->buffers.skinning.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
 		struct mdata2
 		{

@@ -37,6 +37,8 @@ void OSInit(HWND hWnd)
 
 void CGame::Init(Window* window)
 {
+	this->input.kb = this->keyboard;
+
 	OSInit((HWND)window->GetOSHandle());
 
 	this->window = window;
@@ -365,7 +367,7 @@ CInput* CGame::GetInput()
 void CGame::MessageBox(char* caption, char* text)
 {
 	gui_messagebox* m = new gui_messagebox;
-	int minsize = renderer->font->TextSize(text) + 20;
+	int minsize = renderer->TextSize(text) + 20;
 	if (minsize < 200)
 		minsize = 200;
 

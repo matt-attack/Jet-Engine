@@ -1,6 +1,13 @@
 #ifndef _DEFINES_HEADER
 #define _DEFINES_HEADER
 
+//given as local to the executable
+#define JET_CONTENT_FOLDER "Content/"
+//given as local to content folder
+#define JET_SHADER_FOLDER "Shaders/"
+//given as a filename/path relative to the shader folder
+#define JET_DEFAULT_SHADERBUILDER "ubershader.txt"
+
 enum Binds
 {
 	BIND_FIRE = 0x1,

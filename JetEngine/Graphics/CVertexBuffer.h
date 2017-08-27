@@ -48,7 +48,7 @@ public:
 		return this->stride;
 	}
 
-	void Bind()
+	void Bind() const
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, obj);
 	}
@@ -135,7 +135,7 @@ public:
 		this->vd = vd;
 	}
 
-	void Bind();
+	void Bind() const;
 
 	void Data(const void* data, size_t length, unsigned int stride);
 

@@ -12,7 +12,14 @@ enum TerrainDefs
 	PatchSize = 1 << PatchSizePower,// 32,//16,
 
 	//PatchMaxDensity = PatchSize,//32,//56 for 64,//32 for 32,//24 for size of 16
-	PatchMaxLOD = PatchSizePower*2,//10,//for 32, or 8 for 16
+	PatchMaxLOD = PatchSizePower * 2,//10,//for 32, or 8 for 16
+
+	//todo, lets use this granularity
+	TexturePatchSize = 16,
+
+	//this looks good enough, recommend changing to smaller tiles, but also smaller patches to even it out and use less texture memory
+	TextureAtlasSize = 4096*2,
+	TextureAtlasTileSize = 256*2,
 };
 
 struct TerrainVertex

@@ -1,12 +1,10 @@
 #ifndef _MATERIAL_HEADER
 #define _MATERIAL_HEADER
 
-#include "Graphics\CRenderer.h"
+#include "Graphics/CRenderer.h"
 #include "ResourceManager.h"
 
 #include <map>
-
-class IMaterial;
 
 enum ShaderFeatures
 {
@@ -22,58 +20,86 @@ class IMaterial: public Resource
 {
 	friend class Renderer;
 	friend class ResourceManager;
+	friend class ShaderBuilder;
 public:
-	int key;//generated from properties of material, used for sorting
-	bool alpha;
-	bool alphatest;
+	//User configured material booleans
+
+	//int key;//generated from properties of material, used for sorting
+	bool alpha;//alpha blending
+	bool alphatest;//alpha test
 	bool depthhack;//use this for first person weapons views
+	bool shader_builder = false;//should we use the shaderbuilder/ubershader system for particular shader/material?
+	bool skinned = false;//does the model use vertex skinning?
+
 private:
-	bool needs_tangent = false;
+	bool needs_tangent = false;//turned on if there is a normal map
+
 public:
+	//User configured material enumerations
 	FilterMode filter;
+	CullMode cullmode;
+
+private:
+	//The actual pointers to the textures used. Loaded by Update()
 	Texture texture = 0;
 	Texture normal_map = 0;
 
-	CullMode cullmode;
-
-	//this is stupid, but oh well
-	CShader* shader_ptr;//use this instead
+	//not the best way to manage this, but it works
+	CShader* shader_ptr;
 	CShader* shader_lit_ptr = 0;
 	CShader* shader_lit_unskinned_ptr = 0;
 	CShader* shader_unskinned_ptr = 0;
+public:
 
-	//not used during rendering
-	std::string name;
-	std::string diffuse;
-	std::string normal;
-	std::string shader_name;
+	// User configured material option strings
+	std::string name;//name of the material
+	std::string diffuse;//file name of the diffuse texture
+	std::string normal;//file name of the normal map texture
+	std::string shader_name;//file name of a shader file to use
 
-	std::string surface_shader;//if we want a custom one
+	std::string surface_shader;//custom surface shader string
+	//the surface shader is of the form
+	//void SurfaceShader(inout VS_OUTPUT In) { /*do stuff here*/ }
 
-	std::string base_material;//what we include from
-	std::vector<IMaterial*> children;//list of materials that include from us
+	//VS_OUTPUT has the following defintion
+	/*struct VS_OUTPUT
+	{
+		float4 Position : SV_Position;
+		float4 Diffuse : COLOR0;
+		float2 TexCoord : TEXCOORD0;
+		float3 WorldPos : TEXCOORD1;
+#ifdef SHADOWS
+		float Depth : TEXCOORD2;
+#endif
+		float3 Normal : NORMAL0;
+#ifdef NORMAL_MAP
+		float3 Tangent : TANGENT0;
+		float3 Bitangent : BITANGENT0;
+#endif
+	};*/
+
+	std::string base_material;//name of the material we include from
 
 private:
+	std::vector<IMaterial*> children;//list of materials that include from us
+
 	//custom defines/settings for shaders
 	//when this changes need to invalidate shaders and regenerate
 	std::map<std::string, std::string> defines;
-public:
-
-	bool shader_builder = false;
-	bool skinned = false;
+	
 private:
 	IMaterial() {  };
 public:
-	IMaterial(const char* name);
-	~IMaterial();
 
-	
+	IMaterial(const char* name);
 	IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
-	//sets a shader define value, only applies to shader builder type materials
+	virtual ~IMaterial();
+
+	//Sets a shader define value, only applies to shader builder type materials
 	void SetDefine(const std::string& name, const std::string& value);
 
-	//this applies material properties (blend states, textures) that are constant across all models with this material
+	//This applies material properties (blend states, textures) that are constant across all models with this material
 	virtual void Apply(CRenderer* renderer);
 
 	//this selects the proper shader for rendering depending on the models run time condition
@@ -81,7 +107,8 @@ public:
 
 	//updates internal data, called when a resource changes
 	//or when settings are changed
-	//this should load the correct shader pointer
+	//also called once a frame in the Renderer before drawing
+	//this should load the correct shader pointers
 	virtual void Update(CRenderer* renderer);
 
 
@@ -96,12 +123,13 @@ public:
 	virtual void Reload(ResourceManager* mgr, const std::string& filename) 
 	{
 		this->load_as_resource(filename, this);
-	};
+	}
 	static IMaterial* load_as_resource(const std::string &path, IMaterial* res);
+
+private:
+
+	void SetDefaults();
 };
-
-
-//ok, todo: SURFACE SHADERS
 
 //a shader will be made up of a few components
 //position / normal generator + tangent system(optional) + surface shader + lighting + shadow

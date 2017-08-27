@@ -8,8 +8,6 @@
 #include <D3D11.h>
 
 
-//int msaa_count = 2;
-//int msaa_quality = 0;
 VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned int count)
 {
 	int key = 0;
@@ -229,17 +227,17 @@ void CRenderer::SetViewport(Viewport* vp)
 
 void CRenderer::SetPixelTexture(int stage, CTexture* tex)
 {
-	if (tex && tex->texture == 0)
+	if (tex && tex->texture_rv == 0)
 		throw 7;
 	if (tex)
 	{
 		if (tex->check != 0x55555555)
 			throw 7;
-		context->PSSetShaderResources(stage, 1, &tex->texture);
+		context->PSSetShaderResources(stage, 1, &tex->texture_rv);
 	}
 	//throw 7;
 	if (tex)
-		this->current_texture = tex->texture;
+		this->current_texture = tex->texture_rv;
 	else
 		this->current_texture = 0;
 #ifdef USEOPENGL
@@ -247,15 +245,15 @@ void CRenderer::SetPixelTexture(int stage, CTexture* tex)
 #else
 	//d3ddev->SetTexture(stage, tex->texture); 
 #endif
-};
+}
 
 void CRenderer::SetVertexTexture(int stage, CTexture* tex)
 {
 	if (tex)
-		context->VSSetShaderResources(stage, 1, &tex->texture);
+		context->VSSetShaderResources(stage, 1, &tex->texture_rv);
 	//throw 7;
 	if (tex)
-		this->current_texture = tex->texture;
+		this->current_texture = tex->texture_rv;
 	else
 		this->current_texture = 0;
 #ifdef USEOPENGL
@@ -289,7 +287,7 @@ void CRenderer::SetVertexTexture(int stage, ID3D11ShaderResourceView* tex)
 	//this->context->PSSetShaderResources(stage, 1, &tex);
 	this->context->VSSetShaderResources(stage, 1, &tex);
 #endif
-};
+}
 
 
 void CRenderer::SetFilter(int stage, FilterMode mode)
@@ -305,7 +303,7 @@ void CRenderer::SetFilter(int stage, FilterMode mode)
 #else
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mode);
 #endif
-};
+}
 
 void CRenderer::SetSrcBlend(Blend mode)
 {
@@ -585,6 +583,13 @@ void CRenderer::SetAALevel(int samples)
 	if (FAILED(result))
 		throw 7;
 
+	rasterDesc.ScissorEnable = true;
+	rasterDesc.CullMode = D3D11_CULL_BACK;
+	rasterDesc.FrontCounterClockwise = true;
+	result = device->CreateRasterizerState(&rasterDesc, &rs_scissor);
+	if (FAILED(result))
+		throw 7;
+
 	// Now set the rasterizer state.
 	context->RSSetState(rs_none);
 }
@@ -661,7 +666,7 @@ void CRenderer::Init(int scrx, int scry)
 			break;
 		//do stuff
 	}
-
+	
 	factory->EnumAdapters(0, &adapter);//just use first one for now
 
 	DXGI_ADAPTER_DESC adapterdesc;
@@ -1193,7 +1198,6 @@ void CRenderer::Resize(int xres, int yres)
 		throw 7;
 
 	// Create the render target view with the back buffer pointer.
-	//ID3D11RenderTargetView* renderTargetView;
 	result = device->CreateRenderTargetView(backBufferPtr, NULL, &renderTargetView);
 	if (FAILED(result))
 		throw 7;
@@ -1406,7 +1410,7 @@ void CRenderer::DrawIndexedPrimitive(enum PrimitiveType mode, unsigned int minve
 	this->shader->BindIL(&this->input_layout);
 
 	this->SetPrimitiveType(mode);
-
+	
 	context->DrawIndexed(numindices, minvertexindex, startindex);
 #endif
 }
@@ -1420,12 +1424,12 @@ void CRenderer::CreateShader(int id, char* vloc, char* vfunc, char* ploc, char* 
 }
 #endif
 
-void CRenderer::CreateShader(int id, const char* vs, const char* ps)
+/*void CRenderer::CreateShader(int id, const char* vs, const char* ps)
 {
 	logf("Loading Shader ID %d from string\n", id);
 
 	this->shaders[id] = new CShader(vs, ps);
-}
+}*/
 
 
 #include "RenderTexture.h"
@@ -2367,7 +2371,7 @@ void CRenderer::DrawIcon(int x, int y, int size, int id, COLOR color)
 	float maxv = (float)(id / 4 + 1) / 4.0f;//1.0f/4.0f;
 
 	auto tex = resources.get_unsafe<CTexture>("icons.png");
-	this->SetPixelTexture(0, tex->texture);
+	this->SetPixelTexture(0, tex->texture_rv);
 	this->EnableAlphaBlending(true);
 	Rect r;
 	r.top = y - size / 2;
@@ -2877,9 +2881,9 @@ void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float
 	beams.push_back({ start, end, size, color, cam });
 	return;
 	Vec3 dir = (start - end).getnormal();
-	Vec3 right = cam->_lookAt.cross(dir).getnormal();
-	if (cam->_lookAt.dot(dir) < 0.05f)
-		right = cam->_right;
+	Vec3 right = cam->GetForward().cross(dir).getnormal();
+	if (cam->GetForward().dot(dir) < 0.05f)
+		right = cam->GetRight();// _right;
 	struct vertz
 	{
 		Vec3 p;
@@ -3030,4 +3034,9 @@ ID3D11ShaderResourceView* CRenderer::GetMissingTextureImage()
 	device->CreateShaderResourceView(tex, 0/*&vdesc*/, &this->missing_texture);
 
 	return this->missing_texture;
+}
+
+int CRenderer::TextSize(const char* txt, int n)
+{
+	return this->font->TextSize(txt, n);
 }

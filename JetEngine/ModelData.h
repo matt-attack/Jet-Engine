@@ -78,9 +78,9 @@ public:
 	//Joint* attachments;
 	Pose* poses;
 
-	int GetBone(const char* name);
-	Animation* GetAnimation(const char* name);
-	int GetAnimationID(char* name);
+	int GetBone(const char* name) const;
+	Animation* GetAnimation(const char* name) const;
+	int GetAnimationID(char* name) const;
 
 	static ModelData* load_as_resource(const std::string &path, ModelData* res);
 

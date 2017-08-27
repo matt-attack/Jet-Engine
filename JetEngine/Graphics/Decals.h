@@ -33,7 +33,7 @@ public:
 		count = 0;
 		maxcount = limit;
 		oldest = 0;
-		shader = renderer->CreateShader(4, "Shaders/model_diffuse.shdr");
+		shader = resources.get_shader("Shaders/model_diffuse.shdr");//renderer->CreateShader(4, "Shaders/model_diffuse.shdr");
 		texture = resources.get_unsafe<CTexture>("decals.png");
 	}
 

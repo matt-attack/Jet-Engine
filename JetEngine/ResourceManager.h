@@ -16,7 +16,6 @@
 class CShader;
 class ResourceManager;
 
-//change this to use reference counting
 
 class Resource {
 	int count = 0;
@@ -108,7 +107,7 @@ public:
 
 		//allocate here
 		//append the path to the content folder
-		std::string path = "Content/" + filename;
+		std::string path = JET_CONTENT_FOLDER + filename;
 		T* t = new T;
 		T *rv = T::load_as_resource(path,t);
 		rv->m_resmgr = this;
@@ -145,7 +144,7 @@ public:
 
 		//allocate here
 		//append the path to the content folder
-		std::string path = "Content/" + filename;
+		std::string path = JET_CONTENT_FOLDER + filename;
 		T* t = new T;
 		T *rv = T::load_as_resource(path, t);
 		rv->m_resmgr = this;
@@ -162,7 +161,7 @@ public:
 		return rv;
 	}
 
-	CShader * get_shader(const std::string &filename);
+	CShader* get_shader(const std::string &filename);
 
 	void update();
 

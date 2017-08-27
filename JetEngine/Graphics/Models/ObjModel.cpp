@@ -49,7 +49,7 @@ void ObjModel::SetAnimation(char* name)
 	if (name)
 	{
 		Animation* told = this->animation;
-		this->animation = t->GetAnimation(name);
+		this->animation = data->GetAnimation(name);
 		if (told != this->animation)
 		{
 			old = told;
@@ -76,13 +76,13 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 
 		delete[] this->JointTransforms;
 
-		t = resources.get_unsafe<ModelData>(name);//renderer->GetOrLoadModel((char*)name);
-		if (t->num_joints > 0)
+		data = resources.get_unsafe<ModelData>(name);//renderer->GetOrLoadModel((char*)name);
+		if (data->num_joints > 0)
 		{
 			if (frames == 0)
 			{
-				this->OutFrames = new Matrix3x4[t->num_joints];
-				for (int i = 0; i < t->num_joints; i++)
+				this->OutFrames = new Matrix3x4[data->num_joints];
+				for (int i = 0; i < data->num_joints; i++)
 					this->OutFrames[i] = Matrix3x4::Identity();
 				this->_external = false;
 			}
@@ -94,8 +94,8 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 
 			if (transforms == 0)
 			{
-				this->JointTransforms = new JointTransform[t->num_joints];
-				for (int i = 0; i < t->num_joints; i++)
+				this->JointTransforms = new JointTransform[data->num_joints];
+				for (int i = 0; i < data->num_joints; i++)
 				{
 					this->JointTransforms[i].enabled = false;
 					this->JointTransforms[i].transform = Matrix3x4(Vec4(1, 0, 0, 0), Vec4(0, 1, 0, 0), Vec4(0, 0, 1, 0));//identity matrix
@@ -106,15 +106,15 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 		}
 
 		//setup materials
-		this->mesh_materials = new IMaterial*[this->t->num_meshes];
-		for (int i = 0; i < this->t->num_meshes; i++)
-			this->mesh_materials[i] = this->t->meshes[i].material;
+		this->mesh_materials = new IMaterial*[this->data->num_meshes];
+		for (int i = 0; i < this->data->num_meshes; i++)
+			this->mesh_materials[i] = this->data->meshes[i].material;
 
-		this->vb = &this->t->vb;
+		this->vb = (CVertexBuffer*)&this->data->vb;
 		loaded = true;
 		this->name = (char*)name;
 
-		if (this->t->num_frames > 0)
+		if (this->data->num_frames > 0)
 			this->animate = true;
 	}
 #endif
@@ -122,9 +122,9 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 
 int ObjModel::GetBone(const char* name)
 {
-	for (int i = 0; i < t->num_joints; i++)
+	for (int i = 0; i < data->num_joints; i++)
 	{
-		if (strcmp(name, t->joints[i].name) == 0)
+		if (strcmp(name, data->joints[i].name) == 0)
 			return i;
 	}
 	return -1;
@@ -133,16 +133,16 @@ int ObjModel::GetBone(const char* name)
 Matrix3x4 ObjModel::GetBoneMat(const char* name)
 {
 	int i = 0;
-	for (; i < t->num_joints; i++)
+	for (; i < data->num_joints; i++)
 	{
-		if (strcmp(name, t->joints[i].name) == 0)
+		if (strcmp(name, data->joints[i].name) == 0)
 			break;
 	}
 
 	//compute joint matrix
 	Matrix3x4 out;
 	memcpy(&out, &this->OutFrames[i], sizeof(Matrix3x4));
-	Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&this->t->joints[i].matrix, (float*)&out);
+	Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&this->data->joints[i].matrix, (float*)&out);
 
 	return out;
 };
@@ -150,7 +150,7 @@ Matrix3x4 ObjModel::GetBoneMat(const char* name)
 void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curframe, Animation* anim2, int oframe1, int oframe2, float curframe2, float blend)//slerps/lerps between anim 1 and anim2
 {
 	PROFILE("Animate");
-	ModelData* m = this->t;
+	const ModelData* m = this->data;
 	if (m->num_frames <= 0) return;
 
 	//int frame1 = (int)floor(curframe),
@@ -203,7 +203,7 @@ void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curf
 void ObjModel::BlendAnimate(Animation* anim, float curframe, Animation* anim2, float curframe2, float blend)
 {
 	PROFILE("Animate");
-	ModelData* m = this->t;
+	const ModelData* m = this->data;
 	if (m->num_frames <= 0) return;
 
 	int frame1 = (int)floor(curframe),
@@ -300,7 +300,7 @@ void Animate(ModelData* m, JointTransform* JointTransforms, Matrix3x4* OutFrames
 void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 {
 	PROFILE("Animate");
-	ModelData* m = t;
+	const ModelData* m = data;
 	if (m->num_frames <= 0) return;
 
 	//int frame1 = (int)floor(curframe),
@@ -343,7 +343,7 @@ void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 void ObjModel::Animate(Animation* anim, float curframe)
 {
 	PROFILE("Animate");
-	ModelData* m = t;
+	const ModelData* m = data;
 	if (m->num_frames <= 0) return;
 
 	int frame1 = (int)floor(curframe),
@@ -388,7 +388,7 @@ void ObjModel::Animate(Animation* anim, float curframe)
 
 void ObjModel::UpdateAnimations()
 {
-	Animation* anim = &t->anims[0];
+	Animation* anim = &data->anims[0];
 	if (this->animation)//just loop this
 	{
 		anim = this->animation;
@@ -431,12 +431,12 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.OutFrames = this->OutFrames;
 	else
 		rc.mesh.OutFrames = 0;
-	rc.mesh.vb = &this->t->vbt;// vb;
+	rc.mesh.vb = &this->data->vbt;// vb;
 	rc.material_instance.color = this->color;
 
-	for (int i = 0; i < t->num_meshes; i++)
+	for (int i = 0; i < data->num_meshes; i++)
 	{
-		Mesh* mesh = &t->meshes[i];
+		Mesh* mesh = &data->meshes[i];
 		rc.mesh.ib = mesh->ib;
 		rc.mesh.num_indices = mesh->num_triangles * 3;
 		rc.mesh.primitives = mesh->num_vertexes;
@@ -470,10 +470,10 @@ void ObjModel::DebugRender(CRenderer* render)
 	renderer->SetDepthRange(0.0f, 0.0f);
 	//compute joint matrices for rendering debug info
 	Matrix3x4 jointMats[70];//should be ok
-	for (int i = 0; i < t->num_joints; i++)
+	for (int i = 0; i < data->num_joints; i++)
 	{
 		memcpy(&jointMats[i], &this->OutFrames[i], sizeof(Matrix3x4));
-		Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&t->joints[i].matrix, (float*)&jointMats[i]);
+		Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&data->joints[i].matrix, (float*)&jointMats[i]);
 	}
 
 	struct vertz
@@ -488,7 +488,7 @@ void ObjModel::DebugRender(CRenderer* render)
 	auto olds = renderer->shader;
 	//renderer->SetShader(0);
 	//renderer->d3ddev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE);
-	for (int i = 0; i < t->num_joints; i++)//yay works
+	for (int i = 0; i < data->num_joints; i++)//yay works
 	{
 		//Vec3 size = t.joints[i].bb.Size()/2;
 		//Vec3 m = jointMats[i].transform(Vec3(0,0,0));
@@ -499,16 +499,16 @@ void ObjModel::DebugRender(CRenderer* render)
 		//renderer->DrawBoundingBox(b);
 		//else
 		//renderer->DrawBoundingBox(b, COLOR_ARGB(255,255,0,0));
-		if (t->num_frames == 0)
+		if (data->num_frames == 0)
 		{
-			jointMats[i] = t->joints[i].matrix;
+			jointMats[i] = data->joints[i].matrix;
 		}
 
 		vertz p[6];
 		Vec3 max = jointMats[i].transform(Vec3(0, 0, 0));
-		if (t->joints[i].parent >= 0)
+		if (data->joints[i].parent >= 0)
 		{
-			Vec3 min = jointMats[t->joints[i].parent].transform(Vec3(0, 0, 0));
+			Vec3 min = jointMats[data->joints[i].parent].transform(Vec3(0, 0, 0));
 
 			p[0].p = min;
 			p[0].color = 0xFFFFFFFF;
@@ -584,11 +584,11 @@ CTexture* ObjModel::GetPositionMap()
 	crt->Clear(0, 0, 0, 0);
 
 	//now lets bind myself
-	this->t->vb.Bind();
-	this->t->meshes[0].ib->Bind();
+	this->data->vb.Bind();
+	this->data->meshes[0].ib->Bind();
 
 	//finally draw it
-	renderer->DrawIndexedPrimitive(PrimitiveType::PT_TRIANGLELIST, 0, 0, this->t->meshes[0].num_vertexes, this->t->meshes[0].num_triangles * 3);
+	renderer->DrawIndexedPrimitive(PrimitiveType::PT_TRIANGLELIST, 0, 0, this->data->meshes[0].num_vertexes, this->data->meshes[0].num_triangles * 3);
 
 	renderer->SetRenderTarget(0, &rt);
 	renderer->SetViewport(&oldvp);

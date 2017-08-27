@@ -49,7 +49,7 @@ public:
 
 	unsigned int color = 0;
 
-	ModelData* t;
+	const ModelData* data;
 
 	ObjModel();
 	~ObjModel();
@@ -79,12 +79,15 @@ public:
 	void DebugRender(CRenderer* render);
 #ifndef MATT_SERVER
 	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue);
-	//virtual void Render(CRenderer* render);
-	//virtual void ShadowRender(CRenderer* render);
 #endif
 
-	CTexture* position_map = 0;
+	//gets a 512x512 2d texture showing the local position and bone of each surface of the model
+	//this is useful for doing, for instance, spatial checks against part of the model
+	//to implement something like decals
 	CTexture* GetPositionMap();
+
+private:
+	CTexture* position_map = 0;
 };
 
 #endif

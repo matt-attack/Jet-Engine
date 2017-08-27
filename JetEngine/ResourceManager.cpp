@@ -104,28 +104,6 @@ void ResourceManager::update()
 		//}
 
 #ifndef MATT_SERVER
-		//this shouldnt be here, change CTexture to be inherited from resource
-		if (strcmp(filename, "texture.png") == 0)
-		{
-			//renderer->terrain_texture->Release();
-
-			//lets reload the image
-			/*auto h = D3DXCreateTextureFromFileExA(renderer->d3ddev,
-			"texture.png",
-			D3DX_DEFAULT,
-			D3DX_DEFAULT,
-			4,
-			0,
-			D3DFMT_UNKNOWN,
-			D3DPOOL_MANAGED,
-			D3DX_FILTER_LINEAR,
-			D3DX_FILTER_POINT,//point works better with alpha, but looks wierd
-			D3DCOLOR_XRGB(255, 255, 255),//makes white clear
-			NULL,
-			NULL,
-			&renderer->terrain_texture);*/
-		}
-
 		//load material textures here I guess
 		for (auto ii: IMaterial::GetList())
 		{

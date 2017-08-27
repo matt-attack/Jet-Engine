@@ -30,7 +30,7 @@ Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 	//ObjModel model;// = new ObjModel;
 	//model.Load(name);// mech2.iqm");
 	model->animate = true;//uses keyframe number for bounds
-	model->aabb = model->t->joints[0].bb;
+	model->aabb = model->data->joints[0].bb;
 	//model.aabb.min = Vec3(model.t->bounds[25].bbmin);// -Vec3(2, 0, 10);
 	//model.aabb.max = Vec3(model.t->bounds[25].bbmax);// +Vec3(2, 0, -10);
 
@@ -179,7 +179,7 @@ void FoliageRenderer::AddModel(const char* name)
 	ObjModel* model = new ObjModel;
 	model->Load(name);
 	model->animate = true;//uses keyframe number for bounds
-	model->aabb = model->t->joints[0].bb;
+	model->aabb = model->data->joints[0].bb;
 	this->tree_models.push_back({ this->GetImpostorSize(model), model });
 }
 
@@ -234,7 +234,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 					//render it
 					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, model.dimensions.y / 2, 0);
-					rm->aabb = rm->t->joints[0].bb;
+					rm->aabb = rm->data->joints[0].bb;
 					rm->aabb.min *= 2;
 					rm->aabb.max *= 2;
 					rm->aabb.max += offset;

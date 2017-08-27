@@ -23,6 +23,8 @@
 
 #pragma comment (lib, "JetEngine.lib")
 #pragma comment (lib, "JetGame.lib")
+
+#include <JetEngine/camera.h>
 //#pragma comment (lib, "JetNet.lib")
 
 extern "C" {
@@ -54,15 +56,29 @@ public:
 	}
 };
 
+#include <JetEngine/TerrainSystem.h>
+#include <JetEngine/Graphics/Renderable.h>
+
 //your gamestate
 class MyGameState : public CGameState
 {
 	gui_window desktop;
 
+	CCamera cam;
+	HeightmapTerrainSystem t;
 public:
 	MyGameState(void)
 	{
+		cam._pos = Vec3(1024, 100, 1024);
+		cam.quat = Quaternion::IDENTITY;
+		cam.DoMatrix();
+		//cam.DoLookAt(Vec3(0, 100, 0), Vec3(0, 1, 0));
 
+		cam.SetAspectRatio((float)renderer->xres / (float)renderer->yres);
+		cam.SetFOV(35*3.1415926585f/180.0f);
+		cam.SetNear(0.1);
+		cam.SetFar(5000);
+		cam.PerspectiveProjection();
 	}
 
 	~MyGameState(void)
@@ -71,25 +87,73 @@ public:
 	}
 
 	//all the functions you can implement in your gamestate
-	virtual void Init(CGame* game) {}
+	virtual void Init(CGame* game)
+	{
+		t.Load(2);
+		//terrain.GenerateHeightmap();
+		t.LoadHeightmap("Content/heightmap.r16");
+	}
 
 	virtual void Cleanup() {};
 
-	virtual bool Load(char** c, float* f) { return true; };//called when loading the game by CLoadingState
+	virtual bool Load(char** c, float* f)
+	{
+		return true;
+	};//called when loading the game by CLoadingState
 
 	virtual void Pause() {};
 	virtual void Resume() {};
 
 	virtual void MouseEvent(CGame* game, int x, int y, int eventId) {  };
-	virtual void KeyboardEvent(CGame* game, int eventType, int keyId) {  };
+	virtual void KeyboardEvent(CGame* game, int eventType, int keyId) { };
 
 	virtual void HandleEvents(CGame* game, int messagetype, void* data1, void* data2) {};
 	virtual void Update(CGame* game, float dTime) {}
 	virtual void Draw(CGame* game, float dTime)
 	{
-		renderer->Clear(1, 1, 0, 0);
+		renderer->Clear(1, 1, 1, 1);
 
+		cam.SetAspectRatio((float)renderer->xres / (float)renderer->yres);
+		cam.SetFOV(35 * 3.1415926585f / 180.0f);
+		cam.SetNear(0.1);
+		cam.SetFar(5000);
+		cam.PerspectiveProjection();
+		
 		renderer->DrawText(0, 50, "Hello", 0xFFFFFFFF);
+
+		if (game->GetInput()->kb[KEY_S])
+		{
+			cam._pos.z -= 0.8;
+			cam.DoMatrix();
+			//cam.DoLookAt(Vec3(0, 100, 0), Vec3(0, 1, 0));
+		}
+		else if (game->GetInput()->kb[KEY_W])
+		{
+			cam._pos.z += 0.8;
+			cam.DoMatrix();
+			//cam.DoLookAt(Vec3(0, 100, 0), Vec3(0, 1, 0));
+		}
+		if (game->GetInput()->kb[KEY_A])
+		{
+			cam._pos.x -= 0.8;
+			cam.DoMatrix();
+			//cam.DoLookAt(Vec3(0, 100, 0), Vec3(0, 1, 0));
+		}
+		else if (game->GetInput()->kb[KEY_D])
+		{
+			cam._pos.x += 0.8;
+			cam.DoMatrix();
+			//cam.DoLookAt(Vec3(0, 100, 0), Vec3(0, 1, 0));
+		}
+
+		//r.AddRenderable(&t);
+		fix this being so confusing
+		ok, dont call r.add for terrain, need to call t.render
+		t.Render(&cam, 0);
+
+		r.Render(&cam, renderer);
+
+		r.Finish();
 	}
 };
 

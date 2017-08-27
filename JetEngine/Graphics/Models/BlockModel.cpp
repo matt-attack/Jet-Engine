@@ -5,7 +5,6 @@
 #endif
 #include "BlockModel.h"
 #include "../../IMaterial.h"
-//#include "Entities/PlayerEntity.h"
 
 #define MODEL_X 32
 #define MODEL_Y 32

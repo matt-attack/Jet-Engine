@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TerrainPatch.h"
+#include "Graphics/CTexture.h"
 
 extern float LODboost;
 
@@ -35,8 +36,10 @@ private:
 	QuadTree** grid[4];
 	ID3D11SamplerState* sampler, *textureSampler;
 
-	ID3D11Texture2D* hmapt;
-	ID3D11ShaderResourceView* hmapv;
+	//dont use these, use a texture object
+	CTexture hmap;
+	//ID3D11Texture2D* hmapt;
+	//ID3D11ShaderResourceView* hmapv;
 
 	CShader *shader, *shader_s;
 
@@ -60,6 +63,7 @@ public:
 	CTexture* grass, *rock, *snow;
 	CTexture* road;
 	CTexture* nmap;
+	CTexture* noise;
 
 	void Load(float terrain_scale);
 
@@ -88,14 +92,31 @@ public:
 	float GetHeightAndNormal(float x, float y, Vec3& normal);
 	float GetHeightAndVectors(float x, float y, Vec3& normal, Vec3& xtangent, Vec3& ytangent);
 
+	//y component is height above the terrain
+	//returns the road segment id
+	struct RoadPoint
+	{
+		Vec3 pos;
+		int connection = -1;
+		float width = 16;//todo, use this to indicate type, number of lanes
+	};
+	struct RoadData
+	{
+		RoadPoint* points;
+		int size;
+		AABB bounds;
+	};
+	std::vector<RoadData> roads;
+	int AddRoad(RoadPoint* points, unsigned int count);
+
 	//atlas management stuff
 	std::vector<int> free_tiles;//absolutely free ones
-	std::vector<int> unused_tiles;//ones that we rendered to but can go back to so only use these if we need a better one
+	//std::vector<int> unused_tiles;//ones that we rendered to but can go back to so only use these if we need a better one
 
 	//this renders the tile in as well as fills in the indirection texture when we are done
-	int RenderTile(int x, int y, int scale, int id = -1);//returns the tile number
+	int RenderTile(const std::vector<HeightmapTerrainSystem::RoadData>& roads, int x, int y, int scale, int id = -1);//returns the tile number
 
-	void MarkTileAsUnused(int num);
+	//void MarkTileAsUnused(int num);
 
 	void MarkTileFreed(int num);
 

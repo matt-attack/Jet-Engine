@@ -2,6 +2,7 @@
 #include "Renderable.h"
 #include "CRenderer.h"
 
+#include <d3dx11.h>
 
 CRenderTexture::CRenderTexture(void)
 {
@@ -89,7 +90,7 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 		if (FAILED(hr))
 			throw 7;
 
-		rt->depth_texture = depthTexture;
+		rt->texture_depth = depthTexture;
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 		ZeroMemory(&depthStencilViewDesc, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
@@ -129,25 +130,25 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 
 	rt->color_format = color_format;
 	rt->color = renderTargetView;
-	rt->color_texture = renderTargetTexture;
+	rt->texture = renderTargetTexture;
 	
 	if (rt->color)
 	{
-		rt->texture = rt->GetColorResourceView();
-		rt->texture->AddRef();
+		rt->texture_rv = rt->GetColorResourceView();
+		rt->texture_rv->AddRef();
 	}
 	return rt;
 }
 
 ID3D11ShaderResourceView* CRenderTexture::GetColorResourceView()
 {
-	if (this->texture)
+	if (this->texture_rv)
 	{
-		this->texture->AddRef();
-		return this->texture;
+		this->texture_rv->AddRef();
+		return this->texture_rv;
 	}
 
-	if (this->color_texture == 0)
+	if (this->texture == 0)
 		throw 7;
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
@@ -159,14 +160,14 @@ ID3D11ShaderResourceView* CRenderTexture::GetColorResourceView()
 	//this is how to access the texture later
 	ID3D11ShaderResourceView* resourceView;
 	HRESULT hr = renderer->device->CreateShaderResourceView(
-		color_texture,
+		texture,
 		&shaderResourceViewDesc,
 		&resourceView
 		);
 	if (FAILED(hr))
 		throw 7;
 
-	this->texture = resourceView;
+	this->texture_rv = resourceView;
 	return resourceView;
 }
 
@@ -192,7 +193,7 @@ ID3D11ShaderResourceView* CRenderTexture::GetDepthResourceView()
 	//this is how to access the texture later
 	ID3D11ShaderResourceView* resourceView;
 	HRESULT hr = renderer->device->CreateShaderResourceView(
-		depth_texture,
+		texture_depth,
 		&shaderResourceViewDesc,
 		&resourceView
 		);

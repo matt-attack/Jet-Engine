@@ -130,7 +130,6 @@
     <ClInclude Include="DbgNew.h" />
     <ClInclude Include="Graphics\Decals.h" />
     <ClInclude Include="Defines.h" />
-    <ClInclude Include="Graphics\Animation.h" />
     <ClInclude Include="Graphics\CIndexBuffer.h" />
     <ClInclude Include="Graphics\CRenderer.h" />
     <ClInclude Include="Graphics\CTexture.h" />

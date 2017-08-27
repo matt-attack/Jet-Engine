@@ -9,6 +9,7 @@ CCamera::CCamera()
 {
 	this->perspective = true;
 
+	this->parent = 0;
 	_near = 0.1f;
 	_far = 2000.0f;
 	this->quat = Quaternion::IDENTITY;//.FromAngleAxis(0.0f, Vec3(1,0,0));

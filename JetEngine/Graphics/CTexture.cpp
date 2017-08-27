@@ -7,18 +7,20 @@ extern JNIEnv* javaEnv;
 extern jobject mattcraftrenderer;
 #endif
 
+#include <d3dx11.h>
+
 CTexture::CTexture(ID3D11ShaderResourceView* tex)
 {
-	texture = tex;
-	data = 0;
+	texture_rv = tex;
+	texture = 0;
 	renderer->stats.textures++;
 }
 
 CTexture::~CTexture()
 {
-	if (this->texture && this->texture != renderer->GetMissingTextureImage())
+	if (this->texture_rv && this->texture_rv != renderer->GetMissingTextureImage())
 	{
-		texture->Release();
+		texture_rv->Release();
 		renderer->stats.textures--;
 	}
 }
@@ -55,17 +57,17 @@ CTexture* CTexture::load_as_resource(const std::string &path, CTexture* res)
 	ZeroMemory(&info, sizeof(D3DX11_IMAGE_LOAD_INFO));
 	info.Format = DXGI_FORMAT_R8_UNORM;//DXGI_FORMAT_UNKNOWN;
 	info.MipLevels = 0;
-	HRESULT h = D3DX11CreateShaderResourceViewFromFileA(renderer->device, path.c_str(), 0, 0, &res->texture, 0);
+	HRESULT h = D3DX11CreateShaderResourceViewFromFileA(renderer->device, path.c_str(), 0, 0, &res->texture_rv, 0);
 	if (FAILED(h))
 		log("uhoh when loading texture");
 	//D3DX11CreateTextureFromFileA(renderer->device, path.c_str(), &info, 0, &res->texture, 0);
-	if (res->texture == 0)
+	if (res->texture_rv == 0)
 	{
 		//try again
 		logf("Error: Loading texture %s failed\n", path.c_str());
 
 		//insert dummy
-		res->texture = renderer->GetMissingTextureImage();
+		res->texture_rv = renderer->GetMissingTextureImage();
 	}
 	else
 	{
@@ -150,11 +152,11 @@ CTexture* CTexture::Create(int xRes, int yRes, DXGI_FORMAT format, const char* i
 	auto hr2 = renderer->device->CreateShaderResourceView(
 		pTexture,
 		&htshaderResourceViewDesc,
-		&tex->texture
+		&tex->texture_rv
 		);
 	if (FAILED(hr2))
 		throw 7;
-	tex->data = pTexture;
+	tex->texture = pTexture;
 	pTexture->Release();
 	return tex;
 }

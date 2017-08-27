@@ -6,6 +6,12 @@
 #include "ResourceManager.h"
 
 #include <fstream>
+#include <sstream>
+#include <iostream>
+
+#ifdef _WIN32
+#include <d3dx11.h>
+#endif
 
 std::map<std::string, IMaterial*> materials;
 
@@ -16,7 +22,7 @@ class ShaderBuilder : public Resource
 
 public:
 
-	std::map<int, CShader*[1 << num_builder_options]> shaders;
+	std::map<IMaterial*, CShader*[1 << num_builder_options]> shaders;
 	//CShader* shaders[1 << num_builder_options];
 
 private:
@@ -30,8 +36,8 @@ public:
 
 	~ShaderBuilder()
 	{
-		for (int i = 0; i < (1 << num_builder_options); i++)
-			delete shaders[i];
+		for (auto ii : shaders)
+			delete shaders[ii.first];
 	}
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)
@@ -39,12 +45,16 @@ public:
 		if (this->path.length())
 		{
 			for (auto& shader : this->shaders)
+			{
 				for (int i = 0; i < (1 << num_builder_options); i++)
+				{
 					if (shader.second[i])
 					{
 						delete shader.second[i];
 						shader.second[i] = 0;// this->LoadShader(i, this->defines, this->surface_shader);
 					}
+				}
+			}
 
 			return;
 		}
@@ -69,28 +79,31 @@ public:
 		//construct shaders
 		d->Reload(d->resmgr(), path);
 
-		//load with Jet
-		//have a table with opengl, dx, and various settings
-
 		return d;
 	}
-
-	CShader* GetShader(int id, std::map<std::string, std::string>& defines, std::string& surface_shader)
+	
+	//gets a shader for a material witha specific configuration number and set of defines
+	CShader* GetShader(int id, const IMaterial* material)
 	{
+		IMaterial* key = (IMaterial*)material;
+		if (material->defines.size() == 0 && material->surface_shader.length() == 0)
+			key = 0;//optimization here so we dont need a custom shader made if we dont use defines or surface shader
+
+		//todo: can optimize such that if surface shader and defines are the same that you can use the same shaders
+
 		//get a key
-		int key = surface_shader.length();
 		auto res = shaders.find(key);
 		if (res != shaders.end() && res->second[id])
 			return res->second[id];
 
-		this->shaders[key][id] = this->LoadShader(id, defines, surface_shader);
+		this->shaders[key][id] = this->LoadShader(id, material->defines, material->surface_shader);
 
 		return this->shaders[key][id];
 	}
 
 private:
 	std::string surface_shader;
-	CShader* LoadShader(int id, std::map<std::string, std::string>& defines, std::string& surface_shader)
+	CShader* LoadShader(int id, const std::map<std::string, std::string>& defines, const std::string& surface_shader)
 	{
 		this->surface_shader = surface_shader;
 		this->defines = defines;
@@ -102,11 +115,13 @@ private:
 		//build the list
 		int size = 0;
 		for (int i = 0; i < num_builder_options; i++)
+		{
 			if (id & (1 << i))
 			{
 				list[size] = options[i];
 				definitions[size++] = "true";
 			}
+		}
 
 		if (id & (1 << 2))//if point lights, specify a number we want
 		{
@@ -123,7 +138,6 @@ private:
 			strcpy(definitions[size++], ii.second.c_str());
 		}
 
-		//dont do this, need to new it or destruct then placement new
 		//load in the shader from the file
 		bool add_dummy = this->surface_shader.find("SurfaceShader") == -1;
 		const char empty_surface[] = "void SurfaceShader(inout VS_OUTPUT In) {}";
@@ -143,9 +157,9 @@ private:
 		if (this->surface_shader.length())
 			strcpy(&buffer[length], this->surface_shader.c_str());
 		
+		//add dummy surface shader if one isnt set
 		if (add_dummy)
 		{
-			//add dummy surface shader
 			strcpy(&buffer[length], empty_surface);
 		}
 		
@@ -170,17 +184,19 @@ private:
 
 IMaterial::IMaterial(const char* name)
 {
-	this->cullmode = CULL_CW;
+	//set default material options
+	this->SetDefaults();
 	this->texture = 0;
-	this->alpha = this->alphatest = false;
-	this->filter = Linear;
-	this->depthhack = false;
 	this->shader_ptr = 0;
-	this->skinned = false;
 
 	this->name = name;
 
-	GetList()[name] = this;
+	if (GetList().find(name) != GetList().end())
+	{
+		printf("A material with name %s already exists!", name);
+		throw 7;
+	}
+	GetList()[name] = this;//add myself to the material list
 }
 
 IMaterial::~IMaterial()
@@ -209,10 +225,24 @@ IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, 
 	this->diffuse = diffuse ? diffuse : "";
 
 	//need to update here if possible
-	if (renderer && renderer->passthrough)//rectangle_v_buffer.GetSize() > 0)//HAX lel
+	if (renderer && renderer->gui_texture)//rectangle_v_buffer.GetSize() > 0)//HAX lel
 		this->Update(renderer);
 
+	if (GetList().find(name) != GetList().end())
+	{
+		printf("A material with name %s already exists!", name);
+		throw 7;
+	}
 	GetList()[name] = this;
+}
+
+void IMaterial::SetDefaults()
+{
+	this->cullmode = CULL_CW;
+	this->alpha = this->alphatest = false;
+	this->filter = Linear;
+	this->depthhack = false;
+	this->skinned = false;
 }
 
 void IMaterial::Apply(CRenderer* renderer)
@@ -241,13 +271,14 @@ void IMaterial::Apply(CRenderer* renderer)
 
 void IMaterial::Update(CRenderer* renderer)
 {
+	//todo: support generated textures that dont exist as a file
 	//updates internal data like shaders/textures
 	if (this->diffuse.length() > 0)
 	{
 		//try and load
 		auto tex = resources.get_unsafe<CTexture>(diffuse);
-		if (tex && tex->texture)
-			this->texture = tex->texture;
+		if (tex && tex->texture_rv)
+			this->texture = tex->texture_rv;
 	}
 	else
 	{
@@ -255,11 +286,12 @@ void IMaterial::Update(CRenderer* renderer)
 		this->texture = 0;
 	}
 
+	//load/update normal map if we have one
 	if (this->normal.length() > 0)
 	{
 		auto tex = resources.get_unsafe<CTexture>(normal);
-		if (tex && tex->texture)
-			this->normal_map = tex->texture;
+		if (tex && tex->texture_rv)
+			this->normal_map = tex->texture_rv;
 
 		if (this->shader_builder)
 			this->needs_tangent = true;
@@ -268,6 +300,8 @@ void IMaterial::Update(CRenderer* renderer)
 	{
 		this->normal_map = 0;
 	}
+
+	//build or load shaders as needed to render the material
 	if (this->shader_builder)
 	{
 		auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
@@ -284,10 +318,10 @@ void IMaterial::Update(CRenderer* renderer)
 
 		//supply the surface shader here and have it pick from the right list based on that
 		//these are shaders that will be used depending on lighting and scene configurations
-		this->shader_ptr = shaders->GetShader(id, this->defines, this->surface_shader);
-		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS, this->defines, this->surface_shader);
-		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING), this->defines, this->surface_shader);
-		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING), this->defines, this->surface_shader);
+		this->shader_ptr = shaders->GetShader(id, this);// this->defines, this->surface_shader);
+		this->shader_lit_ptr = shaders->GetShader(id | POINT_LIGHTS, this);
+		this->shader_unskinned_ptr = shaders->GetShader(id & (~SKINNING), this);
+		this->shader_lit_unskinned_ptr = shaders->GetShader((id | POINT_LIGHTS) & (~SKINNING), this);
 
 		shaders->Release();
 	}
@@ -321,11 +355,6 @@ void IMaterial::ApplyShader(bool skinned, int lights)
 			renderer->SetShader(shader_unskinned_ptr);
 }
 
-
-//loads a material from a .mat file
-#include <fstream>
-#include <sstream>
-
 bool read_bool(const std::string& in)
 {
 	if (in == "false")
@@ -333,17 +362,16 @@ bool read_bool(const std::string& in)
 	return true;
 }
 
+//loads a material from a .mat file
+
 //new idea
 //todo: shader stage passes
 //can have a stage for each kind of shader stuff, so can make it easy to add things like fog to all shaders
 //also can be used for shadows and lighting
-#include <iostream>
-IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)//Load(const char* name)
+IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)
 {
-	//ok, lets get auto material reloading
-	//	add alpha test to shadows
 	//	and fix branch culling / lighting issues
-	auto mat = res;// new IMaterial((char*)name);
+	auto mat = res;
 
 	std::string name = path;
 	int offset = name.find_last_of('/') +1;
@@ -358,28 +386,22 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 	new (mat)IMaterial(name.c_str());
 
 	//restore children
-
 	mat->children = old;
 
 	//setup defaults here
-	mat->alpha = false;
-	mat->alphatest = false;
-	mat->filter = FilterMode::Linear;
-	mat->depthhack = false;
-	mat->cullmode = CULL_CW;
+	mat->SetDefaults();
 
-	mat->shader_name = "Shaders/ubershader.txt";
+	//this name needs to be more readily changed and not buried in code
+	mat->shader_name = JET_SHADER_FOLDER;
+	mat->shader_name += JET_DEFAULT_SHADERBUILDER;
 	mat->shader_builder = true;
 	mat->skinned = true;//this doesnt always need to be true
 
-	std::string realname = "Content/";
+	std::string realname = JET_CONTENT_FOLDER;
 	realname += name;
-	//realname += ".mat";
-	//FILE* f = fopen(realname.c_str(), "rb");
+	
 	auto file = std::ifstream(realname, std::ios::binary /*| std::ios::ate*/);
-	//char a = file.get();
 	std::string line;
-	//std::cout << "Error code: " << strerror(errno);
 	while (std::getline(file, line))
 	{
 		std::istringstream iss(line);
@@ -451,7 +473,7 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 	//force update of children
 	for (int i = 0; i < res->children.size(); i++)
 	{
-		IMaterial::load_as_resource("Content/"+res->children[i]->name, res->children[i]);
+		IMaterial::load_as_resource(JET_CONTENT_FOLDER+res->children[i]->name, res->children[i]);
 	}
 
 	//figure out how to put the surface shader into the material
@@ -461,6 +483,9 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)/
 
 void IMaterial::SetDefine(const std::string& name, const std::string& value)
 {
+	if (this->shader_builder == false)//this is only for shader builders
+		throw 7;
+
 	this->defines[name] = value;
 
 	auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);

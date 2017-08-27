@@ -1,15 +1,25 @@
 #pragma once
+#ifndef _RTEXTURE_HEADER
+#define _RTEXTURE_HEADER
+
 #include "CTexture.h"
 
+#ifdef _WIN32
+#include <d3dx11.h>
+#endif
+
+class ID3D11RenderTargetView;
+class ID3D11DepthStencilView;
 class CRenderTexture: public CTexture
 {
+	//ok, lets go with texture for the color, then texture_depth for the depth
 public:
 	bool created;
 	friend class CRenderer;
 	ID3D11RenderTargetView* color = 0;
 	ID3D11DepthStencilView* depth = 0;
-	ID3D11Texture2D* color_texture = 0;
-	ID3D11Texture2D* depth_texture = 0;
+
+	ID3D11Texture2D* texture_depth = 0;
 
 	ID3D11ShaderResourceView* depth_rv = 0;
 
@@ -17,7 +27,7 @@ public:
 public:
 
 	CRenderTexture(ID3D11RenderTargetView* color, ID3D11DepthStencilView* depth);
-	//CRenderTexture(
+	
 	CRenderTexture(void);
 	~CRenderTexture(void);
 
@@ -30,3 +40,5 @@ public:
 	void Clear(float a, float r, float g, float b);
 };
 
+
+#endif

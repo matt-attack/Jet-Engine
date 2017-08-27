@@ -246,6 +246,9 @@ class CRenderer
 	ID3D11RasterizerState* rs_ccw;
 	ID3D11RasterizerState* rs_none;
 	ID3D11RasterizerState* rs_wireframe;
+public:
+	ID3D11RasterizerState* rs_scissor;
+private:
 
 	ID3D11SamplerState* point_sampler;
 	ID3D11SamplerState* linear_sampler;
@@ -273,6 +276,8 @@ class CRenderer
 	IDXGISwapChain* chain = 0;
 
 	CVertexBuffer rectangle_v_buffer;
+
+	VertexDeclaration input_layout;
 public:
 
 	ID3D11Device* device;
@@ -281,20 +286,18 @@ public:
 	int current_aa_level = -1;
 	IDXGIFactory* factory;
 
-public:
-
-	void SetAALevel(int samples);
-
 	CShader* shader;//the current shader being used
 
 	Matrix4 world, view, projection;
 
-	VertexDeclaration input_layout;
+private:
 
 	CShader* passthrough = 0;
 	CShader* unlit_textured = 0;
+
 	CShader* shaders[25];
 
+public:
 	//change shaders to not use magic numbers anymore and name them
 	CTexture* gui_texture;
 
@@ -304,6 +307,8 @@ public:
 	CRenderer();
 	~CRenderer();
 
+
+	//todo remove this, this shouldnt be here
 	int pos;
 	struct Value
 	{
@@ -313,6 +318,8 @@ public:
 	Value values[200];
 	void AddPoint(float value);//adds point to the debug graph
 	void DrawGraph();//renders the debug graph
+
+	void SetAALevel(int samples);
 
 #ifdef _WIN32
 	void Init(Window* wnd, int scrx, int scry);
@@ -345,13 +352,18 @@ public:
 	void SetViewport(Viewport* vp);
 
 	//text rendering related stuff
+private:
 	Font* font; int fontsize;
+public:
 	void SetFont(char* name, int size);
 
 	Rect DrawText(Rect r, const char* text, COLOR color, int flags = 0);//does auto line breaks
 	void DrawText(int x, int y, const char* text, COLOR color);
 	void DrawVerticalCenteredText(Rect r, const char* text, COLOR color);
 	void DrawCenteredText(Rect r, const char* text, COLOR color);
+
+	int TextSize(const char* txt, int n = 0);
+
 
 	void SetPrimitiveType(enum PrimitiveType pt);
 
@@ -361,12 +373,14 @@ public:
 	}
 
 	//debug stuff
+private:
 	struct cmd
 	{
 		OBB b;
 		COLOR color;
 	};
 	List<cmd> debugs;
+public:
 	void DebugDrawOBB(OBB b, COLOR color = COLOR_ARGB(255, 255, 255, 255))
 	{
 		cmd c;
@@ -377,23 +391,24 @@ public:
 	void FlushDebug();
 
 	//shader related stuff
-private:
-	CShader* SetShader(int id);
-public:
 	CShader* SetShader(CShader* shader);
 
+private:
+	//shaders with numeric ids are only for internal CRenderer use as they are being phased out
+	CShader* SetShader(int id);
 	CShader* CreateShader(int id, const char* filename);
-	void CreateShader(int id, const char* vs, const char* ps);
 #ifdef _WIN32
 	void CreateShader(int id, char* vloc, char* vfunc, char* ploc, char* pfunc);
 #endif
 
+public:
 	VertexDeclaration GetVertexDeclaration(VertexElement* elm, unsigned int count);
 
 	void SetVertexDeclaration(VertexDeclaration vd)
 	{
 		this->input_layout = vd;
 	}
+
 	ID3D11RenderTargetView* renderTargetView = 0;
 	ID3D11DepthStencilView* depthStencilView = 0;
 
@@ -456,7 +471,6 @@ public:
 
 	void ApplyCam(CCamera* cam);
 
-#ifndef USEOPENGL
 	void DrawBoundingBox(const OBB bb, COLOR color = COLOR_ARGB(255, 255, 255, 255));
 
 	void DrawBoundingBox(const AABB bb)
@@ -469,10 +483,6 @@ public:
 	void DrawFrustum(const Matrix4& view, const Matrix4& proj, COLOR color);
 
 	void DrawBoundingBox(const Vec3 min, const Vec3 max);
-#else
-	GLint EntityTextureUnif;// = glGetUniformLocation(EntityShader, "texture");
-	GLint EntityLightUnif;
-#endif
 
 	//returns false if the position is onscreen
 	bool WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p = 0);
@@ -499,6 +509,7 @@ public:
 	void DrawBeams();
 	void DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float size, unsigned int color);
 
+	//todo move this somewhere else
 	std::string FormatMemory(unsigned int size)
 	{
 		char temp[50];

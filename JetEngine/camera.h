@@ -29,22 +29,38 @@ public:
 	Vec3 _pos;
 
 	//current look directions, read only
+private:
 	Vec3 _upDir;
 	Vec3 _right;
 	Vec3 _lookAt;
+
+public:
+	Vec3 GetUp()
+	{
+		return this->_upDir;
+	}
+
+	Vec3 GetRight()
+	{
+		return this->_right;
+	}
+
+	Vec3 GetForward()
+	{
+		return this->_lookAt;
+	}
 
 	//camera rotation
 	Quaternion quat;
 
 	Parent* parent;
 
-	void SetFOV(float fov);
+	//FOV in radians
+	void SetFOV(float fov_radians);
 	void SetFar(float far);
 	void SetNear(float near);
 	void SetAspectRatio(float ratio);
 	void SetPos(Vec3 pos);
-	//void SetUp(Vec3 pos);
-	//void SetLookAt(Vec3 pos);
 
 	//frustum tests
 	bool SphereInFrustum(Vec3* pPosition, float radius) const;

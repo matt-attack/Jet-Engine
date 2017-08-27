@@ -1,6 +1,3 @@
-#ifdef POINT_LIGHTS
-#define NUM_POINT 3
-#endif
 
 struct VS_INPUT
 {
@@ -13,109 +10,27 @@ struct VS_OUTPUT
     float4 Position   : SV_Position;
 	float2 xy : TEXCOORD0;
 	float2 Texture : TEXCOORD3;
-	
-    //float4 Dif    : COLOR0;
-    //float2 Texture    : TEXCOORD0;
 	float3 WorldPos   : TEXCOORD1;
 	float Depth       : TEXCOORD2;
 };
 
-cbuffer Terrain
+cbuffer Matrices//Terrain
 {
 	float4x4 world, view, projection;
 	float4x4 WorldViewProjection;
 };
 
-struct PointLight
-{
-	float4 position;
-	float3 color;
-};
-
-cbuffer Lighting
-{
-	float3 LightDirection;
-	float3 LightColor;
-	float3 AmbientUp;
-	float3 AmbientRange;
-#ifdef NUM_POINT
-	PointLight lights[NUM_POINT];
-#endif
-};
-
-cbuffer Shadow
-{
-	float4 ShadowSplits;
-	float4x4 ShadowMats[3];
-};
+Texture2D indirection: register(t6);
+Texture2D tiles: register(t7);
 
 Texture2D nmap : register(t0);
-Texture2D grass : register(t6);
-Texture2D rock : register(t7);
+//Texture2D grass : register(t6);
+//Texture2D rock : register(t7);
 
 sampler Ssampler : register(s0);
 
 sampler Tsampler: register(s5);
 
-SamplerComparisonState ShadowSampler : register(s3)
-{
-   // sampler state
-   Filter = COMPARISON_MIN_MAG_MIP_POINT;
-   AddressU = BORDER;
-   AddressV = BORDER;
-   BorderColor = float4(1,1,1,1);
-
-   // sampler comparison state
-   ComparisonFunc = LESS_EQUAL;
-};
-
-Texture2D Texture  : register(t1);
-sampler TextureSampler : register(s1) = sampler_state
-{
-	Texture = (Texture);
-};
-
-Texture2D Texture3  : register(t2);
-sampler TextureSampler3 : register(s2) = sampler_state
-{
-	Texture = (Texture3);
-};
-
-Texture2D Texture4  : register(t3);
-sampler TextureSampler4 : register(s3) = sampler_state
-{
-	Texture = (Texture4);
-};
-
-float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldPos)
-{
-	//2x2 PCF
-	/*float visibility = 1.0f;
-	float4 lightingPosition =  mul(float4(WorldPos.xyz,1), ShadowMats[iCurrentCascadeIndex]);
-	for (int i = 0; i < 4; i++)
-	{
-		//visibility += tex2Dproj(tex, float4(lightingPosition.xy + (pcf2[i]/1024.0f) * lightingPosition.w, lightingPosition.z, lightingPosition.w));
-		if ( tex2D( tex, lightingPosition.xy + pcf2[i]/1024.0f ).r  <  lightingPosition.z - 0.00005 )
-		{
-			visibility-=0.15f;
-		}
-	}
-	//visibility /= 4;
-	rl *= min(visibility,l);*/
-
-	//standard 1 sample
-	float4 lightingPosition = mul(float4(WorldPos,1), ShadowMats[iCurrentCascadeIndex]);
-	float shadowdepth = float(tex.SampleCmpLevelZero(ShadowSampler, lightingPosition.xy, lightingPosition.z - 0.001));//*0.8;
-	//rl *= l*shadowdepth;// + AmbientColor;
-	//if (shadowdepth == 0)//+ 0.002 < lightingPosition.z)
-		//rl *= (AmbientColor-l)*(1-shadowdepth)+l;// + l;//AmbientColor
-	//else
-		//rl *= l;
-
-	return rl*shadowdepth;
-}
-
-const static float CASCADE_COUNT_FLAG = 3;
 VS_OUTPUT vs_main( in VS_INPUT In )
 {
 	VS_OUTPUT Out;
@@ -123,51 +38,48 @@ VS_OUTPUT vs_main( in VS_INPUT In )
 	Out.Position = mul(In.Position, WorldViewProjection);
 	
 	Out.WorldPos = In.Position;
-	Out.Depth = mul(In.Position, transpose(view)).z;
+	Out.Depth = mul(In.Position, view).z;
 	Out.Texture = In.Texture;
 	return Out; //return output vertex
 }
 
+#include "base_lighting.txt"
+
+
 float4 ps_main( in VS_OUTPUT In) : SV_Target
 {
-	//return float4(1,1,1,1);
 	float4 n = nmap.Sample(Ssampler, In.xy).rgba;
 	float3 normal = normalize(n.xyz*2-float3(1,1,1));
 	
-	float3 color = grass.Sample(Tsampler, float2(In.xy.x*64*4, In.xy.y*64*4)).rgb;
+	float4 offset = indirection.Sample(Tsampler, In.xy)*255;
+	//return float4(1,offset.bg/16, 1);
+	float scale = offset.r;
+	float2 tile_offset = float2(offset.b/16, offset.g/16);
 	
-	float3 rockc = rock.Sample(Tsampler, float2(In.xy.x*64, In.xy.y*64));
+	float2 tmp = fmod(In.xy*2*TERRAIN_SCALE*TILE_SCALE/scale, 1/16.0);
+	//this draws borders of the tiles
+	if (tmp.x < 0.002 || tmp.x > 1.0/16.0 - 0.002)
+		return float4(0,0,0,0);
+	if (tmp.y < 0.002 || tmp.y > 1.0/16.0 - 0.002)
+		return float4(0,0,0,0);
+		
+	tile_offset += tmp;//*(254.0/256.0) + (1.0/4096.0);
+
+	
+	float3 color = tiles.Sample(Ssampler, tile_offset).rgb;
+	
+	//return float4(color,1);//*n.a;
+	//float3 color = grass.Sample(Tsampler, float2(In.xy.x*64*4, In.xy.y*64*4)).rgb;
+	
+	//float3 rockc = rock.Sample(Tsampler, float2(In.xy.x*64, In.xy.y*64));
 
 	float Dot = saturate(dot(normal, LightDirection));
 	
 	//return float4(normal.xyz, 1);
-	float4 vCurrentPixelDepth = In.Depth;
-	float4 fComparison = ( vCurrentPixelDepth > ShadowSplits);
-	float fIndex = dot(
-		float4( CASCADE_COUNT_FLAG > 0,
-		CASCADE_COUNT_FLAG > 1,
-		CASCADE_COUNT_FLAG > 2,
-		CASCADE_COUNT_FLAG > 3)
-		, fComparison );
-	fIndex = min( fIndex, CASCADE_COUNT_FLAG );
-	int iCurrentCascadeIndex = (int)fIndex;
 	
-	float rl = Dot;//*n.w;
-	if (iCurrentCascadeIndex == 0)
-	{
-		rl = SampleMap(Texture, 0, rl, In.WorldPos);
-		//return float4(1,0,1,1);
-	}
-	else if (iCurrentCascadeIndex == 1)
-	{
-		rl = SampleMap(Texture3, 1, rl, In.WorldPos);
-		//return float4(1,0,0,1);
-	}
-	else if (iCurrentCascadeIndex == 2)
-	{
-		rl = SampleMap(Texture4, 2, rl, In.WorldPos);
-		//return float4(1,1,0,1);
-	}
+	float rl = calculate_shadow(In.WorldPos, In.Depth, Dot);
+	float3 light = calculate_light(In.WorldPos, normal);
+
 	
 	float slope = 1-normal.y;
 	float3 slopecolor;
@@ -181,7 +93,7 @@ float4 ps_main( in VS_OUTPUT In) : SV_Target
 	else
 		slopecolor = float3(1,0,0);*/
 		
-	if(slope < 0.7)
+	/*if(slope < 0.7)
     {
         float blendAmount = slope / 0.7f;
         color = lerp(color, rockc*0.5, blendAmount);
@@ -189,24 +101,8 @@ float4 ps_main( in VS_OUTPUT In) : SV_Target
 	if(slope >= 0.7) 
     {
         color = rockc*0.5;
-    }
-	//color = float3(1,1,1);
+    }*/
 	
-	//color = float3(0,0,0);
-	float3 light = float3(0,0,0);
-#ifdef NUM_POINT
-	for (int i = 0; i < NUM_POINT; i++)
-	{
-		float3 pos = lights[i].position;
-		float dist = distance(pos, In.WorldPos);
-		float3 dir = normalize(pos - In.WorldPos);
-		float radius = lights[i].position.w;
-		float d = (1-pow(dist/radius,4))*dot(dir, normal);
-		if (dist < radius & d > 0)
-			light += lights[i].color*d;
-	} 
-#endif
-
 	//return float4(color, 1);
 	
 	//do fog
@@ -224,22 +120,10 @@ float4 ps_main( in VS_OUTPUT In) : SV_Target
 	fog = 0;
 	//n.w -= 0.5;
 	//n.w *= 2;
-	float factor = n.w*rl + length(AmbientUp);//max(n.w, rl);// + 0.5;//length(AmbientUp);//0.5;//AmbientColor;
+	float factor = n.w*rl + length(AmbientDown);//max(n.w, rl);// + 0.5;//length(AmbientUp);//0.5;//AmbientColor;
 	//return float4(n.w, n.w, n.w, 1);
 	//return float4(Dot, Dot, Dot, 1);
 	//return float4(rl, rl, rl, 1);
 	return float4(lerp(color*factor+light, fcolor, fog),1);
-	//
-	//return float4(lerp(color*rl*n.w, fcolor, fog),1);
-	//return float4(slopecolor, 1);
-
-	return float4(float3(1,1,1)*abs(slope), 1);
-	//return float4(float3(1,1,1)*rl, 1);
-	//return float4(float3(1,1,1)*Dot, 1);
-	//return float4(float3(1,1,1)*In.Depth/500, 1);
-	//return float4(In.WorldPos/250, 1);
-	return float4(color*rl,1);
-	//return float4(In.Texture.xy, 1,1);
-	return float4(normal,1);//In.Dif;//float4(1,1,1,1);
 }
 

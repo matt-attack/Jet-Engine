@@ -49,7 +49,7 @@ struct RMesh
 	CIndexBuffer* ib;
 	int primitives;
 	int num_indices;
-	CVertexBuffer* vb;
+	const CVertexBuffer* vb;
 };
 
 //contains per instance variables to go along with a material kindof a hack atm to work for damage textures

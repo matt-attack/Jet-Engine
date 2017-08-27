@@ -15,7 +15,6 @@
 
 const unsigned int SHADOW_MAP_MAX_CASCADE_COUNT = 4;//max number
 const unsigned int SHADOW_MAP_SIZE = 1024;
-//const D3DFORMAT SHADOW_MAP_FORMAT = D3DFMT_R32F;
 //add settings for shadows and a settings menu/cvars
 
 #include <queue>
@@ -38,9 +37,8 @@ private:
 	CShader *shader_s, *shader_ss, *shader_sa;
 	Vec3 ambient_bottom, ambient_range;
 
-public:
 	Vec3 sun_light;
-private:
+
 	ID3D11SamplerState* shadowSampler;
 	ID3D11SamplerState* shadowSampler_linear;
 
@@ -115,12 +113,6 @@ public:
 		this->renderables.push_back(renderable);
 	}
 
-	void SetAmbient(Vec3 top, Vec3 bottom)
-	{
-		this->ambient_bottom = bottom;
-		this->ambient_range = top - bottom;
-	}
-
 	//this renders all the given renderables from the given view
 	void Render(CCamera* cam, CRenderer* render);
 
@@ -150,15 +142,26 @@ public:
 		//do me add shadow quality settings, filters
 	}
 
+	void SetAmbient(Vec3 top, Vec3 bottom)
+	{
+		this->ambient_bottom = bottom;
+		this->ambient_range = top - bottom;
+	}
+
 	//global shadow casting light direction
-	void SetLightDirection(const Vec3& dir)
+	void SetSunLightDirection(const Vec3& dir)
 	{
 		this->dirToLight = dir;
 	}
 
-	Vec3 GetLightDirection()
+	Vec3 GetSunLightDirection()
 	{
 		return this->dirToLight;
+	}
+
+	void SetSunLightColor(const Vec3& color)
+	{
+		this->sun_light = color;
 	}
 
 private:

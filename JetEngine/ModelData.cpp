@@ -107,7 +107,7 @@ ModelData* ModelData::load_as_resource(const std::string &path, ModelData* res)
 	return d;
 }
 
-Animation* ModelData::GetAnimation(const char* name)
+Animation* ModelData::GetAnimation(const char* name) const
 {
 	for (int i = 0; i < this->num_anims; i++)
 	{
@@ -295,7 +295,7 @@ void ModelData::BuildModelFromIqmModel(ModelData* out, ModelData* mdl)
 	delete[] verts2;
 }
 
-int ModelData::GetAnimationID(char* name)
+int ModelData::GetAnimationID(char* name) const
 {
 	for (int i = 0; i < this->num_anims; i++)
 	{
@@ -305,7 +305,7 @@ int ModelData::GetAnimationID(char* name)
 	return 0;
 }
 
-int ModelData::GetBone(const char* name)
+int ModelData::GetBone(const char* name) const
 {
 	for (int i = 0; i < num_joints; i++)
 	{

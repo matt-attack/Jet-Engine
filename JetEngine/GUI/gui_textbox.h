@@ -50,7 +50,7 @@ public:
 
 		if (this->isactive())//draw cursor if active
 		{
-			int i = renderer->font->TextSize(this->text,this->cursor);
+			int i = renderer->TextSize(this->text, this->cursor);
 			if (this->cursor == 0)
 				i = 0;
 			n.left += i - 5;
@@ -77,7 +77,7 @@ public:
 			this->cursor = strlen(this->text);
 			for (unsigned int i = 0; i < strlen(this->text); i++)
 			{
-				int l = renderer->font->TextSize(this->text,i+1);
+				int l = renderer->TextSize(this->text,i+1);
 				if (x - 5 < l)
 				{
 					this->cursor = i;

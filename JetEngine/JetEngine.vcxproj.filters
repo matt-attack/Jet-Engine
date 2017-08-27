@@ -143,9 +143,6 @@
     <ClInclude Include="Graphics\Models\ObjModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Animation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\CIndexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>

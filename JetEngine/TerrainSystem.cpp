@@ -40,7 +40,7 @@ public:
 		renderer->context->VSSetSamplers(0, 1, &this->sampler);
 		renderer->context->PSSetSamplers(0, 1, &this->sampler);
 		renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
-		renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
+		renderer->context->PSSetShaderResources(0, 1, &nmap->texture_rv);
 		//renderer->context->PSSetShaderResources(6, 1, &grass->texture);
 		//renderer->context->PSSetShaderResources(7, 1, &rock->texture);
 
@@ -55,8 +55,8 @@ public:
 
 		//renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
 
-		renderer->context->PSSetShaderResources(6, 1, &this->indirection->texture);
-		renderer->context->PSSetShaderResources(7, 1, &this->tiles->texture);
+		renderer->context->PSSetShaderResources(6, 1, &this->indirection->texture_rv);
+		renderer->context->PSSetShaderResources(7, 1, &this->tiles->texture_rv);
 	}
 };
 
@@ -125,16 +125,28 @@ public:
 		if (tile_id >= 0)
 			this->root->MarkTileFreed(this->tile_id);
 	}
-
+	//todo: thread terrain update
+	//	also need to work on the subdivision of roads into lower tiles for rendering
 	void Subdivide()
 	{
 		//512 is highest level which is 1/4th the size of the border
 		//512 = 
+		//todo: also subdivide roads
+
 		//virtual texture is 64 tiles across
 		northwest = new QuadTreeNode(root, this, x, y, size / 2);
 		northeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y, size / 2);
 		southwest = new QuadTreeNode(root, this, x, y + size*TerrainScale / 2, size / 2);
 		southeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y + size*TerrainScale / 2, size / 2);
+
+		//add all the roads
+		for (int i = 0; i < this->roads.size(); i++)
+		{
+			this->northeast->AddRoad(i, &this->roads[i]);
+			this->southeast->AddRoad(i, &this->roads[i]);
+			this->northwest->AddRoad(i, &this->roads[i]);
+			this->southwest->AddRoad(i, &this->roads[i]);
+		}
 	}
 
 	void RegenVertices(float* data)
@@ -148,6 +160,28 @@ public:
 		}
 		if (this->patch)
 			this->patch->GenerateVertices(data);
+	}
+
+	std::vector<HeightmapTerrainSystem::RoadData> roads;
+	void AddRoad(int id, HeightmapTerrainSystem::RoadData* road)
+	{
+		//check if we are in bounds
+		if (!this->aabb.Intersects(road->bounds))
+			return;
+
+		printf("hi im a road that needs to be added");
+
+		//lets refine the road down (todo)
+
+		this->roads.push_back(*road);
+
+		if (this->northeast)
+		{
+			this->northeast->AddRoad(id, road);
+			this->southeast->AddRoad(id, road);
+			this->northwest->AddRoad(id, road);
+			this->southwest->AddRoad(id, road);
+		}
 	}
 
 	int GetLOD(CCamera* cam)
@@ -305,7 +339,7 @@ public:
 				this->aabb.min.y = this->patch->miny;
 				this->aabb.max.y = this->patch->maxy;
 
-				this->tile_id = this->root->RenderTile(x / (32 * TerrainScale), y / (32 * TerrainScale), size / 32);
+				this->tile_id = this->root->RenderTile(this->roads, x / (TexturePatchSize * TerrainScale), y / (TexturePatchSize * TerrainScale), size / TexturePatchSize);
 
 				//this is bad, but oh well
 				int lod = this->GetLOD(cam);
@@ -353,6 +387,7 @@ public:
 	char state;
 	void UpdateLOD(CCamera* cam)
 	{
+		//todo decouple texture lod and this lod
 		if (this->northeast)
 		{
 			this->northeast->UpdateLOD(cam);
@@ -369,7 +404,7 @@ public:
 				delete this->southeast;
 
 				if (this->tile_id >= 0)
-					this->root->RenderTile(x / (32 * TerrainScale), y / (32 * TerrainScale), size*TerrainScale / (32 * TerrainScale), this->tile_id);
+					this->root->RenderTile(this->roads, x / (TexturePatchSize * TerrainScale), y / (TexturePatchSize * TerrainScale), size / TexturePatchSize, this->tile_id);
 
 
 				this->northeast = this->northwest = this->southeast = this->southwest = 0;
@@ -528,8 +563,8 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 	this->matrix = Matrix4::Identity();
 
 	grass = 0;
-	hmapt = 0;
-	hmapv = 0;
+	hmap.texture = 0;
+	hmap.texture_rv = 0;
 	need_to_reload_normals = false;
 	patch_size = 512;
 
@@ -542,8 +577,8 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 	delete[] this->heights;
 	this->sampler->Release();
 	this->textureSampler->Release();
-	this->hmapv->Release();
-	this->hmapt->Release();
+	//this->hmapv->Release();
+	//this->hmapt->Release();
 
 	this->grass->Release();
 	this->rock->Release();
@@ -602,9 +637,9 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 
 		renderer->EnableAlphaBlending(false);
 
-		const int tile_size = 256;
-		const int map_w = 4096;
-		vp.Height = vp.Width = 4096;
+		const int tile_size = TextureAtlasTileSize;
+		const int map_w = TextureAtlasSize;
+		vp.Height = vp.Width = map_w;
 		vp.X = vp.Y = 0;
 		vp.MinZ = 0;
 		vp.MaxZ = 1;
@@ -622,95 +657,29 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 				r.right = tile_size * y;
 				r.left = tile_size * (y + 1);
 				renderer->DrawRect(&r, COLOR_ARGB(255, rand() % 256, rand() % 256, rand() % 256));
-				std::string num = std::to_string(x * 16 + y);
+				std::string num = std::to_string(x * (map_w / tile_size) + y);
 				renderer->DrawText(r.right + 50, r.bottom + 50, num.c_str(), COLOR_ARGB(255, 0, 0, 0));
 			}
 		}
 
 		//setup the free tile list
-		for (int i = 0; i < 256; i++)
+		for (int i = 0; i < (TextureAtlasSize / TextureAtlasTileSize)*(TextureAtlasSize / TextureAtlasTileSize); i++)
 			this->free_tiles.push_back(i);
 
 		//now draw into indirection texture with random indices
 		renderer->SetRenderTarget(0, this->indirection_texture);
-		vp.Height = vp.Width = 2048 / PatchSize;
+		vp.Height = vp.Width = this->world_size / PatchSize;
 		vp.X = vp.Y = 0;
 		vp.MinZ = 0;
 		vp.MaxZ = 1;
 		renderer->SetViewport(&vp);
 		this->indirection_texture->Clear(1, 0, 1, 1);
-		for (int x = 0; x < 2048 / PatchSize; x++)
-		{
-			for (int y = 0; y < 2048 / PatchSize; y++)
-			{
-				Rect r;
-				r.bottom = x;
-				r.top = x + 1;
-				r.right = y;
-				r.left = y + 1;
-				//use r and g for offset, a for scale
-				int tileno = rand() % 256;
-				int offx = (tileno / 16);// *(16.0f / 4096.0f);
-				int offy = (tileno % 16);// *(16.0f / 4096.0f);
-				int scale = 1;
-				renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
-			}
-		}
-
-		/*{
-			int x = 4;
-			int y = 4;
-			Rect r;
-			r.bottom = x;
-			r.top = x + 2;
-			r.right = y;
-			r.left = y + 2;
-			//use r and g for offset, a for scale
-			int tileno = rand() % 256;
-			int offx = (tileno / 16);// *(16.0f / 4096.0f);
-			int offy = (tileno % 16);// *(16.0f / 4096.0f);
-			int scale = 2;
-			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
-			}
-			{
-			int x = 0;
-			int y = 0;
-			Rect r;
-			r.bottom = x;
-			r.top = x + 4;
-			r.right = y;
-			r.left = y + 4;
-			//use r and g for offset, a for scale
-			int tileno = rand() % 256;
-			int offx = (tileno / 16);// *(16.0f / 4096.0f);
-			int offy = (tileno % 16);// *(16.0f / 4096.0f);
-			int scale = 4;
-			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
-			}*/
-
-		/*{
-			int x = 0;
-			int y = 0;
-			Rect r;
-			r.bottom = x;
-			r.top = x + 64;
-			r.right = y;
-			r.left = y + 64;
-			//use r and g for offset, a for scale
-			int tileno = rand() % 256;
-			int offx = (tileno / 16);// *(16.0f / 4096.0f);
-			int offy = (tileno % 16);// *(16.0f / 4096.0f);
-			int scale = 64;
-			renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
-			}*/
 
 		//ok, lets start by clearing the texture to all use the L0 level (later we will optimize this to be better looking with one 2048x2048 texture or something)
 		//this->indirection_texture->Clear(1, 16.0f/255.0f, 0, 0);
 
-		//now request that one
-		this->RenderTile(0, 0, 64);
-
-		//this->RenderTile(0, 0, 1);
+		//now request the highest level LOD
+		this->RenderTile(this->roads, 0, 0, this->world_size / TexturePatchSize);
 
 		//restore viewport
 		renderer->SetViewport(&oldvp);
@@ -729,7 +698,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 
 	r.AddRenderable(this);
 
-	flipper++;// = 0;
+	flipper++;
 	//todo: later move the update outside of render
 	auto grid = this->grid[player];
 	for (int x = 0; x < world_size / patch_size; x++)
@@ -738,28 +707,15 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 		{
 			if (flipper++ % 2)//only updates half each frame
 				grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
-			//grid[x*(world_size / patch_size) + y]->Root()->Render(this->heights, cam);
 		}
 	}
-	//this->indirection_texture->Clear(1, 64.0f / 255.0f, 0, 0);
-
 	//this->RenderTile(0, 0, 64, 255);
-
-	//this->RenderTile(0, 0, 32, 254);
-	//this->RenderTile(32, 0, 32, 254);
-	//renderer->EnableAlphaBlending(true);
-	//renderer->SetTexture(0, rtview);
-	//Rect r(0, 600, 400, 1000);
-	//renderer->DrawRect(&r, 0xFFFFFFF);
-	//renderer->EnableAlphaBlending(false);
 }
 
-int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
+int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem::RoadData>& roads, int x, int y, int scale, int id)
 {
 	std::swap(x, y);
 
-	//x /= 2;
-	//y /= 2;
 	//remove it from the list
 	if (x%scale != 0)
 		throw 7;
@@ -774,17 +730,15 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 			num = this->free_tiles.back();
 			this->free_tiles.pop_back();
 		}
-		else if (this->unused_tiles.size())
+		/*else if (this->unused_tiles.size())
 		{
-			num = this->unused_tiles.back();
-			this->unused_tiles.pop_back();
-		}
+		num = this->unused_tiles.back();
+		this->unused_tiles.pop_back();
+		}*/
 	}
 
 	if (num == -1)
 		return -1;//we couldnt find a free tile
-	//throw 7;//we couldnt find a free tile :S
-	//num = 128;
 
 	//ok, now render the terrain here
 	Viewport oldvp, vp;
@@ -794,14 +748,19 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 	renderer->SetPixelTexture(0, 0);
 
 	renderer->EnableAlphaBlending(false);
+
+	const int tile_size = TextureAtlasTileSize;
+	const int map_w = TextureAtlasSize;
+	const int tile_dim = map_w / tile_size;
+
+	//if we already have the id, there is no need to re-render as the tile is already allocated
+	//in this case we just update the indirection buffer
 	//if (num != id)
 	{
-		//draw into the tile texture with tile numbers (and colors
+		//draw into the tile texture with tile numbers (and colors)
 		renderer->SetRenderTarget(0, this->tile_texture);
 
-		const int tile_size = 256;
-		const int map_w = 4096;
-		vp.Height = vp.Width = 4096;
+		vp.Height = vp.Width = map_w;
 		vp.X = vp.Y = 0;
 		vp.MinZ = 0;
 		vp.MaxZ = 1;
@@ -814,7 +773,7 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 			Vec4 position;
 			float scale;
 		} td;
-		td.position = Vec4(x,y,0,0);
+		td.position = Vec4(x, y, 0, 0);
 		td.scale = scale;
 		renderer->shader->cbuffers["Data"].UploadAndSet(&td, sizeof(data));
 
@@ -823,14 +782,16 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 		renderer->SetPixelTexture(0, this->nmap);
 		renderer->SetPixelTexture(1, this->rock);
 		renderer->SetPixelTexture(2, this->grass);
+		renderer->SetPixelTexture(3, this->snow);
+		renderer->SetPixelTexture(4, this->hmap);
+		renderer->SetPixelTexture(5, this->noise);
 
-		
+		renderer->SetFilter(0, FilterMode::Linear);
 
 		//draw quad
-
-		int tileno = num;// rand() % 256;
-		int offx = (tileno / 16);// *(16.0f / 4096.0f);
-		int offy = (tileno % 16);// *(16.0f / 409	6.0f);
+		int tileno = num;
+		int offx = (tileno / tile_dim);
+		int offy = (tileno % tile_dim);
 
 		Rect r;
 		r.bottom = tile_size * offx;
@@ -842,21 +803,134 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 		//use r and g for offset, a for scale
 		//and get world space pos in this shader
 		//need to figure out whats wrong with this
-		float umin = x * 32;
-		float umax = (x + scale) * 32;
+		float umin = x * TexturePatchSize;
+		float umax = (x + scale) * TexturePatchSize;
 		std::swap(umin, umax);
-		float vmin = y * 32;
-		float vmax = (y + scale) * 32;
+		float vmin = y * TexturePatchSize;
+		float vmax = (y + scale) * TexturePatchSize;
 		std::swap(vmin, vmax);
 		renderer->DrawRectUV(&r, Vec2(umin, vmin), Vec2(umin, vmax), Vec2(umax, vmin), Vec2(umax, vmax), COLOR_ARGB(255, 255, 255, 255), false);
-		//renderer->DrawRectUV(&r, x*32, (x+scale)*32, y*32, (y+scale)*32, COLOR_ARGB(255, 255, 255, 255), false);
 
 		//draw it here
 
-		//lets draw a road going through the map
+		struct TLVERTEX2
+		{
+			//float x;
+			//float y;
+			//float z;
+			Vec3 pos;
+			float rhw;
+			COLOR color;
+			float u;
+			float v;
+		};
+		TLVERTEX2 vertices[6];
 
-		to start I guess we can have a road going straight through the middle of each tile
-		ok, I guess each tile needs to own the vector data
+		//lay out vertices in a zig zag format
+		//1 - 4 - 6
+		//| \ | \ |
+		//2 - 3 - 5
+
+		renderer->SetPixelTexture(0, this->road);
+		renderer->context->RSSetState(renderer->rs_scissor);
+		D3D11_RECT r2;
+		r2.bottom = r.top;
+		r2.top = r.bottom;
+		r2.left = r.right;
+		r2.right = r.left;
+		renderer->context->RSSetScissorRects(1, &r2);
+
+		for (auto road : roads)
+		{
+			//render each road
+			RoadPoint* source_points = road.points;
+
+			std::vector<Vec3> points;//points of the trail
+			//lets draw a road going through the map
+			for (int i = 0; i < road.size; i++)
+			{
+				Vec3 p;
+				p.x = source_points[i].pos.x - y*(TexturePatchSize * TerrainScale);
+				p.z = 0;
+				p.y = source_points[i].pos.z - x*(TexturePatchSize * TerrainScale);
+				
+				points.push_back(p);
+			}
+
+			//ok, it appears to be flipped on the y side
+
+			//needs to be 2x as long
+			//points.push_back(Vec3(0, 16, 0));
+			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 22, 0));
+			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 16, 0));
+
+			for (int i = 0; i < points.size(); i++)
+			{
+				points[i].y *= 2;
+				points[i].x *= 2;
+				points[i].y = 32 * scale - points[i].y;
+			}
+
+			Vec3 tile_pos;
+			tile_pos.z = 0;
+			tile_pos.x = ((((float)r.right) / TextureAtlasSize)*2.0f) - 1.0f;
+			tile_pos.y = 1.0f - ((((float)r.top) / TextureAtlasSize)*2.0f);
+
+			Vec3 tile_world(0, 0, 0);
+			float tile_scale = ((2.0 / (TextureAtlasSize / TextureAtlasTileSize)) / scale) / (TexturePatchSize*TerrainScale);
+			float road_size = 16;
+			int i = 0;
+			for (int p = 0; p < points.size(); p++)
+			{
+				Vec3 tangent = Vec3(0, 1, 0);
+				vertices[i].pos = tile_pos + (points[p] - tile_world) * tile_scale + tangent*(road_size*tile_scale*0.5f);
+				vertices[i].rhw = 1;
+				if (p % 2 == 0)
+				{
+					vertices[i].u = 0;
+					vertices[i].v = 0;
+				}
+				else
+				{
+					vertices[i].u = 0;
+					vertices[i].v = 1;
+				}
+				vertices[i++].color = 0xFFFFFFFF;
+
+				//Vec3 tangent = Vec3(1, 0, 0);
+				vertices[i].pos = tile_pos + (points[p] - tile_world) * tile_scale - tangent*(road_size*tile_scale*0.5f);
+				vertices[i].rhw = 1;
+				if (p % 2 == 0)
+				{
+					vertices[i].u = 1;
+					vertices[i].v = 0;
+				}
+				else
+				{
+					vertices[i].u = 1;
+					vertices[i].v = 1;
+				}
+				vertices[i++].color = 0xFFFFFFFF;
+			}
+
+			//add the tail
+
+			renderer->SetShader(resources.get_shader("Shaders/guitexture.txt"));//renderer->shaders[16]);
+
+			CVertexBuffer b;
+
+			VertexElement elm8[] = { { ELEMENT_FLOAT4, USAGE_POSITION },
+			{ ELEMENT_COLOR, USAGE_COLOR },
+			{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+			b.SetVertexDeclaration(renderer->GetVertexDeclaration(elm8, 3));
+
+			b.Data(vertices, sizeof(TLVERTEX2) * i, sizeof(TLVERTEX2));
+
+			b.Bind();
+
+			//Draw image
+			renderer->DrawPrimitive(PT_TRIANGLEFAN, 0, i);
+		}
 	}
 
 	renderer->SetPixelTexture(0, 0);
@@ -865,7 +939,7 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 	//then mark it in the indirection texture
 	{
 		renderer->SetRenderTarget(0, this->indirection_texture);
-		vp.Height = vp.Width = 2048 / PatchSize;
+		vp.Height = vp.Width = 2048 / TexturePatchSize;
 		vp.X = vp.Y = 0;
 		vp.MinZ = 0;
 		vp.MaxZ = 1;
@@ -877,9 +951,9 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 		r.right = y;
 		r.left = y + scale;
 		//use r and g for offset, a for scale
-		int tileno = num;// rand() % 256;
-		int offx = (tileno / 16);// *(16.0f / 4096.0f);
-		int offy = (tileno % 16);// *(16.0f / 409	6.0f);
+		int tileno = num;
+		int offx = (tileno / tile_dim);
+		int offy = (tileno % tile_dim);
 		renderer->DrawRect(&r, COLOR_ARGB(255, scale, offx, offy));
 	}
 
@@ -888,12 +962,6 @@ int HeightmapTerrainSystem::RenderTile(int x, int y, int scale, int id)
 	renderer->SetRenderTarget(0, &ort);
 
 	return num;
-}
-
-void HeightmapTerrainSystem::MarkTileAsUnused(int num)
-{
-	if (num >= 0)
-		this->unused_tiles.push_back(num);
 }
 
 void HeightmapTerrainSystem::MarkTileFreed(int num)
@@ -1213,34 +1281,38 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 
 	if (loaded)
 		return;
-
+	//todo then use terrain system in an example project
+	//this will help me work out any silly bugs with dependencies on random function calls/variables somewhere
 	//create material
 	TerrainScale = terrain_scale;
 	TerrainMaterial* mt = new TerrainMaterial;
-	this->material = mt;// IMaterial("terrain");
+	this->material = mt;
 	this->material->skinned = false;
 	this->material->alpha = false;
 	this->material->alphatest = false;
-	this->material->SetDefine("TERRAIN_SCALE", std::to_string(TerrainScale));
 	this->material->shader_name = "Shaders/terrain_shadow.shdr";
 	this->material->shader_builder = true;
+	this->material->SetDefine("TERRAIN_SCALE", std::to_string(TerrainScale));
+	this->material->SetDefine("TILE_SCALE", std::to_string(32 / TexturePatchSize));
 	this->material->filter = FilterMode::Linear;
-	//this->material->shader_ptr = shader_s;
 	this->material->cullmode = CULL_CW;
 	this->my_material = mt;
 
 	terrain_mat = this->material;
 
-	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
-	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+	VertexElement elm9[] = {
+		{ ELEMENT_FLOAT3, USAGE_POSITION },
+		{ ELEMENT_FLOAT2, USAGE_TEXCOORD }
+	};
 	this->vertex_declaration = renderer->GetVertexDeclaration(elm9, 2);
 	terrain_vd = this->vertex_declaration;
 
+	//load all textures
 	grass = resources.get_unsafe<CTexture>("grass.jpg");
 	snow = resources.get_unsafe<CTexture>("snow.jpg");
 	rock = resources.get_unsafe<CTexture>("rock.png");
 	road = resources.get_unsafe<CTexture>("road.jpg");
-	//implement teh texturing
+	noise = resources.get_unsafe<CTexture>("perturb.png");
 
 	nmap = 0;
 
@@ -1306,11 +1378,11 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 
 	//world_size = 1024 * 2;
 	const int size = 2048;
-	this->tile_texture = CRenderTexture::Create(2048 * 2, 2048 * 2, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
+	this->tile_texture = CRenderTexture::Create(TextureAtlasSize, TextureAtlasSize, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
 	//this gives 256 tiles, can reduce it later if necessary
 
 	//color texture
-	this->indirection_texture = CRenderTexture::Create(size / 32, size / 32, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
+	this->indirection_texture = CRenderTexture::Create(size / TexturePatchSize, size / TexturePatchSize, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
 
 	mt->grass = grass;
 	mt->rock = rock;
@@ -1469,18 +1541,18 @@ void HeightmapTerrainSystem::GenerateNormals()
 	//first: make floating point texture with heights
 	CTexture t;
 
-	if (this->hmapv == 0)
+	if (this->hmap.texture == 0)
 	{
 		auto tex = CTexture::Create(this->world_size, this->world_size, DXGI_FORMAT_R32_FLOAT, (const char*)this->heights);
-		hmapv = tex->texture;
-		hmapt = tex->data;
+		hmap.texture_rv = tex->texture_rv;
+		hmap.texture = tex->texture;
 	}
 	else
 	{
 		D3D11_MAPPED_SUBRESOURCE sr;
-		renderer->context->Map(this->hmapt, 0, D3D11_MAP::D3D11_MAP_WRITE_DISCARD, 0, &sr);
+		renderer->context->Map(this->hmap.texture, 0, D3D11_MAP::D3D11_MAP_WRITE_DISCARD, 0, &sr);
 		memcpy(sr.pData, this->heights, 4 * this->world_size*this->world_size);
-		renderer->context->Unmap(this->hmapt, 0);
+		renderer->context->Unmap(this->hmap.texture, 0);
 	}
 
 	//now we make a rendertarget
@@ -1502,7 +1574,7 @@ void HeightmapTerrainSystem::GenerateNormals()
 		auto ort = renderer->GetRenderTarget(0);
 		renderer->SetRenderTarget(0, &rt);
 
-		renderer->SetPixelTexture(0, this->hmapv);
+		renderer->SetPixelTexture(0, this->hmap);
 
 		renderer->EnableAlphaBlending(false);
 
@@ -1526,7 +1598,7 @@ void HeightmapTerrainSystem::GenerateNormals()
 			Vec4 lightdir;
 			float res;
 		} td;
-		td.lightdir = Vec4(r.GetLightDirection());
+		td.lightdir = Vec4(r.GetSunLightDirection());
 		td.res = this->world_size;
 		renderer->shader->cbuffers["Data"].UploadAndSet(&td, sizeof(data));
 
@@ -1544,4 +1616,44 @@ void HeightmapTerrainSystem::GenerateNormals()
 	//RELEASE IT ALL, besides the updated texture
 
 	//then just need to save it to file
+}
+
+int HeightmapTerrainSystem::AddRoad(RoadPoint* points, unsigned int count)
+{
+	//calculate bounding box
+
+	//lets just add to one quarter of map so far
+	RoadData data;
+	data.points = points;
+	data.size = count;
+
+	AABB bounds(100000, -100000, 100000, -100000, 100000, -100000);
+	for (int i = 0; i < count; i++)
+	{
+		//todo, need to include width
+		bounds.FitPoint(points[i].pos);
+	}
+	data.bounds = bounds;
+	this->roads.push_back(data);
+
+	//ok, we got it now lets add it to our nodes
+	//lets have each node do its own bounds checks, just add it to everything
+
+	//todo this view system needs to be redone, this is SUPER dumb, need to take the max lod of each viewer for all points to load,
+	//but then only render as much as that viewer needs
+	//store a lod per viewer in each patch
+	for (int i = 0; i < 4; i++)
+	{
+		//grid[i] = new QuadTree*[(world_size / patch_size)*(world_size / patch_size)];
+		for (int x = 0; x < world_size / patch_size; x++)
+		{
+			for (int y = 0; y < world_size / patch_size; y++)
+			{
+				auto patch = grid[i][x*(world_size / patch_size) + y]->Root();
+				patch->AddRoad(this->roads.size() - 1, &data);
+				//patch->RegenVertices(this->heights);
+			}
+		}
+	}
+	return this->roads.size() - 1;
 }

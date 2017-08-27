@@ -203,7 +203,7 @@ void CVertexBuffer::SubData(const void* data, size_t offset, size_t length)
 	renderer->context->Unmap(vb, 0);
 }
 
-void CVertexBuffer::Bind()
+void CVertexBuffer::Bind() const
 {
 	renderer->SetVertexDeclaration(this->vd);
 	const unsigned int offset = 0;
