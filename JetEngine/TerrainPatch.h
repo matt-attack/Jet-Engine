@@ -15,7 +15,7 @@ enum TerrainDefs
 	PatchMaxLOD = PatchSizePower * 2,//10,//for 32, or 8 for 16
 
 	//todo, lets use this granularity
-	TexturePatchSize = 16,
+	TexturePatchSize = 32,
 
 	//this looks good enough, recommend changing to smaller tiles, but also smaller patches to even it out and use less texture memory
 	TextureAtlasSize = 4096*2,

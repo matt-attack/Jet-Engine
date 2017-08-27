@@ -584,7 +584,7 @@ void CRenderer::SetAALevel(int samples)
 		throw 7;
 
 	rasterDesc.ScissorEnable = true;
-	rasterDesc.CullMode = D3D11_CULL_BACK;
+	rasterDesc.CullMode = D3D11_CULL_NONE;
 	rasterDesc.FrontCounterClockwise = true;
 	result = device->CreateRasterizerState(&rasterDesc, &rs_scissor);
 	if (FAILED(result))

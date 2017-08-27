@@ -169,7 +169,7 @@ public:
 		if (!this->aabb.Intersects(road->bounds))
 			return;
 
-		printf("hi im a road that needs to be added");
+		//printf("hi im a road that needs to be added");
 
 		//lets refine the road down (todo)
 
@@ -843,16 +843,17 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 		for (auto road : roads)
 		{
 			//render each road
+			std::vector<Vec3> points;//points of the trail
+
 			RoadPoint* source_points = road.points;
 
-			std::vector<Vec3> points;//points of the trail
 			//lets draw a road going through the map
 			for (int i = 0; i < road.size; i++)
 			{
 				Vec3 p;
-				p.x = source_points[i].pos.x - y*(TexturePatchSize * TerrainScale);
+				p.x = source_points[i].pos.x;// -y*(TexturePatchSize * TerrainScale);
 				p.z = 0;
-				p.y = source_points[i].pos.z - x*(TexturePatchSize * TerrainScale);
+				p.y = source_points[i].pos.z;// -x*(TexturePatchSize * TerrainScale);
 				
 				points.push_back(p);
 			}
@@ -860,15 +861,15 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			//ok, it appears to be flipped on the y side
 
 			//needs to be 2x as long
-			//points.push_back(Vec3(0, 16, 0));
-			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 22, 0));
-			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 16, 0));
+			//points.push_back(Vec3(0, 1024+32, 0));
+			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 1024+24, 0));
+			//points.push_back(Vec3(TexturePatchSize * TerrainScale*200, 1024+32, 0));
 
 			for (int i = 0; i < points.size(); i++)
 			{
-				points[i].y *= 2;
-				points[i].x *= 2;
-				points[i].y = 32 * scale - points[i].y;
+				//points[i].y *= 0.5;
+				//points[i].x *= 0.5;
+				//points[i].y = TerrainScale * TexturePatchSize * scale - points[i].y;
 			}
 
 			Vec3 tile_pos;
@@ -876,14 +877,19 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			tile_pos.x = ((((float)r.right) / TextureAtlasSize)*2.0f) - 1.0f;
 			tile_pos.y = 1.0f - ((((float)r.top) / TextureAtlasSize)*2.0f);
 
-			Vec3 tile_world(0, 0, 0);
+			Vec3 tile_world(y*(TexturePatchSize * TerrainScale), x*(TexturePatchSize * TerrainScale), 0);
 			float tile_scale = ((2.0 / (TextureAtlasSize / TextureAtlasTileSize)) / scale) / (TexturePatchSize*TerrainScale);
 			float road_size = 16;
 			int i = 0;
+			Vec3 tangent = Vec3(0, 1, 0);
 			for (int p = 0; p < points.size(); p++)
 			{
-				Vec3 tangent = Vec3(0, 1, 0);
-				vertices[i].pos = tile_pos + (points[p] - tile_world) * tile_scale + tangent*(road_size*tile_scale*0.5f);
+				if (p + 1 < points.size())
+					tangent = (points[p] - points[p + 1]).cross(Vec3(0, 0, 1)).getnormal();
+				
+				Vec3 lp = points[p] - tile_world;
+				lp.y = TerrainScale * TexturePatchSize * scale - lp.y;
+				vertices[i].pos = tile_pos + (lp) * tile_scale + tangent*(road_size*tile_scale*0.5f);
 				vertices[i].rhw = 1;
 				if (p % 2 == 0)
 				{
@@ -898,7 +904,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				vertices[i++].color = 0xFFFFFFFF;
 
 				//Vec3 tangent = Vec3(1, 0, 0);
-				vertices[i].pos = tile_pos + (points[p] - tile_world) * tile_scale - tangent*(road_size*tile_scale*0.5f);
+				vertices[i].pos = tile_pos + (lp) * tile_scale - tangent*(road_size*tile_scale*0.5f);
 				vertices[i].rhw = 1;
 				if (p % 2 == 0)
 				{
@@ -1630,8 +1636,10 @@ int HeightmapTerrainSystem::AddRoad(RoadPoint* points, unsigned int count)
 	AABB bounds(100000, -100000, 100000, -100000, 100000, -100000);
 	for (int i = 0; i < count; i++)
 	{
+		Vec3 half_normal = Vec3(0, 0, 1)*(points[i].width/2);
 		//todo, need to include width
-		bounds.FitPoint(points[i].pos);
+		bounds.FitPoint(points[i].pos + half_normal);
+		bounds.FitPoint(points[i].pos - half_normal);
 	}
 	data.bounds = bounds;
 	this->roads.push_back(data);
