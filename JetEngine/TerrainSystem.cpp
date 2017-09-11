@@ -851,26 +851,17 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			for (int i = 0; i < road.size; i++)
 			{
 				Vec3 p;
-				p.x = source_points[i].pos.x;// -y*(TexturePatchSize * TerrainScale);
+				p.x = source_points[i].pos.x;
 				p.z = 0;
-				p.y = source_points[i].pos.z;// -x*(TexturePatchSize * TerrainScale);
+				p.y = source_points[i].pos.z;
 				
 				points.push_back(p);
 			}
-
-			//ok, it appears to be flipped on the y side
 
 			//needs to be 2x as long
 			//points.push_back(Vec3(0, 1024+32, 0));
 			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 1024+24, 0));
 			//points.push_back(Vec3(TexturePatchSize * TerrainScale*200, 1024+32, 0));
-
-			for (int i = 0; i < points.size(); i++)
-			{
-				//points[i].y *= 0.5;
-				//points[i].x *= 0.5;
-				//points[i].y = TerrainScale * TexturePatchSize * scale - points[i].y;
-			}
 
 			Vec3 tile_pos;
 			tile_pos.z = 0;
@@ -882,6 +873,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			float road_size = 16;
 			int i = 0;
 			Vec3 tangent = Vec3(0, 1, 0);
+			float v = 0;
 			for (int p = 0; p < points.size(); p++)
 			{
 				if (p + 1 < points.size())
@@ -899,7 +891,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				else
 				{
 					vertices[i].u = 0;
-					vertices[i].v = 1;
+					vertices[i].v = v;// 1
 				}
 				vertices[i++].color = 0xFFFFFFFF;
 
@@ -914,14 +906,14 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				else
 				{
 					vertices[i].u = 1;
-					vertices[i].v = 1;
+					vertices[i].v = v;// 1;
 				}
 				vertices[i++].color = 0xFFFFFFFF;
+				if (p + 1 < points.size())
+					v += (points[p] - points[p + 1]).length()*0.05;
 			}
 
-			//add the tail
-
-			renderer->SetShader(resources.get_shader("Shaders/guitexture.txt"));//renderer->shaders[16]);
+			renderer->SetShader(resources.get_shader("Shaders/guitexture.txt"));
 
 			CVertexBuffer b;
 
