@@ -177,6 +177,7 @@ public:
 
 	AABB &operator+=(const Vec3 &o) { min += o; max += o; return *this; }
 
+	AABB &operator*=(const float &s) { min *= s; max *= s; return *this; }
 
 	void FitPoint(const Vec3& point)
 	{

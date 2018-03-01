@@ -1,11 +1,33 @@
 #include "ModelData.h"
 
 #include "Graphics/CVertexBuffer.h"
-#include "Graphics/IModel.h"
 #include "Graphics/Models/ObjModel.h"
 #include "Graphics/CTexture.h"
 #include "IMaterial.h"
 #include "Util/Profile.h"
+
+#include "Graphics/CIndexBuffer.h"
+#include "Graphics/CRenderer.h"
+#include "Graphics/Shader.h"
+
+
+int GetModelID(const char* str)//basically a simple hash function
+{
+	int id = 0;
+	const char* c = str;
+	for (int i = 0; i < strlen(c); i++)
+	{
+		id += c[i];
+		id *= c[i] - 284;
+	}
+	return id;
+}
+
+std::map<int, std::string>* GetModelList()
+{
+	static std::map<int, std::string> list;
+	return &list;
+}
 
 ModelData::~ModelData()
 {
@@ -597,7 +619,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 					mat->shader_builder = true;
 
 					//temporary test values
-					mat->normal = "brick.jpg";
+					//mat->normal = "brick.jpg";
 					//mat->alphatest = true;
 
 					mat->diffuse = mname;
@@ -642,7 +664,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 			}
 			else if (va.type == IQM_COLOR)
 			{
-
+				printf("Got unused color in model\n");
 			}
 			else if (va.type == IQM_BLENDINDEXES)
 			{

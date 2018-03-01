@@ -41,11 +41,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\Matthew\Desktop\JetEngine;$(IncludePath);C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include;</IncludePath>
+    <IncludePath>C:\Users\Matthew\Desktop\JetNet\;C:\Users\Matthew\Desktop\JetEngine;$(IncludePath);C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include;</IncludePath>
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Users\Matthew\Desktop\JetEngine;$(IncludePath);C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include;</IncludePath>
+    <IncludePath>C:\Users\Matthew\Desktop\JetNet\;C:\Users\Matthew\Desktop\JetEngine;$(IncludePath);C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include;</IncludePath>
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -84,15 +84,23 @@
   <ItemGroup>
     <ClInclude Include="CGame.h" />
     <ClInclude Include="CGameState.h" />
+    <ClInclude Include="Datatables.h" />
     <ClInclude Include="GUI\gui_settings.h" />
     <ClInclude Include="LoadingState.h" />
+    <ClInclude Include="NetPackets.h" />
+    <ClInclude Include="Networking.h" />
+    <ClInclude Include="server.h" />
+    <ClInclude Include="Snapshot.h" />
     <ClInclude Include="SplashScreen.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CGame.cpp" />
+    <ClCompile Include="Datatables.cpp" />
     <ClCompile Include="GUI\gui_settings.cpp" />
     <ClCompile Include="LoadingState.cpp" />
+    <ClCompile Include="Networking.cpp" />
+    <ClCompile Include="server.cpp" />
     <ClCompile Include="SplashScreen.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>

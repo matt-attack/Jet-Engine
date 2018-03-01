@@ -4,7 +4,6 @@
 #include "CRenderer.h"
 #include "Shader.h"
 #endif
-#include "../ResourceManager.h"
 
 int GetModelID(const char* str)//basically a simple hash function
 {

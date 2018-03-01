@@ -397,12 +397,12 @@ void SoundManager::PlaySound(const std::string& name, Vec3 pos, bool relative)
 		}
 		//add a way to randomize pitch on specific sounds
 		//AL_CHECK( alSourcef(source->refID, AL_PITCH, this->settings.pitch)) ;	
-		//AL_CHECK( alSourcef(source->refID, AL_GAIN, this->settings.gain) );	
+		AL_CHECK( alSourcef(source->refID, AL_GAIN, 0.5) );	
 		AL_CHECK( alSource3f(source->refID, AL_POSITION, pos.x, pos.y, pos.z) );	
 		//AL_CHECK( alSource3f(source->refID, AL_VELOCITY, this->settings.velocity.x, this->settings.velocity.y, this->settings.velocity.z) );	
 		AL_CHECK( alSourcei(source->refID, AL_LOOPING, AL_FALSE) );
-		AL_CHECK( alSourcef(source->refID, AL_MAX_DISTANCE, 50.0f));
-		AL_CHECK( alSourcei(source->refID, AL_REFERENCE_DISTANCE, 10.0));
+		AL_CHECK( alSourcef(source->refID, AL_MAX_DISTANCE, 500.0f));
+		AL_CHECK( alSourcei(source->refID, AL_REFERENCE_DISTANCE, 20.0));
 		//retrieve buffers for the sound from the sound files
 		int usedBuffersCount = 0;
 		for (int i = 0; i < PRELOAD_BUFFERS_COUNT; i++)
@@ -416,6 +416,8 @@ void SoundManager::PlaySound(const std::string& name, Vec3 pos, bool relative)
 
 		if (relative)
 			AL_CHECK( alSourcef(source->refID, AL_MIN_GAIN, 1.0f));
+		else
+			AL_CHECK(alSourcef(source->refID, AL_MIN_GAIN, 0.0f));
 
 		AL_CHECK( alSourcePlay(source->refID) );
 

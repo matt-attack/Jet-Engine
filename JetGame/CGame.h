@@ -317,6 +317,11 @@ public:
 
 	CInput* GetInput();
 
+	Window* GetWindow()
+	{
+		return this->window;
+	}
+
 	bool keyboard[256];
 
 private:

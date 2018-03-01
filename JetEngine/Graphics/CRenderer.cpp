@@ -594,13 +594,20 @@ void CRenderer::SetAALevel(int samples)
 	context->RSSetState(rs_none);
 }
 
-#ifdef _WIN32
 void CRenderer::Init(Window* w, int scrx, int scry)
+{
+	auto hWnd = (HWND)w->GetOSHandle();
+	this->Init(hWnd, scrx, scry);
+}
+
+
+#ifdef _WIN32
+void CRenderer::Init(HWND hWnd, int scrx, int scry)
 #else
 void CRenderer::Init(int scrx, int scry)
 #endif
 {
-	auto hWnd = (HWND)w->GetOSHandle();
+	//auto hWnd = (HWND)w->GetOSHandle();
 
 	this->xres = scrx;
 	this->yres = scry;
@@ -779,6 +786,7 @@ void CRenderer::Init(int scrx, int scry)
 	context->OMSetDepthStencilState(depthStencilState, 1);
 
 	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	//depthStencilDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
 	result = device->CreateDepthStencilState(&depthStencilDesc, &depthStencilStateNoWrite);
 	if (FAILED(result))
 		throw 7;
@@ -872,6 +880,15 @@ void CRenderer::Init(int scrx, int scry)
 	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
 	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 	device->CreateBlendState(&blendStateDescription, &bs_subtractive);
+
+
+	blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;// SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	device->CreateBlendState(&blendStateDescription, &bs_font);
 
 	float blendfactor[4] = { 1, 1, 1, 1 };
 	context->OMSetBlendState(bs_solid, blendfactor, 0xFFFFFFFF);
@@ -2752,6 +2769,18 @@ void CRenderer::DrawBoundingBox(const Vec3 min, const Vec3 max)//Vec3* ObjectBou
 	this->SetDepthRange(0, 1);
 }
 
+//lets cheat, and just add all of the beams to render to a list and render last
+struct Beam
+{
+	Vec3 start, end;
+	float size;
+	int color;
+	//CCamera* cam;
+	Vec3 cam_pos;
+};
+
+std::vector<Beam> beams;
+
 int i = 0;
 void CRenderer::FlushDebug()
 {
@@ -2765,10 +2794,13 @@ void CRenderer::FlushDebug()
 	{
 		cmd c = *ii;
 #ifndef USEOPENGL
-		this->DrawBoundingBox(c.b, c.color);
+		if (c.type == 0)
+			this->DrawBoundingBox(c.b, c.color);
+		else
+			beams.push_back({ c.start, c.end, 2, c.color, this->cam_pos });// this->DrawBeam(this->cam_pos, c.start, c.end, 2, c.color);
 #endif
 	}
-	if (i++ == 3)
+	if (i++ == 20)//5 frame persistance
 	{
 		i = 0;
 		debugs.clear();
@@ -2778,17 +2810,6 @@ void CRenderer::FlushDebug()
 	//renderer->SetDepthRange(0,1);
 }
 
-
-//lets cheat, and just add all of the beams to render to a list and render last
-struct Beam
-{
-	Vec3 start, end;
-	float size;
-	int color;
-	CCamera* cam;
-};
-
-std::vector<Beam> beams;
 CTexture* beamtex = 0;
 void CRenderer::DrawBeams()
 {
@@ -2840,7 +2861,7 @@ void CRenderer::DrawBeams()
 		Vec3 minor;
 
 		Vec3 mid = (beam.end + beam.start)*0.5f;
-		Vec3 dir = mid - beam.cam->_pos;// _lookAt;
+		Vec3 dir = mid - beam.cam_pos;// beam.cam->_pos;// _lookAt;
 		minor = major.cross(dir);
 		minor.normalize();
 
@@ -2878,7 +2899,7 @@ void CRenderer::DrawBeams()
 
 void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float size, unsigned int color)
 {
-	beams.push_back({ start, end, size, color, cam });
+	beams.push_back({ start, end, size, color, cam->_pos });
 	return;
 	Vec3 dir = (start - end).getnormal();
 	Vec3 right = cam->GetForward().cross(dir).getnormal();
@@ -2988,6 +3009,7 @@ void CRenderer::ApplyCam(CCamera* cam)//kinda pointless to do all the time, but 
 {
 	this->SetMatrix(VIEW_MATRIX, &cam->_matrix);
 	this->SetMatrix(PROJECTION_MATRIX, &cam->_projectionMatrix);
+	this->cam_pos = cam->_pos;
 }
 
 ID3D11ShaderResourceView* CRenderer::GetMissingTextureImage()

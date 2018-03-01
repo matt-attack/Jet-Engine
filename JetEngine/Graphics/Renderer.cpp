@@ -486,7 +486,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 	float ztotal = cam->_far - cam->_near;
 	float ynear = cam->_near*tan(cam->_fov / 2.0f);
 	float xnear = ynear*cam->_aspectRatio;
-	
+
 	Vec3 _right = cam->GetRight();
 	Vec3 _upDir = cam->GetUp();
 	Vec3 _lookAt = cam->GetForward();
@@ -537,6 +537,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	//camera contains local camera angles
 	Parent* parent = cam->parent;
+	this->cur_parent = cam->parent;
 
 	//lets generalize some more and get multiple parent hierachys working
 
@@ -597,9 +598,9 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			//update matrices
 			/*for (int i = old_size; i < renderqueue.size(); i++)
 			{
-				auto ptr = &this->matrix_block[this->current_matrix++];
-				renderqueue[i].transform = ptr;
-				*ptr = renderqueue[i].source->matrix;
+			auto ptr = &this->matrix_block[this->current_matrix++];
+			renderqueue[i].transform = ptr;
+			*ptr = renderqueue[i].source->matrix;
 			}*/
 
 			//update predraw hooks
@@ -686,7 +687,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	render->SetMatrix(VIEW_MATRIX, &globalview);
 
 	//execute all of the render commands
-	this->ProcessQueue(renderqueue);
+	this->ProcessQueue(cam, renderqueue);
 
 	//removing old lights
 	for (int i = 0; i < this->lights.size(); i++)
@@ -871,11 +872,28 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 
 	renderer->ApplyCam(cam);
 
-	this->ProcessQueue(renderqueue);
+	this->ProcessQueue(cam, renderqueue);
 }
 
-void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
+void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& renderqueue)
 {
+	//compute both local and global camera matrices
+	Parent* parent = this->cur_parent;
+	Matrix4 localview = cam->_matrix;// > view;// cam->_matrix;
+	Matrix4 globalview;
+	if (parent)
+	{
+		globalview = parent->mat*localview;//todo, handle stacks of parents
+		Parent* current = parent->parent;
+		while (false)//current)
+		{
+			globalview *= parent->mat;
+			current = parent->parent;
+		}
+	}
+	else
+		globalview = localview;
+
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
 	for (int i = 0; i < renderqueue.size(); i++)
@@ -883,6 +901,27 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		const RenderCommand& rc = renderqueue[i];
 		//lets fill this with all the data we need, so we dont need
 		//to go back to the source
+
+		if (last != rc.source->parent)//do I need to change the current view matrix?
+		{
+			if (rc.source->parent == parent)//object has same parent as the camera
+			{
+				renderer->SetMatrix(VIEW_MATRIX, &localview);
+			}
+			else if (rc.source->parent)//object has different parent
+			{
+				//need to recurse down to get correct matrix
+				//goes from left to right so
+				//temp = (matrix1*matrix2)*matrix3)*matrix4
+				Matrix4 temp = rc.source->parent->mat.Inverse()*globalview;
+				renderer->SetMatrix(VIEW_MATRIX, &temp);
+			}
+			else//object is in global space and has no parent
+			{
+				renderer->SetMatrix(VIEW_MATRIX, &globalview);
+			}
+			last = rc.source->parent;
+		}
 
 		//apply material settings
 		bool shaderchange = false;
@@ -898,8 +937,8 @@ void Renderer::ProcessQueue(const std::vector<RenderCommand>& renderqueue)
 		Light found_lights[6];//max per pixel
 		//move this into an external function to clean up this code
 		//hack for the moment 
-		const Vec3 position = rc.source ? rc.source->matrix.GetTranslation() : rc.position;
-		const float radius = rc.source ? 10 : rc.radius;
+		const Vec3 position = rc.position;// rc.source ? rc.source->matrix.GetTranslation() : rc.position;
+		const float radius = rc.radius;// rc.source ? 10 : rc.radius;
 		//todo: get enemy spawning system and deaths
 		//todo: perhaps allow more lights if necessary
 		for (auto light : this->lights)
@@ -1045,30 +1084,30 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 	vp.Width = ow;
 	vp.Height = oh;
 	renderer->SetViewport(&vp);
-	/*if (showdebug > 1)
+	if (showdebug > 1)
 	{
-	//draw shadow maps
-	renderer->SetTexture(0,this->shadowMapViews[0]);
-	Rect r(300,600,0,300);
-	renderer->DrawRect(&r,0xFFFFFFF);
+		//draw shadow maps
+		renderer->SetPixelTexture(0, this->shadowMapViews[0]);
+		Rect r(300, 600, 0, 300);
+		renderer->DrawRect(&r, 0xFFFFFFF);
 
-	if (this->shadowSplits > 1)
-	{
-	renderer->SetTexture(0,this->shadowMapViews[1]);
-	r = Rect(300,600,300,600);
-	renderer->DrawRect(&r,0xFFFFFFF);
+		if (this->shadowSplits > 1)
+		{
+			renderer->SetPixelTexture(0, this->shadowMapViews[1]);
+			r = Rect(300, 600, 300, 600);
+			renderer->DrawRect(&r, 0xFFFFFFF);
+		}
+		if (this->shadowSplits > 2)
+		{
+			renderer->SetPixelTexture(0, this->shadowMapViews[2]);
+			r = Rect(0, 300, 0, 300);
+			renderer->DrawRect(&r, 0xFFFFFFF);
+		}
+		if (this->shadowSplits > 3)
+		{
+			renderer->SetPixelTexture(0, this->shadowMapViews[3]);
+			r = Rect(0, 300, 300, 600);
+			renderer->DrawRect(&r, 0xFFFFFFF);
+		}
 	}
-	if (this->shadowSplits > 2)
-	{
-	renderer->SetTexture(0,this->shadowMapViews[2]);
-	r = Rect(0,300,0,300);
-	renderer->DrawRect(&r,0xFFFFFFF);
-	}
-	if (this->shadowSplits > 3)
-	{
-	renderer->SetTexture(0,this->shadowMapViews[3]);
-	r = Rect(0,300,300,600);
-	renderer->DrawRect(&r,0xFFFFFFF);
-	}
-	}*/
 }

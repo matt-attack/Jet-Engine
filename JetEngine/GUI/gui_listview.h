@@ -3,7 +3,7 @@
 
 #include "gui_window.h"
 #include "gui_button.h"
-#include "Graphics/CRenderer.h"
+#include "JetEngine/Graphics/CRenderer.h"
 
 extern CRenderer* renderer;
 

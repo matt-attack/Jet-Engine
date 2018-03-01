@@ -222,7 +222,7 @@ typedef int D3DCOLOR;
 typedef unsigned int Texture;
 #endif
 #undef DrawText
-class IDXGIFactory;
+struct IDXGIFactory;
 class Window;
 class CRenderer
 {
@@ -241,6 +241,7 @@ class CRenderer
 	ID3D11BlendState* bs_alpha;
 	ID3D11BlendState* bs_additive;
 	ID3D11BlendState* bs_subtractive;
+	ID3D11BlendState* bs_font;
 
 	ID3D11RasterizerState* rs_cw;
 	ID3D11RasterizerState* rs_ccw;
@@ -322,6 +323,7 @@ public:
 	void SetAALevel(int samples);
 
 #ifdef _WIN32
+	void Init(HWND hWnd, int scrx, int scry);
 	void Init(Window* wnd, int scrx, int scry);
 #else
 	void Init(int scrx, int scry);
@@ -376,19 +378,33 @@ public:
 private:
 	struct cmd
 	{
+		int type;
 		OBB b;
 		COLOR color;
+		//for lines
+		Vec3 start, end;
 	};
 	List<cmd> debugs;
 public:
 	void DebugDrawOBB(OBB b, COLOR color = COLOR_ARGB(255, 255, 255, 255))
 	{
 		cmd c;
+		c.type = 0;
 		c.b = b;
 		c.color = color;
 		debugs.push_back(c);
 	}
+	void DebugDrawLine(Vec3 start, Vec3 end, COLOR color)
+	{
+		cmd c;
+		c.type = 1;
+		c.start = start;
+		c.end = end;
+		c.color = color;
+		debugs.push_back(c);
+	}
 	void FlushDebug();
+	Vec3 cam_pos;
 
 	//shader related stuff
 	CShader* SetShader(CShader* shader);

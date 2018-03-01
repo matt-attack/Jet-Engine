@@ -61,6 +61,8 @@ private:
 	std::mutex todo_lock;
 	std::queue<std::function<void()>> todo;
 
+	Parent* cur_parent;
+
 public:
 	int current_matrix;
 	Matrix4 matrix_block[2000];//todo: allocate these on heap
@@ -168,7 +170,7 @@ private:
 	//common constant buffers
 	ID3D11Buffer* shadow_buffer;
 
-	void ProcessQueue(const std::vector<RenderCommand>& renderqueue);
+	void ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& renderqueue);
 
 	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed, const Light* lights);
 

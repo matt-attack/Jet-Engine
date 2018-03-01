@@ -793,7 +793,10 @@ void Font::DrawText(const char* txt, float x, float y, float sx, float sy, unsig
 	//this probably doesnt need to be here
 	renderer->SetCullmode(CULL_NONE);
 
-	renderer->EnableAlphaBlending(true);
+	//renderer->EnableAlphaBlending(true);
+	float blendfactor[4] = { 1, 1, 1, 1 };
+	//if (yes)
+	renderer->context->OMSetBlendState(renderer->bs_font, blendfactor, 0xFFFFFFFF);
 	float oldx = x;
 	//glDepthFunc(GL_LEQUAL);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -924,6 +927,7 @@ void Font::DrawText(const char* txt, float x, float y, float sx, float sy, unsig
 	//renderer->context->Draw(len * 4, 0);
 
 	renderer->SetPixelTexture(0, old);
+	renderer->EnableAlphaBlending(false);
 };
 #else
 void Font::DrawText(char* txt, float x, float y, float sx, float sy, unsigned int color)

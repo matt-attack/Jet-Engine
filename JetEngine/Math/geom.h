@@ -11,7 +11,7 @@ class Matrix4f;
 typedef Matrix4f Matrix4;
 
 struct Vec3;
-struct Quaternion;
+class Quaternion;
 #define DEG2RAD 3.1415926535892384f/180.0f
 #include "Quaternion.h"
 typedef Quaternion Quat;

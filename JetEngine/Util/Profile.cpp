@@ -57,7 +57,7 @@ int RecursePrint(Prof* profile, int yp)
 {
 	int off = profile->callLevel * 40;
 	sprintf(po, "%s Max: %f Avg: %f Frame: %f", profile->name.c_str(), profile->max*1000.0f, profile->average*1000.0f, profile->averageframetotal*1000.0f);
-	renderer->DrawText(2 + off, yp, po, COLOR_ARGB(255, 255, 0, 0));
+	renderer->DrawText(2 + off, yp, po, COLOR_ARGB(255, 255, 255, 255));
 
 
 	//INT64 frame_start;

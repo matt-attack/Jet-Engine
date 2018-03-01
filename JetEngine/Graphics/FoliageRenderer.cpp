@@ -75,15 +75,18 @@ TreeBillboard* FoliageRenderer::AddTree(float fx, float z)
 	return &this->tiles[x + y*this->tiles_dim].data.back();
 }
 
+#include "../Util/Noise.h"
 void FoliageRenderer::Init(HeightmapTerrainSystem* system)
-{
+{   //need to document materials and models for exporting so can add new trees
 	if (this->shader)
 		return;//already loaded
 
 	//ok, lets swap to a tile based system, split world into 1024x1024 tiles?
 
-	//this->AddModel("tree.iqm");
+	this->AddModel("tree.iqm");
 	this->AddModel("tree2.iqm");
+
+	this->AddModel("tree3.iqm");
 
 	this->size = system->GetSize();
 
@@ -140,12 +143,19 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			if (normal.y < 0.9)
 				continue;
 
+			float noise = noise2d_perlin(x/300.0, z/300.0, 84652, 3, 0.9);
+			if (noise < 0.3)
+				continue;
+
 			auto tree = this->AddTree(x, z);
 			tree->position.x = x;
 			tree->position.z = z;
 			tree->position.y = y;
-			tree->size = this->tree_models[model].dimensions;
-			tree->position.y += this->tree_models[model].dimensions.y / 2;
+			float h = 1.0+(rand() % 100)/100.0f;
+			tree->size.x = this->tree_models[model].dimensions.x;
+			tree->size.y = this->tree_models[model].dimensions.y*h;
+			tree->position.y += tree->size.y / 2;
+			tree->normal = normal;
 			tree->color = COLOR_ARGB(255, rand() % 155 + 100, rand() % 155 + 100, 0);
 			tree->type = model;
 			i++;
@@ -160,18 +170,20 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	}
 
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_FLOAT3, USAGE_NORMAL },
 		//{ ELEMENT_FLOAT3, USAGE_TEXCOORD },
 	{ ELEMENT_FLOAT2, USAGE_TANGENT },
 	//{ ELEMENT_FLOAT2, USAGE_NORMAL },
 	//{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
 	{ ELEMENT_COLOR, USAGE_COLOR },
 	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT } };
-	this->vd = renderer->GetVertexDeclaration(elm9, 4);
+	this->vd = renderer->GetVertexDeclaration(elm9, 5);
 
 	//ok, need to make geometry shaders reloadable too
 
 	//	maybe add some metadata in start of shader file?
 	this->shader = resources.get_shader("Shaders/tree_billboards.shdr");
+	this->shader_shadow = resources.get_shader("Shaders/tree_billboards_shadow.shdr");
 }
 
 void FoliageRenderer::AddModel(const char* name)
@@ -213,7 +225,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 				if (this->tiles[index].data[i].position.distsqr(cam._pos) < fade_distance * fade_distance)
 				{
 					int type = this->tiles[index].data[i].type;
-					auto model = this->tree_models[type];
+					auto& model = this->tree_models[type];
 
 					//make trees use the alpha test material
 					//get available model
@@ -233,13 +245,16 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 					}
 
 					//render it
-					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, model.dimensions.y / 2, 0);
+					float hf = this->tiles[index].data[i].size.x / model.dimensions.x;
+					float vf = this->tiles[index].data[i].size.y / model.dimensions.y;
+
+					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, model.dimensions.y*vf / 2, 0);
 					rm->aabb = rm->data->joints[0].bb;
 					rm->aabb.min *= 2;
 					rm->aabb.max *= 2;
 					rm->aabb.max += offset;
 					rm->aabb.min += offset;
-					rm->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+					rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
 					rm->color = this->tiles[index].data[i].color;
 					//add color here
 					r.AddRenderable(rm);
@@ -247,7 +262,11 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 			}
 		}
 	}
+}
 
+void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
+{
+	ID3D11DeviceContext* dc = renderer->context;
 	ID3D11Buffer* b = 0;
 	renderer->context->PSSetConstantBuffers(2, 1, &b);
 
@@ -260,6 +279,8 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	{
 		Matrix4 vp;
 		Vec4 eyep;
+
+		Vec4 light;
 		//float padding2;
 		//Vec3 lightd;
 		Vec2 pos[4];
@@ -271,6 +292,61 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 	skyb.vp = VP.Transpose();
 	skyb.eyep = (Vec4)cam._pos;
+	skyb.light.xyz = r.GetSunLightDirection();
+
+
+
+
+
+	//lets try shadows
+
+	renderer->SetShader(this->shader_shadow);
+	renderer->SetCullmode(CULL_NONE);
+
+	this->shader_shadow->cbuffers["Variables"].UploadAndSet(&skyb, sizeof(ConstantBufferType));
+
+	//renderer->DepthWriteEnable(false);
+	renderer->SetFilter(0, FilterMode::Linear);
+	renderer->DepthWriteEnable(false);
+	//renderer->SetDepthRange(0.0f, 0.0f);
+
+	this->shader_shadow->BindIL(&this->vd);// GetVertexDeclaration(22));
+	renderer->EnableAlphaBlending(true);
+	renderer->context->GSSetShader(this->shader_shadow->gshader, 0, 0);
+	//dc->IASetInputLayout(renderer->GetVertexDeclaration(15));
+	renderer->SetPrimitiveType(PrimitiveType::PT_POINTS);
+	//dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	UINT stride = sizeof(TreeBillboard);
+	UINT offset = 0;
+
+	//this->texture = resources.get<CTexture>("smoke.png");
+	renderer->SetPixelTexture(4, this->texture);
+
+	//render tiles
+	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
+	{
+		if (this->tiles[i].data.size() == 0)
+			continue;
+
+		//todo, check if visible too
+		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x + tile_size, 20000, tiles[i].y + tile_size))) == false)
+			continue;
+
+		//actually render it
+		dc->IASetVertexBuffers(0, 1, &this->tiles[i].vb.vb, &stride, &offset);
+		dc->Draw(this->tiles[i].data.size(), 0);
+	}
+
+	renderer->context->GSSetShader(0, 0, 0);
+
+	renderer->EnableAlphaBlending(false);
+	renderer->DepthWriteEnable(true);
+	renderer->SetDepthRange(0, 1.0);
+
+
+
+
 
 	renderer->SetShader(this->shader);
 	renderer->SetCullmode(CULL_NONE);
@@ -290,8 +366,8 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	renderer->SetPrimitiveType(PrimitiveType::PT_POINTS);
 	//dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	UINT stride = sizeof(TreeBillboard);
-	UINT offset = 0;
+	//UINT stride = sizeof(TreeBillboard);
+	//UINT offset = 0;
 
 	//this->texture = resources.get<CTexture>("smoke.png");
 	renderer->SetPixelTexture(4, this->texture);
@@ -303,7 +379,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 			continue;
 
 		//todo, check if visible too
-		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x+tile_size, 20000, tiles[i].y+tile_size))) == false)
+		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x + tile_size, 20000, tiles[i].y + tile_size))) == false)
 			continue;
 
 		//actually render it
@@ -312,8 +388,6 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 	}
 
 	renderer->context->GSSetShader(0, 0, 0);
-	//renderer->EnableAlphaBlending(false);
-	//renderer->DepthWriteEnable(true);
 }
 
 int rrr = 0;

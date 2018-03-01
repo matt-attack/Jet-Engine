@@ -15,6 +15,7 @@ class ParticleRenderer
 	friend class ParticleSystem;
 	Particle* data;
 	ID3D11Buffer* mInitVB, *mDrawVB, *mStreamOutVB;
+	int mDrawCount, mStreamOutCount;
 	bool mFirstRun;
 
 	bool additive = false;

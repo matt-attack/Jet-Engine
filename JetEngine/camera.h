@@ -53,7 +53,7 @@ public:
 	//camera rotation
 	Quaternion quat;
 
-	Parent* parent;
+	Parent* parent = 0;
 
 	//FOV in radians
 	void SetFOV(float fov_radians);

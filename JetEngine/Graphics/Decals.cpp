@@ -4,6 +4,10 @@
 void DecalManager::AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal)
 {
 	Vec3 right = tangent.cross(normal);
+	const float scale = 4;
+	tangent *= scale;
+	right *= scale;
+
 	pos -= tangent/2 + right/2;
 	vert v = { pos, COLOR_ARGB(255, 255, 255, 255), 0.0f, 0.0f };
 	if (this->count < this->maxcount)
@@ -73,6 +77,8 @@ void DecalManager::AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal)
 
 void DecalManager::Draw()
 {
+	shader = resources.get_shader("Shaders/model_diffuse.shdr");//renderer->CreateShader(4, "Shaders/model_diffuse.shdr");
+	texture = resources.get_unsafe<CTexture>("decals.png");
 #ifdef ANDROID
 	return;
 #endif

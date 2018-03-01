@@ -265,13 +265,13 @@ void CShader::SetupUniforms(ID3D10Blob* vsBuf, ID3D10Blob* psBuf, ID3D10Blob* gs
 
 			D3D11_SHADER_BUFFER_DESC cdesc;
 			cbuf->GetDesc(&cdesc);
-			printf("%s Constant Buffer %d: %s, %d variables\n", type, i, cdesc.Name, cdesc.Variables);
+			//printf("%s Constant Buffer %d: %s, %d variables\n", type, i, cdesc.Name, cdesc.Variables);
 			for (int vi = 0; vi < cdesc.Variables; vi++)
 			{
 				auto var = cbuf->GetVariableByIndex(vi);
 				D3D11_SHADER_VARIABLE_DESC vdesc;
 				var->GetDesc(&vdesc);
-				printf("Variable: %s\n", vdesc.Name);
+				//printf("Variable: %s\n", vdesc.Name);
 			}
 
 			//bind each buffer

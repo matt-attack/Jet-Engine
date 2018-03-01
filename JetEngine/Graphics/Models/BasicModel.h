@@ -1,7 +1,8 @@
 #ifndef BASICMODEL_HEADER
 #define BASICMODEL_HEADER
 
-#include "../IModel.h"
+#include "../../ModelData.h"
+#include "../Renderable.h"
 
 class CCamera;
 

@@ -1,8 +1,9 @@
 #ifndef OBJMODEL_HEADER
 #define OBJMODEL_HEADER
 
-#include "../IModel.h"
+#include "../../ModelData.h"
 #include "../../Defines.h"
+#include "../Renderable.h"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -40,7 +41,7 @@ class ObjModel: public Renderable
 
 public:
 	CTexture* damage_texture = 0;
-	IMaterial** mesh_materials;
+	IMaterial** mesh_materials = 0;
 	CVertexBuffer* decals;
 
 	bool animate;

@@ -578,6 +578,8 @@ void SoundObject::SetPosition(const Vec3& pos)
 
 void SoundObject::SetRelative(bool ye)
 {
+	if (this->source == 0)
+		return;
 	AL_CHECK(alSourcef(this->source->refID, AL_MIN_GAIN, ye ? 1.0f: 0.0f));
 	AL_CHECK(alSourcei(this->source->refID, AL_SOURCE_RELATIVE, ye ? AL_TRUE : AL_FALSE));
 }

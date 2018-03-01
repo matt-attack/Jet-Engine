@@ -12,6 +12,7 @@ struct Particle
 	Vec3 position, velocity;
 	Vec2 size;
 	float age;
+	float max_age;
 	unsigned int color;
 };
 
@@ -58,7 +59,7 @@ void ParticleRenderer::Init()
 	vinitData.SysMemSlicePitch = 0;
 	//renderer->device->CreateBuffer(&vbd, &vinitData, &mInitVB);
 
-	this->num_particles = 200;
+	this->num_particles = 0;
 
 	//
 	// Create the ping-pong buffers for stream-out and drawing.
@@ -73,11 +74,11 @@ void ParticleRenderer::Init()
 	{ ELEMENT_FLOAT3, USAGE_TEXCOORD },
 	{ ELEMENT_FLOAT2, USAGE_TANGENT },
 	//{ ELEMENT_FLOAT2, USAGE_NORMAL },
-	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
+	{ ELEMENT_FLOAT2, USAGE_BLENDWEIGHT },
 	{ ELEMENT_COLOR, USAGE_COLOR } };
 	this->vd = renderer->GetVertexDeclaration(elm9, 5);
 
-	this->shader = new CShader("Content/Shaders/particles.shdr", "vs_main", "Content/Shaders/particles.shdr", "ps_main", 0, 0, 0, "Content/Shaders/particles.shdr", "gs_main");
+	this->shader = resources.get_shader("Shaders/particles.shdr");// new CShader("Content/Shaders/particles.shdr", "vs_main", "Content/Shaders/particles.shdr", "ps_main", 0, 0, 0, "Content/Shaders/particles.shdr", "gs_main");
 }
 
 #include "../Util/Profile.h"
@@ -89,7 +90,7 @@ void ParticleRenderer::Update(float dt)
 	for (int i = 0; i < this->num_particles; i++)
 	{
 		this->data[i].age -= dt;
-		if (this->data[i].age < 0)// || this->data[i].age < 0)
+		if (this->data[i].age <= 0)// || this->data[i].age < 0)
 		{
 			//this->data[i].age = 0;
 			//this->data[i].position = Vec3(1024, 400, 1024);
@@ -97,13 +98,19 @@ void ParticleRenderer::Update(float dt)
 			//this->data[i].size = Vec2(5, 5);
 			//theres a potential issue with doing this that dead particles could be a frame late
 			//but it should be fine
-			this->data[i] = this->data[this->num_particles];
+			this->data[i] = this->data[this->num_particles-1];
+			this->data[i].age -= dt;
+			if (this->data[i].age <= 0)
+			{
+				this->data[i].color = 0;
+			}
 			this->num_particles--;
 		}
 		//need to add particle fade out, somewhere...
 		this->data[i].position = this->data[i].position + this->data[i].velocity*dt;
 	}
 
+	mStreamOutCount = this->num_particles;
 	D3D11_MAPPED_SUBRESOURCE res;
 	renderer->context->Map(mStreamOutVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &res);
 	memcpy(res.pData, data, sizeof(Particle) * this->num_particles);
@@ -122,6 +129,7 @@ void ParticleRenderer::AddParticle(const int color, const Vec3& pos, const Vec3&
 	p->velocity = vel;
 	p->size = size;
 	p->color = color;// COLOR_ARGB(255, 40, 40, 40);
+	p->max_age = lt;
 	//ok, lets add fade out
 }
 
@@ -182,11 +190,12 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 
 	// ping-pong the vertex buffers
 	std::swap(mDrawVB, mStreamOutVB);
+	std::swap(mDrawCount, mStreamOutCount);
 
 	// Draw the updated particle system we just streamed-out. 
 	dc->IASetVertexBuffers(0, 1, &mDrawVB, &stride, &offset);
 
-	dc->Draw(this->num_particles, 0);
+	dc->Draw(mDrawCount, 0);
 	//dc->DrawAuto();
 
 	renderer->context->GSSetShader(0, 0, 0);

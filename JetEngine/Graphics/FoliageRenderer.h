@@ -7,6 +7,7 @@ class ObjModel;
 struct TreeBillboard
 {
 	Vec3 position;
+	Vec3 normal;
 	Vec2 size;
 	unsigned int color;
 	float type;
@@ -15,6 +16,7 @@ class FoliageRenderer
 {
 	CTexture* texture;
 	CShader* shader;
+	CShader* shader_shadow;
 	
 	VertexDeclaration vd;
 
@@ -50,6 +52,8 @@ public:
 	void GenerateImpostors();
 
 	void Render(CRenderer* renderer, const CCamera& cam);
+
+	void RenderImpostors(CRenderer* renderer, const CCamera& cam);
 
 	void AddModel(const char* name);
 

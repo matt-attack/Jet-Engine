@@ -174,6 +174,12 @@ public:
 	void Update();
 
 	bool first_player_controller;
+
+	const std::map<int, Binding>& GetBindings()
+	{
+		return this->bindings;
+	}
+
 private:
 	std::map<int, Binding> bindings;
 

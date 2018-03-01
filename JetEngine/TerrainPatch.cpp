@@ -696,7 +696,7 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>
 	rc.source = static_cast<Renderable*>(root);
 	rc.material_instance.extra = 0;
 	rc.position = Vec3(this->wx + PatchSize / 2, (this->maxy + this->miny) / 2, this->wy + PatchSize / 2);
-	rc.radius = max((this->maxy - this->miny)/2, PatchSize);
+	rc.radius = max(TerrainScale*(this->maxy - this->miny)/2, PatchSize*TerrainScale);
 	
 	queue->push_back(rc);
 }

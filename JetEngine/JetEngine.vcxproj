@@ -95,7 +95,6 @@
     <ClCompile Include="Graphics\CVertexBuffer.cpp" />
     <ClCompile Include="Graphics\FoliageRenderer.cpp" />
     <ClCompile Include="Graphics\font.cpp" />
-    <ClCompile Include="Graphics\IModel.cpp" />
     <ClCompile Include="Graphics\Models\BasicModel.cpp" />
     <ClCompile Include="Graphics\Models\BuildingModel.cpp" />
     <ClCompile Include="Graphics\Models\ObjModel.cpp" />
@@ -136,7 +135,6 @@
     <ClInclude Include="Graphics\CVertexBuffer.h" />
     <ClInclude Include="Graphics\FoliageRenderer.h" />
     <ClInclude Include="Graphics\font.h" />
-    <ClInclude Include="Graphics\IModel.h" />
     <ClInclude Include="Graphics\Models\BasicModel.h" />
     <ClInclude Include="Graphics\Models\BuildingModel.h" />
     <ClInclude Include="Graphics\Models\ObjModel.h" />

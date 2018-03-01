@@ -23,7 +23,6 @@ class ShaderBuilder : public Resource
 public:
 
 	std::map<IMaterial*, CShader*[1 << num_builder_options]> shaders;
-	//CShader* shaders[1 << num_builder_options];
 
 private:
 	std::map<std::string, std::string> defines;//set whenever you call LoadShader with those defines
@@ -70,6 +69,19 @@ public:
 					delete shader.second[i];
 					shader.second[i] = 0;
 				}
+	}
+
+	void InvalidateCache(IMaterial* mat)
+	{
+		if (shaders.find(mat) == shaders.end())
+			return;
+
+		for (int i = 0; i < (1 << num_builder_options); i++)
+			if (shaders[mat][i])
+			{
+				delete shaders[mat][i];
+				shaders[mat][i] = 0;
+			}
 	}
 
 	static ShaderBuilder* load_as_resource(const std::string &path, ShaderBuilder* res)
@@ -188,13 +200,12 @@ IMaterial::IMaterial(const char* name)
 	this->SetDefaults();
 	this->texture = 0;
 	this->shader_ptr = 0;
-
 	this->name = name;
 
 	if (GetList().find(name) != GetList().end())
 	{
 		printf("A material with name %s already exists!", name);
-		throw 7;
+		//throw 7;
 	}
 	GetList()[name] = this;//add myself to the material list
 }
@@ -401,6 +412,10 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)
 	realname += name;
 	
 	auto file = std::ifstream(realname, std::ios::binary /*| std::ios::ate*/);
+	if (!file)
+	{
+		printf("ERROR: Could not load material '%s'\n", realname.c_str());
+	}
 	std::string line;
 	while (std::getline(file, line))
 	{
@@ -475,7 +490,11 @@ IMaterial* IMaterial::load_as_resource(const std::string &path, IMaterial* res)
 	{
 		IMaterial::load_as_resource(JET_CONTENT_FOLDER+res->children[i]->name, res->children[i]);
 	}
-
+	if (res->shader_builder)
+	{
+		auto shaders = resources.get_unsafe<ShaderBuilder>(res->shader_name);
+		shaders->InvalidateCache(res);
+	}
 	//figure out how to put the surface shader into the material
 	return mat;
 }

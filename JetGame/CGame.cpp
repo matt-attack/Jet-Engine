@@ -266,7 +266,7 @@ void CGame::Update()
 	SoundManager::GetInstance()->Update();
 
 	//was using LINEAR_DISTANCE_CLAMPED
-	alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
+	alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);// _CLAMPED);
 
 	this->timer.Update();
 

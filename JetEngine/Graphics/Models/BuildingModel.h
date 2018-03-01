@@ -1,7 +1,7 @@
 #ifndef BUILDINGMODEL_HEADER
 #define BUILDINGMODEL_HEADER
 
-#include "../IModel.h"
+#include "../Renderable.h"
 
 class CCamera;
 

@@ -1151,6 +1151,7 @@ void HeightmapTerrainSystem::SaveHeightmap(const char* file)
 	}
 }
 
+#include <thread>
 void HeightmapTerrainSystem::GenerateHeightmap()
 {
 	//HeightMapInfo info;
@@ -1170,38 +1171,58 @@ void HeightmapTerrainSystem::GenerateHeightmap()
 
 	//generate some buildings
 	//generate some heights
-	const float hill_thresh = 0.4f;
-	const float mountain_thresh = 0.75f;
-	const float thresh = 0.3f;
-	for (int x = 0; x < this->world_size; x++)
+	int off = GetTickCount();
+
+	//thread this bitch
+	auto fun = [this, off](int i, int threads)
 	{
-		for (int y = 0; y < this->world_size; y++)
+		const float hill_thresh = 0.6f;
+		const float mountain_thresh = 0.90f;
+		const float thresh = 0.3f;
+		int n = this->world_size/threads;
+		for (int x = i*n; x < i*n+n; x++)
 		{
-			int index = ((this->world_size) * (x)) + y;
-
-			float is_mountain = noise2d_perlin_abs(x / 260.0f, y / 260.0f, 41865, 2, 0.5f);
-
-			//float scale = 5*(is_mountain - thresh)*(1.0f / (1.0f - thresh));
-			float base_height = (noise2d_perlin_abs(x / 160.0f, y / 160.0f, 1586541, 6, 0.5));// +1.0f) * 20;// +100;
-
-			if (is_mountain > hill_thresh)
+			for (int y = 0; y < this->world_size; y++)
 			{
-#undef min
-				this->heights[index] = base_height*std::min(100.0f, 100 * (is_mountain - hill_thresh) / (mountain_thresh - hill_thresh)) + 100;
-			}
-			else
-				this->heights[index] = 100;
+				int index = ((this->world_size) * (x)) + y;
 
-			if (is_mountain < 0.05)
-				this->heights[index] = 400;
-			//if (is_mountain > )
-			//float height = 0;
-			//if (scale > 0)
-			//	height = base_height*scale;
-			//else
-			//	height = base_height;
-			//this->heights[index] = height+100;// noise2d_perlin(x / 80.0f, y / 80.0f, 1586541, 2, 0.25) * 50 + 100;
+				float is_mountain = noise2d_perlin_abs(x / 340.0f, y / 340.0f, 41865 + off, 2, 0.5f);
+
+				//float scale = 5*(is_mountain - thresh)*(1.0f / (1.0f - thresh));
+				float base_height = (noise2d_perlin(x / 50.0f, y / 50.0f, 1586541 + off, 1, 0.4));// +1.0f) * 20;// +100;
+
+				if (is_mountain > hill_thresh)
+				{
+					float mountain_height = (noise2d_perlin(x / 100.0f, y / 100.0f, 1586541 + off, 5, 0.4));// +1.0f) * 20;// +100;
+#undef min
+#undef max
+					this->heights[index] = std::max(mountain_height*std::min(100.0f, 150 * (is_mountain - hill_thresh) / (mountain_thresh - hill_thresh)) + 100, 100 + base_height * 10);
+				}
+				else
+					this->heights[index] = 100 + base_height * 10;
+
+				//if (is_mountain < 0.05)
+				//	this->heights[index] = 400;
+				//if (is_mountain > )
+				//float height = 0;
+				//if (scale > 0)
+				//	height = base_height*scale;
+				//else
+				//	height = base_height;
+				//this->heights[index] = height+100;// noise2d_perlin(x / 80.0f, y / 80.0f, 1586541, 2, 0.25) * 50 + 100;
+			}
 		}
+	};
+	int threads = 4;
+	std::vector<std::thread> thread;
+	for (int i = 0; i < threads; i++)
+	{ 
+		thread.push_back(std::thread(std::bind(fun, i, threads)));
+	}
+
+	for (int i = 0; i < threads; i++)
+	{
+		thread[i].join();
 	}
 	//initialize all of this to 0
 	/*for (int i = 0; i < ds_size; i++)

@@ -28,7 +28,7 @@ ObjModel::ObjModel()
 
 	this->castsShadows = 1;
 	this->receivesShadows = 1;
-};
+}
 
 ObjModel::~ObjModel()
 {
@@ -42,7 +42,7 @@ ObjModel::~ObjModel()
 	}
 
 	delete[] this->mesh_materials;
-};
+}
 
 void ObjModel::SetAnimation(char* name)
 {
@@ -118,7 +118,7 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 			this->animate = true;
 	}
 #endif
-};
+}
 
 int ObjModel::GetBone(const char* name)
 {
@@ -128,7 +128,7 @@ int ObjModel::GetBone(const char* name)
 			return i;
 	}
 	return -1;
-};
+}
 
 Matrix3x4 ObjModel::GetBoneMat(const char* name)
 {
@@ -145,7 +145,7 @@ Matrix3x4 ObjModel::GetBoneMat(const char* name)
 	Matrix34Multiply_OnlySetOrigin((float*)&this->OutFrames[i], (float*)&this->data->joints[i].matrix, (float*)&out);
 
 	return out;
-};
+}
 
 void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curframe, Animation* anim2, int oframe1, int oframe2, float curframe2, float blend)//slerps/lerps between anim 1 and anim2
 {
@@ -433,6 +433,8 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.OutFrames = 0;
 	rc.mesh.vb = &this->data->vbt;// vb;
 	rc.material_instance.color = this->color;
+	rc.position = this->matrix.GetTranslation();
+	rc.radius = this->data->bounds->radius;
 
 	for (int i = 0; i < data->num_meshes; i++)
 	{
