@@ -34,6 +34,12 @@ enum KeyIDs
 	KEY_BACK = 0x28,// VK_DOWN,
 	/* keys 0-9 are 0x30 thru 0x39 */
 
+	KEY_1 = 0x30,
+	KEY_2 = 0x31,
+	KEY_3 = 0x32,
+	KEY_4 = 0x33,
+	KEY_5 = 0x34,
+
 	KEY_A = 65,
 	KEY_B = 66,
 	KEY_C = 67,
@@ -141,19 +147,30 @@ struct Binding
 		bool left;//for mouse
 	};
 	int button;//for controller
+	int joy_button;//for joystick or non XInput controller, starts at 1
 
 	bool oldstate[4];//one for each player
 
 	Binding() {}
-	Binding(BindingType type, bool lmb, int button = 0) : type(type), left(lmb), button(button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
-	Binding(BindingType type, int key, int button = 0) : type(type), key(key), button(button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
+	Binding(BindingType type, bool lmb, int button = 0, int joy_button = -1) : type(type), left(lmb), button(button), joy_button(joy_button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
+	Binding(BindingType type, int key, int button = 0, int joy_button = -1) : type(type), key(key), button(button), joy_button(joy_button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
 };
 
+struct RawDevice
+{
+	bool got_data = false;
+	int num_buttons = 0;
+	bool buttons[30];
+
+	int num_axes = 0;
+	float axes[10];
+};
 
 class CInput
 {
+	friend class Window;
 	bool controller_change;
-
+	
 public:
 	POINT m_pos;
 #ifdef _WIN32
@@ -183,6 +200,7 @@ public:
 private:
 	std::map<int, Binding> bindings;
 
+
 	struct AxisBinding
 	{
 		int axis = 0;
@@ -203,11 +221,14 @@ public:
 		LeftStickY,
 		RightStick,
 		LeftTrigger,
-		RightTrigger
+		RightTrigger,
+
+		JoystickX,
+		JoystickY,
+		JoystickZ,
+		JoystickThrottle,
 	};
 	void BindAxis(int id, ControllerAxes axis);
-	//void MakeAxis(int id, );
-
 
 	//ok, todo binds can have floats, so lets change this over
 	bool GetBindBool(int player, int bind);
@@ -217,10 +238,20 @@ public:
 	//and add on press bindings, need a callback system for this
 
 	//0 = move left/right, 1 = move forward/back, 2 = look right/left 3 = look up/down
+	//others are for joysticks
 	float GetAxis(int player, int axis);
+
+	bool UsingJoystick(int player)
+	{
+		if (player == 0 && active_joystick)
+			return true;
+		return false;
+	}
 
 	//bool GetBindBool(int player, int bind);
 
+	HANDLE active_joystick = 0;
+	std::map<HANDLE, RawDevice> devices;
 	std::vector<Controller> controllers;
 	void UpdateControllers();
 

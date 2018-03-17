@@ -1,11 +1,20 @@
 #include "Shader.h"
 #include "CRenderer.h"
 #include <D3D11.h>
-#include <D3DX11.h>
+//#include <D3DX11.h>
 #include <fstream>
 
 #include <D3Dcompiler.h>
 #pragma comment (lib, "d3dcompiler.lib")
+
+inline std::wstring convert(const std::string& as)
+{
+	wchar_t* buf = new wchar_t[as.size() * 2 + 2];
+	swprintf(buf, L"%S", as.c_str());
+	std::wstring rval = buf;
+	delete[] buf;
+	return rval;
+}
 
 CBuffer::CBuffer()
 {
@@ -105,11 +114,16 @@ ID3D10Blob* CShader::CompilePS(const char* file, const char* function, void* _ma
 	//eof has a problem for some reason
 	HRESULT result;
 	if (str)
-		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "ps_4_0", 0, 0, 0, &pixelShaderBuffer, &errorMessage, 0);
+	{
+		result = D3DCompile(str, strlen(str), file, macro, D3D_COMPILE_STANDARD_FILE_INCLUDE, function, "ps_4_0", 0, 0, &pixelShaderBuffer, &errorMessage);
+		//result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "ps_4_0", 0, 0, 0, &pixelShaderBuffer, &errorMessage, 0);
+	}
 	else
-		result = D3DX11CompileFromFileA(file, macro/*defines*/,
-		0/*include*/,
-		function, "ps_4_0", 0, 0, 0, &pixelShaderBuffer, &errorMessage, 0);
+	{
+		result = D3DCompileFromFile(convert(file).c_str(), macro/*defines*/,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE/*include*/,
+			function, "ps_4_0", 0, 0, &pixelShaderBuffer, &errorMessage);
+	}
 
 	if (FAILED(result))
 	{
@@ -141,11 +155,13 @@ ID3D10Blob* CShader::CompileVS(const char* file, const char* function, void* _ma
 
 	HRESULT result;
 	if (str)
-		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "vs_4_0", 0, 0, 0, &vertexShaderBuffer, &errorMessage, 0);
+		result = D3DCompile(str, strlen(str), file, macro, D3D_COMPILE_STANDARD_FILE_INCLUDE, function, "vs_4_0", 0, 0, &vertexShaderBuffer, &errorMessage);
 	else
-		result = D3DX11CompileFromFileA(file, macro/*defines*/,
-		0/*include*/,
-		function, "vs_4_0", 0, 0, 0, &vertexShaderBuffer, &errorMessage, 0);
+	{
+		result = D3DCompileFromFile(convert(file).c_str(), macro/*defines*/,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE/*include*/,
+			function, "vs_4_0", 0, 0, &vertexShaderBuffer, &errorMessage);
+	}
 
 	if (FAILED(result))
 	{
@@ -178,11 +194,11 @@ ID3D10Blob* CShader::CompileGS(const char* file, const char* function, void* _ma
 
 	HRESULT result;
 	if (str)
-		result = D3DX11CompileFromMemory(str, strlen(str), file, macro, 0, function, "gs_4_0", 0, 0, 0, &geometryShaderBuffer, &errorMessage, 0);
+		result = D3DCompile(str, strlen(str), file, macro, D3D_COMPILE_STANDARD_FILE_INCLUDE, function, "gs_4_0", 0, 0, &geometryShaderBuffer, &errorMessage);
 	else
-		result = D3DX11CompileFromFileA(file, macro/*defines*/,
-		0/*include*/,
-		function, "gs_4_0", 0, 0, 0, &geometryShaderBuffer, &errorMessage, 0);
+		result = D3DCompileFromFile(convert(file).c_str(), macro/*defines*/,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE/*include*/,
+		function, "gs_4_0", 0, 0, &geometryShaderBuffer, &errorMessage);
 
 	if (FAILED(result))
 	{

@@ -83,8 +83,8 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 
 	//ok, lets swap to a tile based system, split world into 1024x1024 tiles?
 
-	this->AddModel("tree.iqm");
-	this->AddModel("tree2.iqm");
+	//this->AddModel("tree.iqm");
+	//this->AddModel("tree2.iqm");
 
 	this->AddModel("tree3.iqm");
 
@@ -152,7 +152,8 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			tree->position.z = z;
 			tree->position.y = y;
 			float h = 1.0+(rand() % 100)/100.0f;
-			tree->size.x = this->tree_models[model].dimensions.x;
+			float w = 1.0 + (rand() % 100) / 100.0f;
+			tree->size.x = this->tree_models[model].dimensions.x*w;
 			tree->size.y = this->tree_models[model].dimensions.y*h;
 			tree->position.y += tree->size.y / 2;
 			tree->normal = normal;
@@ -394,7 +395,7 @@ int rrr = 0;
 void FoliageRenderer::GenerateImpostors()
 {
 	if (this->texture == 0)
-		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT);
+		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT, true);
 	else if (hack++ > 1)
 		return;
 
@@ -410,6 +411,8 @@ void FoliageRenderer::GenerateImpostors()
 	rt->Clear(0, 0, 0, 0);
 
 	renderer->EnableAlphaBlending(false);
+	//todo need to not have to do lighting in this, lets export normals
+	r.SetAmbient(Vec3(0.6, 0.6, 0.6), Vec3(0.6, 0.6, 0.6));
 
 	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 
@@ -482,5 +485,5 @@ void FoliageRenderer::GenerateImpostors()
 
 	//todo add generate mips flag
 	//todo: make this work
-	//renderer->context->GenerateMips(this->texture->texture);
+	renderer->context->GenerateMips(this->texture->texture_rv);
 }

@@ -108,6 +108,9 @@ public:
 	~StackProfileGPU();
 };
 
+#include <intrin.h>  
+#pragma intrinsic(_ReturnAddress) 
+
 void ProfileStartFrame();//recalculates per frame averages, need to mess with this to handle server stuff
 void ProfilesDraw();
 void ProfileExit();//saves profile information to file

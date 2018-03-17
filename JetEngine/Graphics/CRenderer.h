@@ -101,7 +101,7 @@ typedef unsigned long COLOR;
 #define COLOR_XRGB(r,g,b)   COLOR_ARGB(0xff,r,g,b)
 #define COLOR_TO_FLOAT(i) Vec4(((float)(((i)>>16)&0xff))/256.0f,((float)(((i)>>8)&0xff))/256.0f,((float)((i)&0xff))/256.0f,((float)(((i)>>24)&0xff))/256.0f)
 
-typedef enum PrimitiveType
+enum PrimitiveType
 {
 #ifndef USEOPENGL
 	PT_TRIANGLELIST = 0,//D3DPT_TRIANGLELIST,
@@ -122,7 +122,7 @@ typedef enum PrimitiveType
 #endif
 };
 
-typedef enum CullMode
+enum CullMode
 {
 #ifndef USEOPENGL
 	CULL_NONE = 0,//D3DCULL_NONE,

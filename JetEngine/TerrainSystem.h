@@ -60,7 +60,7 @@ public:
 	HeightmapTerrainSystem();
 	~HeightmapTerrainSystem();
 
-	CTexture* grass, *rock, *snow;
+	CTexture* grass, *rock, *snow, *dirt;
 	CTexture* road;
 	CTexture* nmap;
 	CTexture* noise;

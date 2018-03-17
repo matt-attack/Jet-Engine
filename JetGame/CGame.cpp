@@ -1,7 +1,7 @@
 #include "CGame.h"
 #include <JetEngine/Graphics/CRenderer.h>
 #include <JetEngine/gui/gui_messagebox.h>
-#include <JetGame/gui/gui_settings.h>
+#include "gui/gui_settings.h"
 #include <JetEngine/Sound/SoundObject.h>
 #include <JetEngine/Graphics/Renderer.h>
 #include <JetEngine/ResourceManager.h>
@@ -18,12 +18,16 @@
 
 void initKeyboard(HWND han_Window)//should be setup input
 {
-	RAWINPUTDEVICE Rid[1];
+	RAWINPUTDEVICE Rid[2];
+	Rid[1].usUsagePage = (USHORT)0x01;
+	Rid[1].usUsage = (USHORT)0x02;
+	Rid[1].dwFlags = 0;//RIDEV_NOLEGACY;//RIDEV_INPUTSINK | RIDEV_CAPTUREMOUSE;
+	Rid[1].hwndTarget = han_Window;
 	Rid[0].usUsagePage = (USHORT)0x01;
-	Rid[0].usUsage = (USHORT)0x02;
+	Rid[0].usUsage = (USHORT)0x04;
 	Rid[0].dwFlags = 0;//RIDEV_NOLEGACY;//RIDEV_INPUTSINK | RIDEV_CAPTUREMOUSE;
 	Rid[0].hwndTarget = han_Window;
-	bool res = RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
+	bool res = RegisterRawInputDevices(Rid, 2, sizeof(Rid[0]));
 	if (!res)
 		log("[ERROR] Raw input initiation failed\n");
 }

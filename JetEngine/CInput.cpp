@@ -22,6 +22,24 @@ void CInput::UpdateControllers()
 {
 	int oldsize = this->controllers.size();
 	controllers.clear();
+
+	//handle rawinput
+	unsigned int num_devices;
+	RAWINPUTDEVICELIST devices[25];
+	GetRawInputDeviceList(NULL, &num_devices, sizeof(RAWINPUTDEVICELIST));
+	auto ret = GetRawInputDeviceList(
+		devices,
+		&num_devices,
+		sizeof(RAWINPUTDEVICELIST));
+
+	for (int i = 0; i < num_devices; i++)
+	{
+		if (devices[i].dwType == 2 && this->devices.find(devices[i].hDevice) == this->devices.end())//raw input ones only
+		{
+			this->devices[devices[i].hDevice] = RawDevice();
+		}
+	}
+
 	for (int i = 0; i < XUSER_MAX_COUNT; i++)
 	{
 		XINPUT_STATE state;
@@ -41,6 +59,8 @@ void CInput::UpdateControllers()
 			//not connected
 		}
 	}
+
+	//
 	if (oldsize != controllers.size())
 		controller_change = true;
 }
@@ -60,6 +80,12 @@ float CInput::GetBindingState(int player, const Binding& binding)
 		case BindingType::Mouse:
 			state = (binding.left ? this->lmouse_down : this->rmouse_down) ? 1.0f : 0.0f;
 			break;
+		}
+
+		//if we have a joystick and are player 1 lets or it in
+		if (active_joystick && binding.joy_button >= 0)//theres a joystick
+		{
+			state = state > 0 ? state : this->devices[active_joystick].buttons[binding.joy_button-1];
 		}
 	}
 
@@ -116,7 +142,7 @@ float CInput::GetAxis(int player, int axis)
 		bs += this->GetBindingState(player, axis_data.up);
 		bs -= this->GetBindingState(player, axis_data.down);
 	}
-
+	//need to refine this for joystick
 	float res = 0;
 	switch (axis)
 	{
@@ -124,6 +150,10 @@ float CInput::GetAxis(int player, int axis)
 		if (player == 0 && controller == false)
 		{
 			res = bs;
+			if (this->active_joystick)
+			{
+				res = this->devices[this->active_joystick].axes[0];
+			}
 			//if (kb[KEY_D])
 			//	res = 1;
 			//if (kb[KEY_A])
@@ -143,6 +173,10 @@ float CInput::GetAxis(int player, int axis)
 		if (player == 0 && controller == false)
 		{
 			res = bs;
+			if (this->active_joystick)
+			{
+				res = this->devices[this->active_joystick].axes[2];
+			}
 			//if (kb[KEY_W])
 			//	res = 1;
 			//if (kb[KEY_S])
@@ -161,6 +195,10 @@ float CInput::GetAxis(int player, int axis)
 	case 2:
 		if (player == 0 && controller == false)
 		{
+			if (this->active_joystick)
+			{
+				return this->devices[this->active_joystick].axes[3];
+			}
 			//use mouse for now
 			return this->deltaX;
 		}
@@ -179,6 +217,10 @@ float CInput::GetAxis(int player, int axis)
 	case 3:
 		if (player == 0 && controller == false)
 		{
+			if (this->active_joystick)
+			{
+				return this->devices[this->active_joystick].axes[1];
+			}
 			//use mouse for now
 			return this->deltaY;
 		}

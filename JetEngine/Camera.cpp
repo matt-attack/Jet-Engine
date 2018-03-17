@@ -1,5 +1,5 @@
 #ifdef _WIN32
-#include <d3dx9.h>
+//#include <d3dx9.h>
 #endif
 
 #include "camera.h"
@@ -16,7 +16,7 @@ CCamera::CCamera()
 	this->_lookAt = Vec3(0, 1, 0);
 	this->_right = Vec3(0, 0, 1);
 	this->_upDir = Vec3(1, 0, 0);
-};
+}
 
 void CCamera::OrthoProjection(float l, float r, float b, float t, float n, float f)
 {
@@ -325,44 +325,45 @@ void CCamera::BuildViewFrustum()
 #ifndef MATT_SERVER
 	if (this->perspective)
 	{
-		D3DXMATRIX viewProjection;
-		D3DXMatrixMultiply(&viewProjection, (D3DXMATRIX*)&_matrix, (D3DXMATRIX*)&_projectionMatrix);
-
+		//D3DXMATRIX viewProjection;
+		//D3DXMatrixMultiply(&viewProjection, (D3DXMATRIX*)&_matrix, (D3DXMATRIX*)&_projectionMatrix);
+		Matrix4 viewProjection = _matrix * _projectionMatrix;
+		//viewProjection.MakeTranspose();
 		// Left plane
-		m_frustum[2].a = viewProjection._14 + viewProjection._11;//normal x
-		m_frustum[2].b = viewProjection._24 + viewProjection._21;//normal y
-		m_frustum[2].c = viewProjection._34 + viewProjection._31;//normal z
-		m_frustum[2].d = viewProjection._44 + viewProjection._41;//distance
+		m_frustum[2].a = viewProjection._m44[0][3] + viewProjection._m44[0][0];//normal x
+		m_frustum[2].b = viewProjection._m44[1][3] + viewProjection._m44[1][0];//normal y
+		m_frustum[2].c = viewProjection._m44[2][3] + viewProjection._m44[2][0];//normal z
+		m_frustum[2].d = viewProjection._m44[3][3] + viewProjection._m44[3][0];//distance
 
 		// Right plane
-		m_frustum[3].a = viewProjection._14 - viewProjection._11;
-		m_frustum[3].b = viewProjection._24 - viewProjection._21;
-		m_frustum[3].c = viewProjection._34 - viewProjection._31;
-		m_frustum[3].d = viewProjection._44 - viewProjection._41;
+		m_frustum[3].a = viewProjection._m44[0][3] - viewProjection._m44[0][0];
+		m_frustum[3].b = viewProjection._m44[1][3] - viewProjection._m44[1][0];
+		m_frustum[3].c = viewProjection._m44[2][3] - viewProjection._m44[2][0];
+		m_frustum[3].d = viewProjection._m44[3][3] - viewProjection._m44[3][0];
 
 		// Top plane
-		m_frustum[4].a = viewProjection._14 - viewProjection._12;
-		m_frustum[4].b = viewProjection._24 - viewProjection._22;
-		m_frustum[4].c = viewProjection._34 - viewProjection._32;
-		m_frustum[4].d = viewProjection._44 - viewProjection._42;
+		m_frustum[4].a = viewProjection._m44[0][3] - viewProjection._m44[0][1];
+		m_frustum[4].b = viewProjection._m44[1][3] - viewProjection._m44[1][1];
+		m_frustum[4].c = viewProjection._m44[2][3] - viewProjection._m44[2][1];
+		m_frustum[4].d = viewProjection._m44[3][3] - viewProjection._m44[3][1];
 
 		// Bottom plane
-		m_frustum[5].a = viewProjection._14 + viewProjection._12;
-		m_frustum[5].b = viewProjection._24 + viewProjection._22;
-		m_frustum[5].c = viewProjection._34 + viewProjection._32;
-		m_frustum[5].d = viewProjection._44 + viewProjection._42;
+		m_frustum[5].a = viewProjection._m44[0][3] + viewProjection._m44[0][1];
+		m_frustum[5].b = viewProjection._m44[1][3] + viewProjection._m44[1][1];
+		m_frustum[5].c = viewProjection._m44[2][3] + viewProjection._m44[2][1];
+		m_frustum[5].d = viewProjection._m44[3][3] + viewProjection._m44[3][1];
 
 		// Near plane
-		m_frustum[0].a = viewProjection._13;
-		m_frustum[0].b = viewProjection._23;
-		m_frustum[0].c = viewProjection._33;
-		m_frustum[0].d = viewProjection._43;
+		m_frustum[0].a = viewProjection._m44[0][2];
+		m_frustum[0].b = viewProjection._m44[1][2];
+		m_frustum[0].c = viewProjection._m44[2][2];
+		m_frustum[0].d = viewProjection._m44[3][2];
 
 		// Far plane
-		m_frustum[1].a = viewProjection._14 - viewProjection._13;
-		m_frustum[1].b = viewProjection._24 - viewProjection._23;
-		m_frustum[1].c = viewProjection._34 - viewProjection._33;
-		m_frustum[1].d = viewProjection._44 - viewProjection._43;
+		m_frustum[1].a = viewProjection._m44[0][3] - viewProjection._m44[0][2];
+		m_frustum[1].b = viewProjection._m44[1][3] - viewProjection._m44[1][2];
+		m_frustum[1].c = viewProjection._m44[2][3] - viewProjection._m44[2][2];
+		m_frustum[1].d = viewProjection._m44[3][3] - viewProjection._m44[3][2];
 
 		// Normalize planes
 		for (int i = 0; i < 6; i++)

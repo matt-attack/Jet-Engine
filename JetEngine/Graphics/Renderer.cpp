@@ -3,7 +3,7 @@
 #include "../Util/Profile.h"
 
 #include "../IMaterial.h"
-#include <D3DX11.h>
+//#include <D3DX11.h>
 
 #include "../camera.h"
 #include "RenderTexture.h"

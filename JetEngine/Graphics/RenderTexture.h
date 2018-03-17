@@ -5,7 +5,7 @@
 #include "CTexture.h"
 
 #ifdef _WIN32
-#include <d3dx11.h>
+//#include <d3dx11.h>
 #endif
 
 class ID3D11RenderTargetView;
@@ -31,7 +31,7 @@ public:
 	CRenderTexture(void);
 	~CRenderTexture(void);
 
-	static CRenderTexture* Create(int xRes, int yRes, DXGI_FORMAT color_format, DXGI_FORMAT depth_format);
+	static CRenderTexture* Create(int xRes, int yRes, DXGI_FORMAT color_format, DXGI_FORMAT depth_format, bool generate_mips = false);
 
 	ID3D11ShaderResourceView* GetColorResourceView();
 

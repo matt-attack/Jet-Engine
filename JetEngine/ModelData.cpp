@@ -598,8 +598,11 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 				//ok, lets try and load the material from file here
 				std::string n = material;
 				IMaterial* mat = 0;
-				if (n.length() > 4 && n[n.length() - 4] != '.')//n.substr(n.length() - 4, 4) == ".mat")
+				FILE* f = fopen(("Content/"+ n + ".mat").c_str(), "rb");
+				if (f || (n.length() > 4 && n[n.length() - 4] != '.'))//n.substr(n.length() - 4, 4) == ".mat")
 				{
+					if (f)
+						fclose(f);
 					mat = resources.get_unsafe<IMaterial>(n+".mat");
 				}
 				else//legacy method

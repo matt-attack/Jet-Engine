@@ -2,7 +2,7 @@
 #include "Renderable.h"
 #include "CRenderer.h"
 
-#include <d3dx11.h>
+//#include <d3dx11.h>
 
 CRenderTexture::CRenderTexture(void)
 {
@@ -37,7 +37,7 @@ void CRenderTexture::Clear(float a, float r, float g, float b)
 #endif
 }
 
-CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_format, DXGI_FORMAT depth_format)
+CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_format, DXGI_FORMAT depth_format, bool generate_mips)
 {
 	D3D11_TEXTURE2D_DESC desc;
 	memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
@@ -45,14 +45,14 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 	// Setup the render target texture description.
 	desc.Width = xRes;
 	desc.Height = yRes;
-	desc.MipLevels = 1;
+	desc.MipLevels = generate_mips ? 0 : 1;
 	desc.ArraySize = 1;
 	desc.Format = color_format;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = 0;
+	desc.MiscFlags = generate_mips ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
 
 	ID3D11Texture2D* renderTargetTexture = 0;
 	if (color_format != DXGI_FORMAT_UNKNOWN)
@@ -118,7 +118,7 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	shaderResourceViewDesc.Format = color_format;// DXGI_FORMAT_R8G8B8A8_UNORM;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-	shaderResourceViewDesc.Texture2D.MipLevels = 1;
+	shaderResourceViewDesc.Texture2D.MipLevels = generate_mips ? -1 : 1;
 
 	ID3D11RenderTargetView* renderTargetView = 0;
 	if (color_format != DXGI_FORMAT_UNKNOWN)

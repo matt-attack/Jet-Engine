@@ -10,7 +10,7 @@
 #include <iostream>
 
 #ifdef _WIN32
-#include <d3dx11.h>
+//#include <d3dx11.h>
 #endif
 
 std::map<std::string, IMaterial*> materials;
@@ -50,7 +50,7 @@ public:
 					if (shader.second[i])
 					{
 						delete shader.second[i];
-						shader.second[i] = 0;// this->LoadShader(i, this->defines, this->surface_shader);
+						shader.second[i] = 0;
 					}
 				}
 			}
@@ -212,11 +212,11 @@ IMaterial::IMaterial(const char* name)
 
 IMaterial::~IMaterial()
 {
-	if (this->texture)
-		this->texture->Release();
+	//if (this->texture)
+	//	this->texture->Release();
 
-	if (this->normal_map)
-		this->normal_map->Release();
+	//if (this->normal_map)
+	//	this->normal_map->Release();
 }
 
 IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack)
@@ -236,7 +236,7 @@ IMaterial::IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, 
 	this->diffuse = diffuse ? diffuse : "";
 
 	//need to update here if possible
-	if (renderer && renderer->gui_texture)//rectangle_v_buffer.GetSize() > 0)//HAX lel
+	if (renderer && renderer->gui_texture)//HAX lel
 		this->Update(renderer);
 
 	if (GetList().find(name) != GetList().end())

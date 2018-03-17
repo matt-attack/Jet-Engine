@@ -103,7 +103,7 @@ void SetShowCursor(bool a)
 		ShowCursor(a);
 	}
 }
-
+#include <hidsdi.h>
 bool hasfocus = false;
 bool AIn = true;
 int SelectedBlockType = 1;
@@ -213,13 +213,78 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		if (AIn)
 		{
 			UINT dwSize = 40;
-			static BYTE lpd[40];
+			static BYTE lpd[80];
 
+			GetRawInputData((HRAWINPUT)lParam, RID_INPUT, 0, &dwSize, sizeof(RAWINPUTHEADER));
 			GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpd, &dwSize, sizeof(RAWINPUTHEADER));
-
+			if (dwSize > 80)
+				throw 7;
 			RAWINPUT* raw = (RAWINPUT*)lpd;
 
-			if (raw->header.dwType == RIM_TYPEMOUSE)
+			if (raw->header.dwType == RIM_TYPEHID)
+			{
+				unsigned int bufferSize;
+				GetRawInputDeviceInfo(raw->header.hDevice,
+					RIDI_PREPARSEDDATA, NULL, &bufferSize);
+				auto pPreparsedData = (PHIDP_PREPARSED_DATA)HeapAlloc(GetProcessHeap(), 0, bufferSize);
+				GetRawInputDeviceInfo(raw->header.hDevice,
+					RIDI_PREPARSEDDATA, pPreparsedData, &bufferSize);
+
+				HIDP_CAPS Caps;
+				HidP_GetCaps(pPreparsedData, &Caps);
+				HIDP_BUTTON_CAPS pButtonCaps[3];// = (PHIDP_BUTTON_CAPS)HeapAlloc(GetProcessHeap(), 0, sizeof(HIDP_BUTTON_CAPS) * Caps.NumberInputButtonCaps);
+
+				auto capsLength = Caps.NumberInputButtonCaps;
+				HidP_GetButtonCaps(HidP_Input, pButtonCaps, &capsLength, pPreparsedData);
+				auto g_NumberOfButtons = pButtonCaps->Range.UsageMax - pButtonCaps->Range.UsageMin + 1;
+
+				HIDP_VALUE_CAPS pValueCaps[10];// = (PHIDP_VALUE_CAPS)HeapAlloc(GetProcessHeap(), 0, sizeof(HIDP_VALUE_CAPS) * Caps.NumberInputValueCaps);
+				capsLength = Caps.NumberInputValueCaps;
+				HidP_GetValueCaps(HidP_Input, pValueCaps, &capsLength, pPreparsedData);
+
+				unsigned long usageLength = g_NumberOfButtons;
+				USAGE usage[30];// = &pButtonCaps->Range.UsageMin;
+				HidP_GetUsages(
+					HidP_Input, pButtonCaps->UsagePage, 0, usage,
+					&usageLength, pPreparsedData,
+					(PCHAR)raw->data.hid.bRawData, raw->data.hid.dwSizeHid
+					);
+
+				//read the device
+				input->active_joystick = raw->header.hDevice;
+				RawDevice& dev = input->devices[raw->header.hDevice];
+				dev.num_buttons = g_NumberOfButtons;
+				ZeroMemory(dev.buttons, sizeof(bool)*30);
+				for (int i = 0; i < usageLength; i++)
+					dev.buttons[usage[i] - pButtonCaps->Range.UsageMin] = TRUE;
+
+				dev.num_axes = Caps.NumberInputValueCaps;
+				for (int i = 0; i < Caps.NumberInputValueCaps; i++)
+				{
+					unsigned long value;
+					HidP_GetUsageValue(
+						HidP_Input, pValueCaps[i].UsagePage, 0,
+						pValueCaps[i].Range.UsageMin, &value, pPreparsedData,
+						(PCHAR)raw->data.hid.bRawData, raw->data.hid.dwSizeHid);
+
+					float range = pValueCaps[i].LogicalMax - pValueCaps[i].LogicalMin;
+					if (pValueCaps[i].Range.UsageMin <= 0x32)
+						dev.axes[pValueCaps[i].Range.UsageMin - 0x30] = ((float)value - range / 2) / (range / 2);
+					else if (pValueCaps[i].Range.UsageMin == 0x35)
+						dev.axes[3] = ((float)value - range / 2) / (range / 2);
+					else if (pValueCaps[i].Range.UsageMin == 0x39)
+						dev.axes[4] = value;
+				}
+
+				for (int i = 0; i < dev.num_axes; i++)
+				{
+					if (abs(dev.axes[i]) < 10000)
+						printf("%f ", dev.axes[i]);
+				}
+				printf("\n");
+				HeapFree(GetProcessHeap(), 0, pPreparsedData);
+			}
+			else if (raw->header.dwType == RIM_TYPEMOUSE)
 			{
 				int deltaX = raw->data.mouse.lLastX;
 				int deltaY = raw->data.mouse.lLastY;

@@ -785,6 +785,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 		renderer->SetPixelTexture(3, this->snow);
 		renderer->SetPixelTexture(4, this->hmap);
 		renderer->SetPixelTexture(5, this->noise);
+		renderer->SetPixelTexture(6, this->dirt);
 
 		renderer->SetFilter(0, FilterMode::Linear);
 
@@ -1332,6 +1333,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 	rock = resources.get_unsafe<CTexture>("rock.png");
 	road = resources.get_unsafe<CTexture>("road.jpg");
 	noise = resources.get_unsafe<CTexture>("perturb.png");
+	dirt = resources.get_unsafe<CTexture>("dirt.jpg");
 
 	nmap = 0;
 

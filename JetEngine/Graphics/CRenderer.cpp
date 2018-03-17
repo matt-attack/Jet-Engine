@@ -93,12 +93,12 @@ VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned i
 
 
 	//todo: make copy of elements
-	this->vaos.push_back({ elmcopy, count, key, { elements, count } });
+	this->vaos.push_back({ elmcopy, (int)count, key, { elements, (int)count } });
 
 	//this->vertexdeclarations[id].elements = elements;
 	//this->vertexdeclarations[id].size = count;
 
-	return{ elements, count };
+	return { elements, (int)count };
 	/*polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -2797,7 +2797,7 @@ void CRenderer::FlushDebug()
 		if (c.type == 0)
 			this->DrawBoundingBox(c.b, c.color);
 		else
-			beams.push_back({ c.start, c.end, 2, c.color, this->cam_pos });// this->DrawBeam(this->cam_pos, c.start, c.end, 2, c.color);
+			beams.push_back({ c.start, c.end, 2, (int)c.color, this->cam_pos });// this->DrawBeam(this->cam_pos, c.start, c.end, 2, c.color);
 #endif
 	}
 	if (i++ == 20)//5 frame persistance
@@ -2899,7 +2899,7 @@ void CRenderer::DrawBeams()
 
 void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float size, unsigned int color)
 {
-	beams.push_back({ start, end, size, color, cam->_pos });
+	beams.push_back({ start, end, size, (int)color, cam->_pos });
 	return;
 	Vec3 dir = (start - end).getnormal();
 	Vec3 right = cam->GetForward().cross(dir).getnormal();

@@ -153,9 +153,9 @@ struct Vec3i
 
 	int dot(const Vec3i &o) const { return x*o.x + y*o.y + z*o.z; }
 	float magnitude() const { return sqrtf(dot(*this)); }
-	int length() const { return sqrtf(dot(*this)); }
+	float length() const { return sqrtf(dot(*this)); }
 	int squaredlen() const { return dot(*this); }
-	int dist(const Vec3i &o) const { return (*this - o).magnitude(); }
+	float dist(const Vec3i &o) const { return (*this - o).magnitude(); }
 	int distsqr(const Vec3i &o) const { return (*this - o).squaredlen(); }
 	Vec3i getnormal() const 
 	{ 
@@ -171,7 +171,7 @@ struct Vec3i
 		(*this) *= (1.0f / mag); 
 	}
 	Vec3i cross(const Vec3i &o) const { return Vec3i(y*o.z-z*o.y, z*o.x-x*o.z, x*o.y-y*o.x); }
-	Vec3i reflect(const Vec3i &n) const { return *this - n*2.0f*dot(n); }
+	Vec3i reflect(const Vec3i &n) const { return *this - n*2*dot(n); }
 	Vec3i project(const Vec3i &n) const { return *this - n*dot(n); }
 	//float angle(const Vec3i &n) const { return acos(this->dot(n)); }
 

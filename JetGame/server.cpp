@@ -2,11 +2,8 @@
 
 #include <JetNet/Sockets.h>
 
-//#include "Entities/PlayerEntity.h"
-//#include "Util/CThread.h"
 #include "NetPackets.h"
 #include <JetEngine/ResourceManager.h>
-//include "Weapon.h"
 
 #include <stdio.h>
 #include <queue>
@@ -466,130 +463,7 @@ int Server::Update()
 			this->OnMessage(client, buffer, recvsize);
 		}
 		delete[] buffer;
-		continue;
-
-		/*if (packetID == 21)//mech config
-		{
-			MechLoadout* loadout = (MechLoadout*)buffer;
-			printf("got mechconfig packet\n");
-
-			CPlayerEntity* ent = client->entities[0];//todo, make this work on other than the first player
-			//apply it
-
-			if (ent->vehicle == 0 || loadout->model != ent->vehicle->_model_s)
-			{
-				if (ent->vehicle)
-					ent->vehicle->Remove();
-
-				//make new mech entity and set it as my vehicle
-				CMechVehicle* mech = new CMechVehicle;
-				mech->manager = ent->manager;
-				//mech->system = ent->system;
-				mech->SetPosition(ent->position);
-				mech->SetModel(loadout->model);
-				ent->mech_model = mech->_model_data->name.substr(8, mech->_model_data->name.length() - 8);
-				ent->SetVehicle(mech);
-				ent->manager->AddEntity(mech);
-			}
-
-			for (int i = 0; i < 28; i++)
-			{
-				if (ent->slots[i] && loadout->itemid[i] == 0)
-				{
-					delete ent->slots[i];
-					ent->slots[i] = 0;
-				}
-				else if (ent->slots[i])
-				{
-					delete ent->slots[i];
-					ent->slots[i] = CreateWeapon<Weapon>(loadout->itemid[i]);
-				}
-				else if (loadout->itemid[i])
-				{
-					ent->slots[i] = CreateWeapon<Weapon>(loadout->itemid[i]);
-				}
-			}
-		}
-		else if (packetID == 42)
-		{
-			log("got client command: ");
-			NetMsg m = NetMsg(2048, (char*)buffer + 1);
-			int id = m.ReadInt();
-
-			char t[150];
-			m.ReadString(t, 150);
-			log(t);
-			log("\n");
-
-			if (strncmp(t, "say ", 4) == 0)
-			{
-				char t2[500];
-				char* msg = &t[4];
-				strcpy(t2, client->entities[0]->name);
-				strcat(t2, ": ");
-				strcat(t2, msg);
-				printf("%s\n", t2);
-
-				this->ChatPrint(t2);
-
-				//read "console" commands
-				char* cmp = "!";
-				if (msg[0] == cmp[0])
-				{
-					this->ConsoleCommand(client, &msg[1]);
-				}
-			}
-			else if (strncmp(t, "attack ", 7) == 0)
-			{
-			}
-			else if (strncmp(t, "set ", 4) == 0)
-			{
-				char n[500]; float value;
-				sscanf(&t[4], "%s %f", &n, &value);
-				client->entities[0]->SetCVar(n, value, false);
-
-				logf("Set ClientVariable: '%s' to %f\n", n, value);
-			}
-			else if (strncmp(t, "order ", 6) == 0)
-			{
-				
-			}
-		}
-		else
-		{
-			logf("Packet %d Recieved but not Handled from %i.%i.%i.%i:%i!\n", packetID, client->address.GetA(), client->address.GetB(), client->address.GetC(), client->address.GetD(), client->address.GetPort());
-		}*/
-		delete[] buffer;
 	}
-
-	//tests net and interpolation code for issues caused by entities being added/removed
-	/*if (this->EntityManager->GetEntByID(15))
-	{
-	this->EntityManager->RemoveEntity(this->EntityManager->GetEntByID(15));
-	this->EntityManager->RemoveEntity(this->EntityManager->GetEntByID(16));
-	CDropShip* ship = new CDropShip(1);
-	ship->SetPosition(0, 60, 0);
-	ship->planet = this->system->planets[2];
-	//ship->Dropoff(client->entity->position+client->entity->GetGravity()*-5.0f,client->entity->planet,5);
-	//ship->Navigate(Vec3(500,0,0),0);//client->entity->planet);
-	this->EntityManager->AddEntity(ship, 16);
-	ship->Init();
-	}
-	else
-	{
-	this->EntityManager->RemoveEntity(this->EntityManager->GetEntByID(16));
-	CTestEntity* ent = new CTestEntity;
-	ent->Init();
-	ent->SetPosition(0,50,0);
-	ent->planet = this->system->planets[2];
-	this->EntityManager->AddEntity(ent,15);
-	ent = new CTestEntity;
-	ent->Init();
-	ent->SetPosition(0,50,5);
-	ent->planet = this->system->planets[2];
-	this->EntityManager->AddEntity(ent,16);
-	}*/
-
 
 	//do per client updates
 	this->CalculatePings();
@@ -603,47 +477,6 @@ int Server::Update()
 	}
 
 	this->OnUpdate();
-
-	//check for win conditions and what not
-	/*if (this->system.GetTeam(1)->health == 0)
-	{
-	if (this->system.planets[2]->bases[0]->team == 2 || this->system.GetTeam(1)->health <= 0)
-	{
-	//we lost
-	if (this->gameoverTimer == 0)
-	{
-	this->gameoverTimer = 10;
-	this->ChatPrint("Game over!");
-
-	for (auto ii: this->connection.peers)
-	{
-	Client* cl = (Client*)ii.second->data;
-	if (cl->entity->team == 1)
-	cl->entity->health = 0;
-	}
-	}
-	gameoverTimer -= dT;
-	}
-	}
-	if (this->system.GetTeam(2)->health == 0)
-	{
-	if (this->system.planets[1]->bases[0]->team == 1 || this->system.GetTeam(2)->health <= 0)
-	{
-	if (this->gameoverTimer == 0)
-	{
-	this->gameoverTimer = 10;
-	this->ChatPrint("Game over!");
-
-	for (auto ii: this->connection.peers)
-	{
-	Client* cl = (Client*)ii.second->data;
-	if (cl->entity->team == 2)
-	cl->entity->health = 0;
-	}
-	}
-	gameoverTimer -= dT;
-	}
-	}*/
 
 	if (false)//this->gameoverTimer < 0)
 	{
