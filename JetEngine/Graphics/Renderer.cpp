@@ -962,8 +962,11 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//use me for color and stuffs
 		//only need to do this for shader builder shaders
 		//todo, use materials that have/dont have these so we dont do extra work
+		//todo make this one command
 		if (rc.material_instance.extra)
-			renderer->SetPixelTexture(9, rc.material_instance.extra);
+			renderer->SetPixelTexture(8, rc.material_instance.extra);
+		if (rc.material_instance.extra2)
+			renderer->SetPixelTexture(9, rc.material_instance.extra2);
 		if (renderer->shader->cbuffers.find("color") != renderer->shader->cbuffers.end())
 		{
 			unsigned int col = rc.material_instance.color;

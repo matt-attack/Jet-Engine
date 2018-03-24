@@ -9,10 +9,11 @@
 enum ShaderFeatures
 {
 	SKINNING = 1,
-	NORMAL_MAP = 2,
-	POINT_LIGHTS = 4,
-	SHADOWS = 8,
-	ALPHA_TEST = 16,
+	DIFFUSE_MAP = 2,
+	NORMAL_MAP = 4,
+	POINT_LIGHTS = 8,
+	SHADOWS = 16,
+	ALPHA_TEST = 32,
 };
 
 //each mesh will have one of these
@@ -43,6 +44,9 @@ private:
 	//The actual pointers to the textures used. Loaded by Update()
 	Texture texture = 0;
 	Texture normal_map = 0;
+
+	// List of textures to possibly be set that are material related todo use this
+	//Texture textures[4];
 
 	//not the best way to manage this, but it works
 	CShader* shader_ptr;

@@ -15,6 +15,7 @@ class CRenderTexture: public CTexture
 	//ok, lets go with texture for the color, then texture_depth for the depth
 public:
 	bool created;
+	bool generate_mips = false;
 	friend class CRenderer;
 	ID3D11RenderTargetView* color = 0;
 	ID3D11DepthStencilView* depth = 0;

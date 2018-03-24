@@ -40,7 +40,8 @@ class ObjModel: public Renderable
 	JointTransform* JointTransforms;
 
 public:
-	CTexture* damage_texture = 0;
+	//CTexture* damage_texture = 0;
+	CTexture* extra_textures[2] = { 0 };
 	IMaterial** mesh_materials = 0;
 	CVertexBuffer* decals;
 

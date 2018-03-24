@@ -134,7 +134,6 @@ int Server::StartUp()
 		}
 	}
 
-	//todo: magic max player count here
 	for (int i = 0; i < MaxPlayers; i++)
 		this->players[i] = 0;
 
@@ -368,12 +367,6 @@ void Server::OnDisconnect(Peer* peer)
 		sprintf(x, "'%s' Disconnected", entity->name);
 		ChatPrint(x);
 
-		//client->Save();
-
-		//prevents crashes (this was moved to player class)
-		//if (entity->vehicle)
-		//	static_cast<IVehicle*>(entity->vehicle)->activeply = 0;
-
 		//remove the player
 		PlayerDisconnect p;
 		p.id = 99;
@@ -417,13 +410,9 @@ int Server::Update()
 
 	std::lock_guard<std::mutex> lg(resources.reload_lock);
 
-	//srv = this;//update this for effects
-
 	this->timer.Update();
 	float dT = timer.GetElapsedTime();
 	this->time += dT;
-
-	//this->EntityManager.time = this->time;
 
 	this->OnPreUpdate();
 
@@ -476,17 +465,14 @@ int Server::Update()
 		this->HeartBeat();
 	}
 
-	this->OnUpdate();
+	// Run the per game update function
+	this->OnUpdate(dT);
 
 	if (false)//this->gameoverTimer < 0)
 	{
 		this->ChangeMap();
 		return 0;
 	}
-
-	//ok, lets update ents here
-	if (this->connection.peers.size() > 0)//dont bother to update if we do not have any players
-		this->EntityManager->DoUpdate(dT);
 
 	//build global snapshot entity list
 	if (this->connection.peers.size() > 0)
@@ -580,8 +566,9 @@ void Server::CalculatePings()
 	{
 		Client* cl = (Client*)ii->second->data;
 		cl->networker.CalculatePing();
-		if (cl->entities[0])
-			cl->entities[0]->ping = cl->networker.ping;
+		for (int i = 0; i < cl->num_entities; i++)
+			if (cl->entities[i])
+				cl->entities[i]->ping = cl->networker.ping;
 	}
 }
 
@@ -589,7 +576,7 @@ void Server::HeartBeat()
 {
 	static const char *BODY = "";
 	char Name[256];
-	int len = this->name.length();// strlen(this->name);
+	int len = this->name.length();
 	for (int i = 0; i < len + 1; i++)
 	{
 		if (this->name[i])

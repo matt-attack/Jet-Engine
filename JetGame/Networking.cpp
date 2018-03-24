@@ -2,7 +2,7 @@
 #include "JetEngine/Util/Profile.h"
 #include "JetEngine/Graphics/CRenderer.h"
 
-void CL_DeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool full, int newindex)
+void DecodeDeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool full, int newindex)
 {
 	if (full)
 	{
@@ -94,7 +94,7 @@ void CL_DeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool
 	}
 }
 
-void MSG_WriteDeltaEntity(NetMsg* msg, ED* oldent, ED* newent, bool full)
+void WriteDeltaEntity(NetMsg* msg, ED* oldent, ED* newent, bool full)
 {
 	if (newent == 0)//entity was removed
 	{
@@ -459,7 +459,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 			//{
 			//Com_Printf ("%3i: unchanged: %i\n", msg->readcount, oldnum);
 			//}
-			CL_DeltaEntity(msg, newsnap, oldnum, oldstate, true, newindex);
+			DecodeDeltaEntity(msg, newsnap, oldnum, oldstate, true, newindex);
 			//unchanged, copy old value over
 			//newsnap->ents[newindex] = oldsnap->ents[oldindex];
 
@@ -501,7 +501,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 			else if (typeId != 254)//do a diff
 			{
 				msg->readpos -= 1;
-				CL_DeltaEntity(msg, newsnap, newnum, oldstate, false, newindex);
+				DecodeDeltaEntity(msg, newsnap, newnum, oldstate, false, newindex);
 				newindex++;
 			}
 			else
@@ -534,7 +534,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 			//char p[50];
 			//sprintf(p, "got new entity message for id %d/%d\n", newnum, oldnum);
 			//OutputDebugString(p);
-			CL_DeltaEntity(msg, newsnap, newnum, 0/*&cl.entityBaselines[newnum]*/, false, newindex);
+			DecodeDeltaEntity(msg, newsnap, newnum, 0/*&cl.entityBaselines[newnum]*/, false, newindex);
 			newindex++;
 
 			continue;
@@ -560,7 +560,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 		//char p[51];
 		//sprintf(p, "unchanged entity %d\n", oldnum);
 		//OutputDebugString(p);
-		CL_DeltaEntity(msg, newsnap, oldnum, oldstate, true, newindex);
+		DecodeDeltaEntity(msg, newsnap, oldnum, oldstate, true, newindex);
 
 		newindex++;
 		oldindex++;
@@ -732,9 +732,9 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 			{
 				printf("[Server] Entity at %d was replaced with a different one!\n", newnum);
 				//write delete message
-				MSG_WriteDeltaEntity(msg, oldent, NULL, true);
+				WriteDeltaEntity(msg, oldent, NULL, true);
 				//write full update
-				MSG_WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
+				WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
 
 				oldindex++;
 				newindex++;
@@ -743,7 +743,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 			// delta update from old position
 			// because the force parm is false, this will not result
 			// in any bytes being emited if the entity has not changed at all
-			MSG_WriteDeltaEntity(msg, oldent, newent, false);
+			WriteDeltaEntity(msg, oldent, newent, false);
 
 			oldindex++;
 			newindex++;
@@ -752,7 +752,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 
 		if (newnum < oldnum)
 		{
-			MSG_WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
+			WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
 			newindex++;
 			continue;
 		}
@@ -760,7 +760,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 		if (newnum > oldnum)
 		{
 			//need to handle entering and leaving pvs
-			MSG_WriteDeltaEntity(msg, oldent, NULL, true);
+			WriteDeltaEntity(msg, oldent, NULL, true);
 			//OutputDebugString("old entity not present anymore in the snapshot, it was replaced\n");
 
 			oldindex++;

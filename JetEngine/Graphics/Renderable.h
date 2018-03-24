@@ -55,7 +55,8 @@ struct RMesh
 //contains per instance variables to go along with a material kindof a hack atm to work for damage textures
 struct MaterialInstanceBlock
 {
-	CTexture* extra;//well, this works for now...
+	CTexture* extra = 0;//well, this works for now...
+	CTexture* extra2 = 0;
 	unsigned int color = 0;
 };
 
@@ -146,6 +147,7 @@ public:
 	{
 		RenderCommand rc;
 		rc.material_instance.extra = 0;
+		rc.material_instance.extra2 = 0;
 		rc.material = this->material;
 		rc.alpha = this->alpha;
 		rc.dist = FLT_MAX;

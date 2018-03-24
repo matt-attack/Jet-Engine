@@ -78,8 +78,8 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 		shadowMapDesc.ArraySize = 1;
 		shadowMapDesc.SampleDesc.Count = 1;
 		shadowMapDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
-		shadowMapDesc.Height = xRes;// static_cast<UINT>(this->world_size);
-		shadowMapDesc.Width = yRes;// static_cast<UINT>(this->world_size);
+		shadowMapDesc.Height = xRes;
+		shadowMapDesc.Width = yRes;
 
 		ID3D11Texture2D* depthTexture;
 		HRESULT hr = renderer->device->CreateTexture2D(
@@ -114,12 +114,6 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 		rt->depth = 0;
 	}
 
-	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	shaderResourceViewDesc.Format = color_format;// DXGI_FORMAT_R8G8B8A8_UNORM;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-	shaderResourceViewDesc.Texture2D.MipLevels = generate_mips ? -1 : 1;
-
 	ID3D11RenderTargetView* renderTargetView = 0;
 	if (color_format != DXGI_FORMAT_UNKNOWN)
 	{
@@ -131,6 +125,7 @@ CRenderTexture* CRenderTexture::Create(int xRes, int yRes, DXGI_FORMAT color_for
 	rt->color_format = color_format;
 	rt->color = renderTargetView;
 	rt->texture = renderTargetTexture;
+	rt->generate_mips = generate_mips;
 	
 	if (rt->color)
 	{
@@ -155,7 +150,7 @@ ID3D11ShaderResourceView* CRenderTexture::GetColorResourceView()
 	ZeroMemory(&shaderResourceViewDesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	shaderResourceViewDesc.Format = color_format;// DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-	shaderResourceViewDesc.Texture2D.MipLevels = 1;
+	shaderResourceViewDesc.Texture2D.MipLevels = generate_mips ? -1 : 1;
 
 	//this is how to access the texture later
 	ID3D11ShaderResourceView* resourceView;

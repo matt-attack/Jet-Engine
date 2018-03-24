@@ -423,7 +423,8 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	//todo: possible future optimization is to cache these, they dont really change
 	//then i dont have to touch tons of memory just to submit
 	RenderCommand rc;
-	rc.material_instance.extra = this->damage_texture;
+	rc.material_instance.extra = this->extra_textures[0];
+	rc.material_instance.extra2 = this->extra_textures[1];
 	rc.alpha = this->alpha;
 	rc.dist = this->dist;
 	rc.source = this;

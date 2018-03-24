@@ -15,7 +15,7 @@
 
 std::map<std::string, IMaterial*> materials;
 
-const int num_builder_options = 5;
+const int num_builder_options = 6;
 class ShaderBuilder : public Resource
 {
 	std::string path;
@@ -123,7 +123,7 @@ private:
 		//add defines to definitions list
 		char** list = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size()));// [num_builder_options + 1];
 		char** definitions = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size())); //[num_builder_options + 1];
-		char* options[] = { "SKINNING", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
+		char* options[] = { "SKINNING", "DIFFUSE_MAP", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
 		//build the list
 		int size = 0;
 		for (int i = 0; i < num_builder_options; i++)
@@ -321,6 +321,7 @@ void IMaterial::Update(CRenderer* renderer)
 		//these are static material values
 		int id = (this->alphatest ? ALPHA_TEST : 0) |
 			(this->normal_map ? NORMAL_MAP : 0) |
+			(this->diffuse.length() ? DIFFUSE_MAP : 0) |
 			(this->skinned ? SKINNING : 0) |
 			0;// (POINT_LIGHTS);
 

@@ -27,9 +27,9 @@ enum NetworkingConstants
 	MaxPlayers = 20 //hardcoded limit for number of players a server can have
 };
 
-void CL_DeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool full, int newindex);
+void DecodeDeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool full, int newindex);
 
-void MSG_WriteDeltaEntity(NetMsg* msg, ED* oldent, ED* newent, bool full);
+void WriteDeltaEntity(NetMsg* msg, ED* oldent, ED* newent, bool full);
 
 class CPlayer;
 
@@ -61,14 +61,13 @@ public:
 	virtual void AddEntity(CEntity* ent, unsigned int id) = 0;
 	virtual void RemoveEntity(short id) = 0;
 
-	virtual void EncodeEntities(ServerSnap* snap);
-	virtual void ApplySnapshot(Snapshot* snap, Snapshot* oldsnap);
+	// Snapshot related overrides
+	virtual void EncodeEntities(ServerSnap* snap);// Already has a implementation, but can be overriden
+	virtual void ApplySnapshot(Snapshot* snap, Snapshot* oldsnap);// Already has a implementation, but can be overriden
 	virtual void Interpolate(Snapshot* Old, Snapshot* New, float fraction) = 0;
 
 	virtual CEntity* GetEntByID(short id) = 0;
 	virtual NetworkedEntity* GetByID(short id) = 0;
-
-	virtual void DoUpdate(float dT) = 0;
 
 	virtual bool ShouldTransmit(CEntity* ent, PlayerBase* player) = 0;
 
@@ -82,7 +81,6 @@ public:
 //this should be imported into your clientside player class
 class PlayerBase
 {
-	//friend class ClientNetworker;
 	std::map<std::string, float> variables;//cvars
 
 public:
@@ -111,7 +109,8 @@ public:
 
 	void AllocateMoves()
 	{
-		moves = new PlayerUpdatePacket[100];
+		if (moves == 0)
+			moves = new PlayerUpdatePacket[100];
 	}
 
 	void SetCVar(char* name, float val, bool network = true)
@@ -119,11 +118,9 @@ public:
 		//todo get this networking to work
 		/*if (this->manager->isclient)
 		{
-		#ifndef MATT_SERVER
 		char o[200];
 		sprintf(o, "set %s %f", name, val);
 		gMultiplayer->network.SendCommand(o);
-		#endif
 		}
 		else if (network)
 		log("OOOPS CVAR SETTING NOT IMPLEMENTED ON THE SERVER\n");*/

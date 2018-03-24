@@ -4,12 +4,9 @@
 #include <JetNet/Sockets.h>
 #include <JetNet/Connection.h>
 
-//#include "Util/queue.h"
 #include <JetEngine/Util/CThread.h>
 #include <JetEngine/Util/Profile.h>
 
-//#include "EntityManager.h"
-//#include "Entities/PlayerEntity.h"
 #include "NetPackets.h"
 #include <JetEngine/Util/CTimer.h>
 #include <JetGame/Snapshot.h>
@@ -55,7 +52,6 @@ public:
 	int StartUp();
 	int Update();
 
-	void ClearOldData();
 	void ShutDown();
 
 	void ChangeMap();
@@ -77,8 +73,7 @@ public:
 	
 	//generic functions
 	void ChatPrint(const char* str, PlayerBase* ent = 0);
-	//todo move me out
-	//void Effect(int id, Vec3 origin, Vec3 direction, float magnitude, CEntity* ent, CEntity* ent2 = 0);
+
 	PlayerBase* GetPlayerByName(char* name);
 	void SetName(char* n)
 	{
@@ -88,7 +83,7 @@ public:
 	void HeartBeat();//sends info to master server
 
 	//virtual methods of overrides
-	virtual void OnUpdate() = 0;
+	virtual void OnUpdate(float dT) = 0;
 	virtual void OnPreUpdate() = 0;
 	virtual void OnStartup() = 0;
 	virtual void OnShutdown() = 0;
@@ -130,11 +125,6 @@ public:
 
 	void BuildSnapsot(Server* server)
 	{
-		/*PlayerBase* ents[4];
-		for (int i = 0; i < 4; i++)
-		{
-			ents[i] = entities[i];
-		}*/
 		this->networker.BuildSnapshot(server->networker.currentSnapshot, this->num_entities, entities, server->EntityManager);
 	}
 };
