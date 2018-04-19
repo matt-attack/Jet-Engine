@@ -47,14 +47,12 @@ THREAD_RETURN ServerThread(THREAD_INPUT lpParam)
 
 Server::Server(EntityManagerBase* manager, int tickrate, bool use_tcp) : use_tcp(use_tcp), EntityManager(manager)
 {
-	this->time = 0;
+	this->time_of_day = 0;
 	this->player_count = 0;
 	this->lastclear = 0;
 	this->lasttick = 0;
 	this->max_players = 15;//todo: is this even used? make this configurable
 	this->tickrate = tickrate;
-
-	this->localserver = false;
 
 	this->name = "Local Multiplayer";
 }
@@ -70,69 +68,6 @@ int Server::StartUp()
 		seed = GetTickCount();
 
 	this->port = SERVER_PORT;
-
-	//TODO, LOAD CONFIG FILE
-	if (this->localserver)
-	{
-		this->port = 5007;
-	}
-	else
-	{
-		FILE* f = fopen("server.cfg", "r");
-		if (f)
-		{
-			printf("found config file\n");
-			fseek(f, 0, SEEK_END);   // non-portable
-			int size = ftell(f);
-			fseek(f, 0, SEEK_SET);
-			char* d = new char[size];
-			fread(d, size, 1, f);
-
-			char* pch = strtok(d, "\n");
-			while (pch != NULL)
-			{
-				printf("%s\n", pch);
-				if (strncmp(pch, "name:", 5) == 0)
-				{
-					this->SetName(&pch[6]);
-				}
-				else if (strncmp(pch, "port:", 5) == 0)
-				{
-					float port = atof(&pch[6]);
-					this->port = (int)port;
-				}
-				pch = strtok(NULL, "\n");
-			}
-
-			fclose(f);
-			delete[] d;
-		}
-		else
-		{
-			printf("no config file found, creating default\n");
-			f = fopen("server.cfg", "w+");
-			char str[512];
-			strcpy(str, "name: Mattcraft Server\nport: 5007\nother: stuff\n");
-			fwrite(str, strlen(str), 1, f);
-			fclose(f);
-
-			char* pch = strtok(str, "\n");
-			while (pch != NULL)
-			{
-				printf("%s\n", pch);
-				if (strncmp(pch, "name:", 5) == 0)
-				{
-					this->SetName(&pch[6]);
-				}
-				else if (strncmp(pch, "port:", 5) == 0)
-				{
-					float port = atof(&pch[6]);
-					this->port = (int)port;
-				}
-				pch = strtok(NULL, "\n");
-			}
-		}
-	}
 
 	for (int i = 0; i < MaxPlayers; i++)
 		this->players[i] = 0;
@@ -152,10 +87,7 @@ int Server::StartUp()
 		printf("failed to start listening for tcp connections\n");
 	}
 
-	//log("Server Started...");
 	printf("Server Started\n");
-
-	this->time = 0.0f;
 
 	this->OnStartup();
 
@@ -246,8 +178,6 @@ void Server::OnConnect(Peer* peer, ConnectionRequest* p)
 		{
 			if (players[i] == 0)
 			{
-				//CPlayerEntity* p = new CPlayerEntity;
-				//this->EntityManager.AddEntity(p, i);
 				PlayerBase* p = this->EntityManager->CreatePlayer(i);
 
 				c->entities[pi] = p;
@@ -279,10 +209,10 @@ void Server::OnConnect(Peer* peer, ConnectionRequest* p)
 	{
 		/* send intial packet */
 		InitialPacket packet;
-		packet.localplyid = c->entities[i]->GetID();// c->id;
-		packet.time = this->time;
-		packet.id = 1945;
-		packet.planet = c->entities[i]->GetParent();//todo: remove this
+		packet.localplyid = c->entities[i]->GetID();
+		packet.time = this->time_of_day;
+		packet.id = NetworkingPackets::InitialPacket;
+		packet.parent = c->entities[i]->GetParent();//todo: remove this
 		Vec3 p = c->entities[i]->GetPosition();
 
 		packet.x = p.x;
@@ -295,7 +225,7 @@ void Server::OnConnect(Peer* peer, ConnectionRequest* p)
 
 		/* Send Info About Joining Client To Every Other Player */
 		PlayerInitialUpdate pi;
-		pi.packetid = 5;
+		pi.packetid = NetworkingPackets::AddPlayer;
 		strncpy(pi.name, c->entities[i]->name, 25);
 		pi.playerid = c->entities[i]->GetID();
 		Vec3 pos = c->entities[i]->GetPosition();
@@ -337,7 +267,7 @@ void Server::OnConnect(Peer* peer, ConnectionRequest* p)
 		if (players[i] != 0)
 		{
 			PlayerInitialUpdate p;
-			p.packetid = 5;
+			p.packetid = NetworkingPackets::AddPlayer;
 			strcpy(p.name, players[i]->name);
 			p.playerid = i;
 			Vec3 pos = players[i]->GetPosition();
@@ -369,8 +299,8 @@ void Server::OnDisconnect(Peer* peer)
 
 		//remove the player
 		PlayerDisconnect p;
-		p.id = 99;
-		p.plyid = entity->GetID();// client->id;
+		p.id = NetworkingPackets::PlayerDisconnect;
+		p.plyid = entity->GetID();
 		for (auto ii = this->connection.peers.begin(); ii != this->connection.peers.end(); ++ii)
 		{
 			//lel, wut
@@ -412,7 +342,6 @@ int Server::Update()
 
 	this->timer.Update();
 	float dT = timer.GetElapsedTime();
-	this->time += dT;
 
 	this->OnPreUpdate();
 
@@ -476,7 +405,7 @@ int Server::Update()
 
 	//build global snapshot entity list
 	if (this->connection.peers.size() > 0)
-		this->networker.BuildEntityData(this->EntityManager, this->time);
+		this->networker.BuildEntityData(this->EntityManager, this->time_of_day);
 
 	//update snapshots
 	for (auto ii = this->connection.peers.begin(); ii != this->connection.peers.end(); ++ii)
@@ -501,14 +430,6 @@ int Server::Update()
 		delete rawsnap;
 	}
 
-#ifdef MATT_SERVER
-#ifdef _WIN32
-	char title[60];
-	sprintf(title, "Mattcraft: %s %d/%d Players", this->name, this->connection.peers.size(), this->max_players);
-	SetConsoleTitleA(title);
-#endif
-#endif
-
 	//force out the packets
 	this->connection.SendPackets();
 
@@ -519,8 +440,6 @@ void Server::ShutDown()
 {
 	//this calls disconnect on all peers
 	this->connection.Close();
-
-	//this->EntityManager->RemoveAll();
 
 	Sleep(100);//let messages go out
 
@@ -620,6 +539,6 @@ void Server::ChangeMap()
 	Sleep(1000);
 	this->ShutDown();
 	Sleep(2000);//give time for players to disconnect
-	this->listenserver_state = 2;
+	//this->listenserver_state = 2;
 	this->StartUp();
 }

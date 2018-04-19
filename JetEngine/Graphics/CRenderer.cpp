@@ -54,7 +54,7 @@ VertexDeclaration CRenderer::GetVertexDeclaration(VertexElement* elm, unsigned i
 		else if (type == ELEMENT_FLOAT4)
 			t = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		else if (type == ELEMENT_COLOR)
-			t = DXGI_FORMAT_B8G8R8A8_UNORM;// D3DDECLTYPE_D3DCOLOR;
+			t = DXGI_FORMAT_R8G8B8A8_UNORM;// D3DDECLTYPE_D3DCOLOR;
 		else if (type == ELEMENT_UBYTE4)
 			t = DXGI_FORMAT_R8G8B8A8_UINT;//  D3DDECLTYPE_UBYTE4;
 
@@ -224,6 +224,29 @@ void CRenderer::SetViewport(Viewport* vp)
 }
 
 #include "CTexture.h"
+
+void CRenderer::SetPixelTexture(int stage, ID3D11ShaderResourceView** texs, int count)
+{
+	context->PSSetShaderResources(stage, count, texs);
+	
+	if (texs)
+		this->current_texture = texs[0];// ->texture_rv;
+	else
+		this->current_texture = 0;
+}
+
+void CRenderer::SetPixelTexture(int stage, CTexture** texs, int count)
+{
+	ID3D11ShaderResourceView* tex[8];
+	for (int i = 0; i < count; i++)
+		tex[i] = texs[i]->texture_rv;
+	context->PSSetShaderResources(stage, count, tex);
+	
+	if (texs)
+		this->current_texture = texs[0]->texture_rv;
+	else
+		this->current_texture = 0;
+}
 
 void CRenderer::SetPixelTexture(int stage, CTexture* tex)
 {
@@ -473,7 +496,7 @@ void CRenderer::SetAALevel(int samples)
 	swapdesc.SampleDesc.Quality = 0;// msaa_quality;// 0;
 
 
-	swapdesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+	swapdesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 	swapdesc.BufferDesc.Height = this->yres;
 	swapdesc.BufferDesc.Width = this->xres;
 	swapdesc.BufferDesc.RefreshRate.Numerator = 60;//??
@@ -625,7 +648,7 @@ void CRenderer::Init(int scrx, int scry)
 	swapdesc.SampleDesc.Quality = 0;// 0;
 
 
-	swapdesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+	swapdesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;//DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
 	swapdesc.BufferDesc.Height = scry;
 	swapdesc.BufferDesc.Width = scrx;
 	swapdesc.BufferDesc.RefreshRate.Numerator = 60;//??
@@ -3021,7 +3044,7 @@ ID3D11ShaderResourceView* CRenderer::GetMissingTextureImage()
 	D3D11_TEXTURE2D_DESC td;
 	td.Width = 10;
 	td.Height = 10;
-	td.Format = DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM;
+	td.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 	td.SampleDesc.Count = 1;
 	td.SampleDesc.Quality = 0;
 	td.MipLevels = 1;

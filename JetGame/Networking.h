@@ -16,7 +16,7 @@
 #define SERVER_PORT 5007
 
 #define	PACKET_BACKUP	64	// number of old messages that must be kept on client and
-// server for delta compression and ping estimation
+// server for delta compression and ping estimation (should be at least several times the maximum ping)
 #define	PACKET_MASK		(PACKET_BACKUP-1)
 
 #define MAX_PACKET_ENTITIES 0x7FFF//25555
@@ -26,6 +26,18 @@ enum NetworkingConstants
 	MaxLocalPlayers = 4, //limit of number of local players per client for splitscreen usually
 	MaxPlayers = 20 //hardcoded limit for number of players a server can have
 };
+
+namespace NetworkingPackets
+{
+	enum NetworkingPackets
+	{
+		AddPlayer = 5,
+		PlayerDisconnect = 99,
+		Snapshot = 73,
+		InitialPacket = 1945,
+	};
+}
+
 
 void DecodeDeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, bool full, int newindex);
 
@@ -46,6 +58,7 @@ public:
 	short EntID;//index in entity array
 	int typeID;//hash for class name
 	Vec3 position;
+	Vec3 last_snap_position;//used for calculating the velocity
 	Vec3 velocity;
 };
 
@@ -75,6 +88,7 @@ public:
 	virtual PlayerBase* CreatePlayer(short id) = 0;
 	virtual void BuildDeltaPlayerSnapshot(const PlayerSnapshotData* oldframe, const PlayerSnapshotData* frame, NetMsg* msg) = 0;
 	virtual void BuildPlayerSnapshot(Snapshot* snap, int num_entities, PlayerBase** entities) = 0;
+	virtual void DecodePlayerSnapshots(Snapshot* snap, Snapshot* oldsnap, NetMsg* msg) = 0;
 	virtual void ApplyPlayerSnapshots(Snapshot* snap, Snapshot* oldsnap, PlayerBase** local_players) = 0;
 };
 
@@ -144,7 +158,7 @@ public:
 	virtual Vec3 GetAimDir() = 0;
 	virtual char GetParent()
 	{
-		return 0;
+		return -1;
 	}
 
 	virtual void SetParent(char p)
@@ -173,6 +187,7 @@ public:
 	unsigned short ping;
 	int droppedPackets;
 
+	float time_of_day;
 private:
 	Snapshot framescache[PACKET_BACKUP];
 
@@ -278,22 +293,22 @@ public:
 		for (int i = 0; i < PACKET_BACKUP; i++)
 		{
 			Snapshot* c = &framescache[i];
-			if (c->time > irt)
+			if (c->received_time > irt)
 			{
-				if (*max == 0 || c->time < (*max)->time)
+				if (*max == 0 || c->received_time < (*max)->received_time)
 				{
 					*max = c;
 				}
 			}
-			else if (c->time < irt)
+			else if (c->received_time < irt)
 			{
-				if (*min == 0 || c->time > (*min)->time)
+				if (*min == 0 || c->received_time > (*min)->received_time)
 				{
 					*min = c;
 				}
 			}
 		}
-		if (*min && *max && (*min)->time && (*max)->time)
+		if (*min && *max && (*min)->received_time && (*max)->received_time)
 			return true;
 		else
 			return false;//cant interpolate
@@ -372,7 +387,7 @@ class ServerClientNetworker
 	Snapshot frames[PACKET_BACKUP];
 
 public:
-	unsigned short ping;//why do I even need this???
+	unsigned short ping;
 
 	//need to be able to handle networked players dropping in and out
 	//	so need to communicate number of players between 

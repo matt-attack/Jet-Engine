@@ -132,6 +132,9 @@
     <ClCompile Include="Graphics\Decals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GUI\gui_tabpages.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Models\BasicModel.h">

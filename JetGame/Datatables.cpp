@@ -1,9 +1,21 @@
 #include "Datatables.h"
 
-std::map<int, netField_t*>* GetDataTable()
+std::map<int, networked_field*>* GetDataTable()
 {
-	static std::map<int, netField_t*> dt;
+	static std::map<int, networked_field*> dt;
 	return &dt;
+}
+
+int GetClassID(char* str)//basically a simple hash function
+{
+	int id = 0;
+	const char* c = str;
+	for (int i = 0; i < strlen(c); i++)
+	{
+		id += c[i];
+		id *= c[i] - 284;
+	}
+	return id;
 }
 
 

@@ -451,6 +451,8 @@ public:
 	void SetPixelTexture(int stage, ID3D11ShaderResourceView* tex);
 	void SetVertexTexture(int stage, ID3D11ShaderResourceView* tex);
 	void SetPixelTexture(int stage, CTexture* tex);
+	void SetPixelTexture(int stage, CTexture** texs, int count);
+	void SetPixelTexture(int stage, ID3D11ShaderResourceView** texture, int count);
 	void SetVertexTexture(int stage, CTexture* tex);
 
 	CRenderTexture GetRenderTarget(int id);

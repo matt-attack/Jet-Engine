@@ -38,8 +38,6 @@ private:
 
 	//dont use these, use a texture object
 	CTexture hmap;
-	//ID3D11Texture2D* hmapt;
-	//ID3D11ShaderResourceView* hmapv;
 
 	CShader *shader, *shader_s;
 
@@ -111,12 +109,9 @@ public:
 
 	//atlas management stuff
 	std::vector<int> free_tiles;//absolutely free ones
-	//std::vector<int> unused_tiles;//ones that we rendered to but can go back to so only use these if we need a better one
 
 	//this renders the tile in as well as fills in the indirection texture when we are done
 	int RenderTile(const std::vector<HeightmapTerrainSystem::RoadData>& roads, int x, int y, int scale, int id = -1);//returns the tile number
-
-	//void MarkTileAsUnused(int num);
 
 	void MarkTileFreed(int num);
 

@@ -23,8 +23,8 @@ class TerrainMaterial : public IMaterial
 {
 
 public:
-	ID3D11SamplerState* sampler, *textureSampler;
-	CTexture *nmap, *grass, *rock;
+	ID3D11SamplerState * sampler, *textureSampler;
+	CTexture *nmap;
 	CTexture *indirection, *tiles;
 	TerrainMaterial() : IMaterial("Terrain")
 	{
@@ -35,25 +35,18 @@ public:
 	{
 		IMaterial::Apply(renderer);
 
-		renderer->SetCullmode(CULL_CW);
+		//renderer->SetCullmode(CULL_CW);
 
 		renderer->context->VSSetSamplers(0, 1, &this->sampler);
 		renderer->context->PSSetSamplers(0, 1, &this->sampler);
 		renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
 		renderer->context->PSSetShaderResources(0, 1, &nmap->texture_rv);
-		//renderer->context->PSSetShaderResources(6, 1, &grass->texture);
-		//renderer->context->PSSetShaderResources(7, 1, &rock->texture);
 
-		//renderer->SetPrimitiveType(PT_TRIANGLELIST);
 		renderer->SetCullmode(CULL_CW);
 
 		renderer->EnableAlphaBlending(false);
-		//renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
-		//renderer->context->PSSetSamplers(0, 1, &this->sampler);
 
 		renderer->SetFilter(5, FilterMode::Point);
-
-		//renderer->context->PSSetShaderResources(0, 1, &nmap->texture);
 
 		renderer->context->PSSetShaderResources(6, 1, &this->indirection->texture_rv);
 		renderer->context->PSSetShaderResources(7, 1, &this->tiles->texture_rv);
@@ -72,7 +65,7 @@ static inline float GetDistanceToBox(float x, float y, float size,
 	//.. assert(fdX >= 0 && fdY >= 0 && fdZ >= 0);
 
 	// D3DXVECTOR3 RangeVec(fdX, fdY, fdZ);
-	return sqrt(fdX*fdX + fdZ*fdZ);//D3DXVec3Length( &RangeVec );
+	return sqrt(fdX*fdX + fdZ * fdZ);//D3DXVec3Length( &RangeVec );
 }
 
 
@@ -111,7 +104,7 @@ public:
 		this->state = 0;
 
 		this->aabb.min = Vec3(x, 0, y);
-		this->aabb.max = Vec3(x + size*TerrainScale, 1000, y + size*TerrainScale);
+		this->aabb.max = Vec3(x + size * TerrainScale, 1000, y + size * TerrainScale);
 	}
 
 	~QuadTreeNode()
@@ -135,11 +128,11 @@ public:
 
 		//virtual texture is 64 tiles across
 		northwest = new QuadTreeNode(root, this, x, y, size / 2);
-		northeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y, size / 2);
-		southwest = new QuadTreeNode(root, this, x, y + size*TerrainScale / 2, size / 2);
-		southeast = new QuadTreeNode(root, this, x + size*TerrainScale / 2, y + size*TerrainScale / 2, size / 2);
+		northeast = new QuadTreeNode(root, this, x + size * TerrainScale / 2, y, size / 2);
+		southwest = new QuadTreeNode(root, this, x, y + size * TerrainScale / 2, size / 2);
+		southeast = new QuadTreeNode(root, this, x + size * TerrainScale / 2, y + size * TerrainScale / 2, size / 2);
 
-		//add all the roads
+		//add all the roads, for now
 		for (int i = 0; i < this->roads.size(); i++)
 		{
 			this->northeast->AddRoad(i, &this->roads[i]);
@@ -171,7 +164,6 @@ public:
 
 		//printf("hi im a road that needs to be added");
 
-		//lets refine the road down (todo)
 
 		this->roads.push_back(*road);
 
@@ -198,7 +190,7 @@ public:
 		float density = dist > 0 ? 24 /*maybe put a density control here*/ / dist : 200000/*infinity*/;//dist/32;
 		//ok lets calculate required density = verts/size
 
-		int v = density*size;// / TerrainScale;
+		int v = density * size;// / TerrainScale;
 		//ok translate v->lod
 
 		//lod of 8 = 16 verts 6 = 8, 4 = 4, 2 = 2, 0 = 1
@@ -224,19 +216,10 @@ public:
 			lod = 5;
 		else
 			lod = v;//simplification of last 5 cases
-
+		
+		//lod = 2 * log2(v);
 		//if (this->patch->maxy - this->patch->miny > 30)// && showdebug > 1)
 		//lod = 8;
-		/*else if (v >= 4)
-		lod = 4;
-		else if (v >= 3)//dumb case
-		lod = 3;
-		else if (v >= 2)
-		lod = 2;
-		else if (v >= 1)//dumb case
-		lod = 1;
-		else
-		lod = 0;*/
 
 		//if (this->patch->maxy - this->patch->miny > 30 && dist < 4000)//showdebug > 1)
 		//lod += 4;
@@ -306,8 +289,7 @@ public:
 
 				this->patch->GenerateIndices(lod, true, true, true, true);
 			}
-			//if (this->patch->level == 8)
-			//return;
+
 			//render myself
 			this->patch->Render(renderer, 0);
 		}
@@ -360,7 +342,7 @@ public:
 		if (this->northeast == 0)
 		{
 			//it belongs in me, subdivide if we can
-			if (this->size <= PatchSize)//16)
+			if (this->size <= PatchSize)
 				return;
 
 			this->Subdivide();
@@ -429,7 +411,7 @@ public:
 				//ok lets calculate required density = verts/size
 
 				//relative density needed
-				float rd = density*size / TerrainScale;
+				float rd = density * size / TerrainScale;
 
 				int v = rd;// density*size; / TerrainScale;
 				//ok translate v->lod
@@ -437,27 +419,7 @@ public:
 				//9 = 32
 				//lod of 8 = 16 verts 6 = 8, 4 = 4, 2 = 2, 0 = 1
 				//log2(verts)*2 = lod
-				int lod = v;
-				//if (v >= 24)
-				//lod = 9;
-				if (v >= 48)
-					lod = 11;
-				else if (v >= 32)
-					lod = 10;
-				else if (v >= 24)
-					lod = 9;
-				else if (v >= 16)
-					lod = 8;
-				else if (v >= 12)//dumb case
-					lod = 7;
-				else if (v >= 8)
-					lod = 6;
-				else if (v >= 6)//dumb case
-					lod = 5;
-				else
-					lod = v;//simplification of last 5 cases
-
-				lod = this->GetLOD(cam);
+				int lod = this->GetLOD(cam);
 
 				//ok, need to fix ambient light with shadows
 				//	just calculate ambient term in the pixel shader if in shadow
@@ -481,7 +443,7 @@ public:
 
 				//if cam is inside, lod = 8
 				//if (this->size > 16 && lod >= 9)
-				if (lod >= 11/*rd >= (PatchSize + PatchSize / 2)*/ && this->size > PatchSize)
+				if (lod > PatchMaxLOD/* 11*/ && this->size > PatchSize)// PatchMaxLOD/*11*//*rd >= (PatchSize + PatchSize / 2)*/ && this->size > PatchSize)
 					this->Subdivide();
 				else if (this->parent && lod < PatchMaxLOD - 2)
 				{
@@ -491,7 +453,7 @@ public:
 					//4 is about perfect, lower frametime spend drawing
 					//PatchSizePower + 1)//4)///density*size < 4)
 					//check if parent will subdivide first
-					if (this->parent->GetLOD(cam) < 11)
+					if (this->parent->GetLOD(cam) <= PatchMaxLOD)//11)//PatchMaxLOD)//11)use max lod here
 						this->parent->state = -1;
 					else
 					{
@@ -577,8 +539,6 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 	delete[] this->heights;
 	this->sampler->Release();
 	this->textureSampler->Release();
-	//this->hmapv->Release();
-	//this->hmapt->Release();
 
 	this->grass->Release();
 	this->rock->Release();
@@ -709,7 +669,6 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 				grid[x*(world_size / patch_size) + y]->Root()->UpdateLOD(cam);
 		}
 	}
-	//this->RenderTile(0, 0, 64, 255);
 }
 
 int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem::RoadData>& roads, int x, int y, int scale, int id)
@@ -730,11 +689,6 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			num = this->free_tiles.back();
 			this->free_tiles.pop_back();
 		}
-		/*else if (this->unused_tiles.size())
-		{
-		num = this->unused_tiles.back();
-		this->unused_tiles.pop_back();
-		}*/
 	}
 
 	if (num == -1)
@@ -816,9 +770,6 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 
 		struct TLVERTEX2
 		{
-			//float x;
-			//float y;
-			//float z;
 			Vec3 pos;
 			float rhw;
 			COLOR color;
@@ -855,14 +806,9 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				p.x = source_points[i].pos.x;
 				p.z = 0;
 				p.y = source_points[i].pos.z;
-				
+
 				points.push_back(p);
 			}
-
-			//needs to be 2x as long
-			//points.push_back(Vec3(0, 1024+32, 0));
-			//points.push_back(Vec3(TexturePatchSize * TerrainScale, 1024+24, 0));
-			//points.push_back(Vec3(TexturePatchSize * TerrainScale*200, 1024+32, 0));
 
 			Vec3 tile_pos;
 			tile_pos.z = 0;
@@ -871,7 +817,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 
 			Vec3 tile_world(y*(TexturePatchSize * TerrainScale), x*(TexturePatchSize * TerrainScale), 0);
 			float tile_scale = ((2.0 / (TextureAtlasSize / TextureAtlasTileSize)) / scale) / (TexturePatchSize*TerrainScale);
-			float road_size = 16;
+			float road_size = source_points[0].width;// 16;
 			int i = 0;
 			Vec3 tangent = Vec3(0, 1, 0);
 			float v = 0;
@@ -879,10 +825,10 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 			{
 				if (p + 1 < points.size())
 					tangent = (points[p] - points[p + 1]).cross(Vec3(0, 0, 1)).getnormal();
-				
+
 				Vec3 lp = points[p] - tile_world;
 				lp.y = TerrainScale * TexturePatchSize * scale - lp.y;
-				vertices[i].pos = tile_pos + (lp) * tile_scale + tangent*(road_size*tile_scale*0.5f);
+				vertices[i].pos = tile_pos + (lp)* tile_scale + tangent * (road_size*tile_scale*0.5f);
 				vertices[i].rhw = 1;
 				if (p % 2 == 0)
 				{
@@ -897,7 +843,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				vertices[i++].color = 0xFFFFFFFF;
 
 				//Vec3 tangent = Vec3(1, 0, 0);
-				vertices[i].pos = tile_pos + (lp) * tile_scale - tangent*(road_size*tile_scale*0.5f);
+				vertices[i].pos = tile_pos + (lp)* tile_scale - tangent * (road_size*tile_scale*0.5f);
 				vertices[i].rhw = 1;
 				if (p % 2 == 0)
 				{
@@ -1005,9 +951,6 @@ bool HeightMapLoad(char* filename, HeightMapInfo &hminfo)
 		colors = new RGBQUAD[256];
 		fread(colors, sizeof(RGBQUAD), 256, filePtr);
 	}
-	//hminfo.terrainWidth = 2048;
-	//hminfo.terrainHeight = 2048;
-	//imageSize = 2048*2048;
 
 	// Initialize the array which stores the image data
 	unsigned char* bitmapImage = new unsigned char[imageSize];
@@ -1040,11 +983,9 @@ bool HeightMapLoad(char* filename, HeightMapInfo &hminfo)
 			unsigned char height = bitmapImage[k];
 			//help y axis is flipped in texture
 			//this fixes it here, but collisions are now broken
-			index = ((hminfo.terrainHeight) * (2047 - j)) + i;
+			index = ((hminfo.terrainHeight) * ((hminfo.terrainWidth - 1) - j)) + i;
 
-			//hminfo.heightMap[index].x = (float)i;
 			hminfo.heightMap[index] = ((float)height)*heightFactor;
-			//hminfo.heightMap[index].z = (float)j;
 
 			k += 1;
 		}
@@ -1180,8 +1121,8 @@ void HeightmapTerrainSystem::GenerateHeightmap()
 		const float hill_thresh = 0.6f;
 		const float mountain_thresh = 0.90f;
 		const float thresh = 0.3f;
-		int n = this->world_size/threads;
-		for (int x = i*n; x < i*n+n; x++)
+		int n = this->world_size / threads;
+		for (int x = i * n; x < i*n + n; x++)
 		{
 			for (int y = 0; y < this->world_size; y++)
 			{
@@ -1217,7 +1158,7 @@ void HeightmapTerrainSystem::GenerateHeightmap()
 	int threads = 4;
 	std::vector<std::thread> thread;
 	for (int i = 0; i < threads; i++)
-	{ 
+	{
 		thread.push_back(std::thread(std::bind(fun, i, threads)));
 	}
 
@@ -1301,8 +1242,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 
 	if (loaded)
 		return;
-	//todo then use terrain system in an example project
-	//this will help me work out any silly bugs with dependencies on random function calls/variables somewhere
+
 	//create material
 	TerrainScale = terrain_scale;
 	TerrainMaterial* mt = new TerrainMaterial;
@@ -1313,7 +1253,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 	this->material->shader_name = "Shaders/terrain_shadow.shdr";
 	this->material->shader_builder = true;
 	this->material->SetDefine("TERRAIN_SCALE", std::to_string(TerrainScale));
-	this->material->SetDefine("TILE_SCALE", std::to_string(32 / TexturePatchSize));
+	this->material->SetDefine("TILE_SCALE", std::to_string(32 / TexturePatchSize));//todo what is this random 32?
 	this->material->filter = FilterMode::Linear;
 	this->material->cullmode = CULL_CW;
 	this->my_material = mt;
@@ -1364,7 +1304,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 		auto res = renderer->device->CreateSamplerState(
 			&comparisonSamplerDesc,
 			&sampler
-			);
+		);
 		if (FAILED(res))
 			throw 7;
 
@@ -1392,7 +1332,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 		res = renderer->device->CreateSamplerState(
 			&comparisonSamplerDesc2,
 			&textureSampler
-			);
+		);
 		if (FAILED(res))
 			throw 7;
 	}
@@ -1405,8 +1345,6 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 	//color texture
 	this->indirection_texture = CRenderTexture::Create(size / TexturePatchSize, size / TexturePatchSize, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN);// DXGI_FORMAT_R24G8_TYPELESS);
 
-	mt->grass = grass;
-	mt->rock = rock;
 	mt->sampler = this->sampler;
 	mt->textureSampler = this->textureSampler;
 	mt->indirection = this->indirection_texture;
@@ -1416,9 +1354,9 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 inline float linearInterpolation(float x0, float x1, float t)
 {
 	return x0 + (x1 - x0)*t;
-};
+}
 
-inline float biLinearInterpolation(float x0y0, float x1y0, float x0y1, float x1y1, float x, float y){
+inline float biLinearInterpolation(float x0y0, float x1y0, float x0y1, float x1y1, float x, float y) {
 	float tx = x;
 	float ty = y;
 
@@ -1427,7 +1365,7 @@ inline float biLinearInterpolation(float x0y0, float x1y0, float x0y1, float x1y
 	float u = linearInterpolation(x0y0, x1y0, tx);
 	float v = linearInterpolation(x0y1, x1y1, tx);
 	return linearInterpolation(u, v, ty);
-};
+}
 
 float HeightmapTerrainSystem::GetHeight(float x, float y)
 {
@@ -1632,11 +1570,6 @@ void HeightmapTerrainSystem::GenerateNormals()
 	};
 
 	this->need_to_reload_normals = true;
-	//delete myrt;
-
-	//RELEASE IT ALL, besides the updated texture
-
-	//then just need to save it to file
 }
 
 int HeightmapTerrainSystem::AddRoad(RoadPoint* points, unsigned int count)
@@ -1651,7 +1584,7 @@ int HeightmapTerrainSystem::AddRoad(RoadPoint* points, unsigned int count)
 	AABB bounds(100000, -100000, 100000, -100000, 100000, -100000);
 	for (int i = 0; i < count; i++)
 	{
-		Vec3 half_normal = Vec3(0, 0, 1)*(points[i].width/2);
+		Vec3 half_normal = Vec3(0, 0, 1)*(points[i].width / 2);
 		//todo, need to include width
 		bounds.FitPoint(points[i].pos + half_normal);
 		bounds.FitPoint(points[i].pos - half_normal);

@@ -276,12 +276,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 						dev.axes[4] = value;
 				}
 
-				for (int i = 0; i < dev.num_axes; i++)
+				/*for (int i = 0; i < dev.num_axes; i++)
 				{
 					if (abs(dev.axes[i]) < 10000)
 						printf("%f ", dev.axes[i]);
 				}
-				printf("\n");
+				printf("\n");*/
 				HeapFree(GetProcessHeap(), 0, pPreparsedData);
 			}
 			else if (raw->header.dwType == RIM_TYPEMOUSE)

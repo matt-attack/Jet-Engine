@@ -568,6 +568,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	//each renderable needs to submit subcommands with materials
 	std::vector<RenderCommand> renderqueue;
+	renderqueue.reserve(300);//lets try and not recycle this
 
 	Vec3 worldcampos = globalview.GetTranslation();
 
@@ -681,7 +682,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	/* 4. RENDER OBJECTS */
 	GPUPROFILE2("Execute Commands");
-
+	//todo why am I doing this
 	renderer->SetFilter(10, FilterMode::Point);
 
 	render->SetMatrix(VIEW_MATRIX, &globalview);
@@ -879,7 +880,7 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 {
 	//compute both local and global camera matrices
 	Parent* parent = this->cur_parent;
-	Matrix4 localview = cam->_matrix;// > view;// cam->_matrix;
+	Matrix4 localview = cam->_matrix;
 	Matrix4 globalview;
 	if (parent)
 	{

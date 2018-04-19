@@ -23,21 +23,7 @@ struct ServerSnap
 	ED* entdata;
 };
 
-
 #pragma pack(pop)
-
-struct PlayerSnapshot
-{
-	struct inv_item
-	{
-		int id;
-		//int count;
-		int clip;
-		int ammo;
-		int entity;
-	};
-	inv_item inventoryItems[28];
-};
 
 struct PlayerSnapshotData
 {
@@ -46,6 +32,7 @@ struct PlayerSnapshotData
 
 	}
 	PlayerSnapshotData(const PlayerSnapshotData& that) = delete;
+
 	int size;
 	std::unique_ptr<char[]> data;
 };
@@ -85,7 +72,8 @@ struct Snapshot
 	int num_snapshotEntities;//number of entities actually visible
 	int* snapshotEntities;
 
-	unsigned int time;//time received by the client
+	unsigned int received_time;//time received by the client
+	double game_time;//game time this message represents
 };
 
 

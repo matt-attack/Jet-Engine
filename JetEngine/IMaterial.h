@@ -96,6 +96,7 @@ private:
 public:
 
 	IMaterial(const char* name);
+	IMaterial(const char* name, const IMaterial* to_copy);
 	IMaterial(char* name, char* shader, FilterMode fmode, char* diffuse, CullMode cmode, bool alpha, bool weaponhack = false);
 
 	virtual ~IMaterial();

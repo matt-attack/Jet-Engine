@@ -35,7 +35,7 @@ void DecodeDeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, b
 		newent->classid = msg->ReadInt();
 		int off = 0;
 
-		netField_t* fields = (*GetDataTable())[newent->classid];
+		networked_field* fields = (*GetDataTable())[newent->classid];
 		while (fields[i].bits != FIELD_END)
 		{
 			char* d = (char*)newent->data + off;
@@ -62,7 +62,7 @@ void DecodeDeltaEntity(NetMsg* msg, Snapshot* newframe, int num, ED* oldstate, b
 		ED* newent = &newframe->entdata[newindex];
 		newent->id = oldstate->id;
 		newent->classid = oldstate->classid;
-		netField_t* fields = (*GetDataTable())[newent->classid];
+		networked_field* fields = (*GetDataTable())[newent->classid];
 
 		memcpy(newent->data, oldstate->data, sizeof(oldstate->data));
 
@@ -105,7 +105,7 @@ void WriteDeltaEntity(NetMsg* msg, ED* oldent, ED* newent, bool full)
 		return;
 	}
 
-	netField_t* fields = (*GetDataTable())[newent->classid];
+	networked_field* fields = (*GetDataTable())[newent->classid];
 	if (oldent == 0)//send all data, new entity
 	{
 		//printf("[Server] wrote full with id %d\n", newent->id);
@@ -168,7 +168,6 @@ bool ClientNetworker::Update(float dT)
 		this->ProcessPacket(buffer[0], recvsize, buffer);
 		this->message_callback(buffer[0], recvsize, buffer);
 
-		//this->ProcessUDPPacket((char)buffer[0], recvsize, buffer);
 		if ((char)buffer[0] == 66)
 		{
 			//we got kill packet
@@ -190,18 +189,20 @@ bool ClientNetworker::Update(float dT)
 	//find the packets with the time > than rt and < rt that are closest to rt and get their times
 	Snapshot *min = 0;
 	Snapshot *max = 0;
-	if (this->GetInterpolationSnapshots(irt, &min, &max))
+	if (this->GetInterpolationSnapshots(irt, &min, &max))//probably need to do it here as well
 	{
+		//lets revamp time a bit, add a display with server time, packet received time and interpolation time
 		//packet receive times
-		//todo: stop using packet receive time
-		double oldtime = ((double)min->time) / 1000.0;
-		double newtime = ((double)max->time) / 1000.0;
+		//need to use server time in nanoseconds 
+		//todo: stop using packet receive time as this leads to jitter in interpolation caused by networking
+		double oldtime = ((double)min->received_time) / 1000.0;
+		double newtime = ((double)max->received_time) / 1000.0;
 		double dt = newtime - oldtime;//seems correct
 
 		double diff = rt - oldtime;
 		double fraction = diff / dt;
 
-		double real = max->time - min->time;
+		double real = max->received_time - min->received_time;
 		real /= 1000;
 		//printf("Interp Calculated: %f Sent: %f Real: %f\n", dt, (max->timef - min->timef), real);
 		//last = GetTickCount();
@@ -280,7 +281,7 @@ int ClientNetworker::Connect(Address serveraddr, unsigned short cport, const cha
 			while ((data = connection.Receive(sender, size)) == 0) { Sleep(0); }
 
 			InitialPacket *pack = (InitialPacket*)(data);
-			if (pack && pack->id == 1945)
+			if (pack && pack->id == NetworkingPackets::InitialPacket)
 			{
 				//this->TOD = pack->tod;
 				//todo make initial packet handle more than one player
@@ -294,12 +295,10 @@ int ClientNetworker::Connect(Address serveraddr, unsigned short cport, const cha
 				//spawn the player
 				auto ent = this->local_players[joins_recieved];
 				ent->islocalplayer = true;
-				//ent->velocity = Vec3(0, 0, 0);
-				//ent->cam.quat = Quaternion::IDENTITY;
 				this->EntityManager->AddEntity(ent->Base(), pack->localplyid);
 
 				//this doesnt work right because we havent loaded planets...
-				player->SetParent(pack->planet);
+				player->SetParent(pack->parent);
 
 				joins_recieved++;
 				delete[] data;
@@ -329,6 +328,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	msg->ReadByte();//get past id
 	double time = msg->ReadDouble();
 	float tod = msg->ReadFloat();
+	this->time_of_day = tod;
 
 	int acked_move = msg->ReadInt();
 	this->lastAckedMove = acked_move;
@@ -355,10 +355,6 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	this->ping = ping;
 
 	//read inventory
-	//if (oldsnap)
-	//newsnap->player_snapshots = oldsnap->player_snapshots;// memcpy(newsnap->inventoryItems, oldsnap->inventoryItems, sizeof(Snapshot::inv_item) * 28);
-	//else
-	//memset(newsnap->inventoryItems, 0, sizeof(Snapshot::inv_item)*28);
 
 	//number of local players in this snapshot
 	int numlocalplayers = msg->ReadByte();
@@ -366,31 +362,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	newsnap->num_player_snapshots = numlocalplayers;
 	delete[] newsnap->player_snapshots;
 	newsnap->player_snapshots = new PlayerSnapshotData[numlocalplayers];
-	for (int i = 0; i < numlocalplayers; i++)
-	{
-		PlayerSnapshot psnap;
-
-		if (oldsnap == 0)
-			memset(psnap.inventoryItems, 0, sizeof(PlayerSnapshot::inv_item) * 28);
-		else
-			memcpy(psnap.inventoryItems, oldsnap->player_snapshots[i].data.get(), sizeof(PlayerSnapshot::inv_item) * 28);
-
-		//do this per local player
-		//move to a decode playerdelta function to mirror the server
-		byte id = msg->ReadByte();
-		while (id != 254)
-		{
-			int itemid = msg->ReadInt();
-			psnap.inventoryItems[id].id = itemid;
-			psnap.inventoryItems[id].ammo = msg->ReadShort();
-			psnap.inventoryItems[id].clip = msg->ReadShort();
-			psnap.inventoryItems[id].entity = msg->ReadShort();
-
-			id = msg->ReadByte();
-		}
-
-		newsnap->AddPlayerSnapshot(i, psnap);
-	}
+	this->EntityManager->DecodePlayerSnapshots(newsnap, oldsnap, msg);
 
 	unsigned short entcount = msg->ReadShort();//entcount
 	newsnap->entcount = entcount;
@@ -403,8 +375,6 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	ED* oldstate;
 	int oldindex, oldnum;
 
-	//newframe->parseEntitiesNum = cl.parseEntitiesNum;
-	//newsnap->entcount = 0;
 	newindex = 0;
 
 	// delta from the entities present in oldframe
@@ -424,7 +394,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 		}
 		else
 		{
-			oldstate = &oldsnap->entdata[oldindex];//oldstate = &oldsnap->ents[oldindex];//&cl.parseEntities[(oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES-1)];
+			oldstate = &oldsnap->entdata[oldindex];
 			oldnum = oldstate->id;
 		}
 	}
@@ -434,31 +404,27 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	while (1)
 	{
 		// read the entity index number
-		newnum = msg->ReadShort();//MSG_ReadBits( msg, GENTITYNUM_BITS );
+		newnum = msg->ReadShort();
 
-		if (newnum == MAX_PACKET_ENTITIES)//(MAX_GENTITIES-1) )
+		if (newnum == MAX_PACKET_ENTITIES)
 		{
 			break;
 		}
 		else if (newnum > MAX_PACKET_ENTITIES)
 		{
-			printf("CL_ParsePacketEntities: ERROR: Snapshot entity index number too large!! Corrupted/malformatted packet!\n");
+			printf("DecodeDeltaSnapshot: ERROR: Snapshot entity index number too large!! Corrupted/malformatted packet!\n");
 			break;
 		}
 
 		if (msg->readpos > msg->maxsize)
 		{
-			log("CL_ParsePacketEntities: ERROR: end of message\n");
+			log("DecodeDeltaSnapshot: ERROR: end of message\n");
 			break;
 		}
 
 		while (oldnum < newnum)
 		{
 			// one or more entities from the old packet are unchanged
-			//if ( cl_shownet->integer == 3 )
-			//{
-			//Com_Printf ("%3i: unchanged: %i\n", msg->readcount, oldnum);
-			//}
 			DecodeDeltaEntity(msg, newsnap, oldnum, oldstate, true, newindex);
 			//unchanged, copy old value over
 			//newsnap->ents[newindex] = oldsnap->ents[oldindex];
@@ -473,7 +439,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 			else
 			{
 				//only unchanged ents were copied after last decode
-				oldstate = &oldsnap->entdata[oldindex];//oldstate = &oldsnap->ents[oldindex];//&oldsnap->e&cl.parseEntities[(oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES-1)];
+				oldstate = &oldsnap->entdata[oldindex];
 				oldnum = oldstate->id;
 			}
 		}
@@ -517,7 +483,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 			}
 			else
 			{
-				oldstate = &oldsnap->entdata[oldindex];//oldstate = &oldsnap->ents[oldindex];//&cl.parseEntities[(oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES-1)];
+				oldstate = &oldsnap->entdata[oldindex];
 				oldnum = oldstate->id;
 			}
 			continue;
@@ -526,15 +492,11 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 		if (oldnum > newnum)//new entity
 		{
 			// delta from baseline
-			//if ( cl_shownet->integer == 3 )
-			//{
-			//Com_Printf ("%3i: baseline: %i\n", msg->readcount, newnum);
-			//}
-			//index = msg->ReadByte();
 			//char p[50];
 			//sprintf(p, "got new entity message for id %d/%d\n", newnum, oldnum);
 			//OutputDebugString(p);
-			DecodeDeltaEntity(msg, newsnap, newnum, 0/*&cl.entityBaselines[newnum]*/, false, newindex);
+			// todo add some kind of default values for entities so we dont always sync everything
+			DecodeDeltaEntity(msg, newsnap, newnum, NULL, false, newindex);
 			newindex++;
 
 			continue;
@@ -553,10 +515,6 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 	while (oldnum != MAX_PACKET_ENTITIES)
 	{
 		// one or more entities from the old packet are unchanged
-		//if ( cl_shownet->integer == 3 )
-		//{
-		//Com_Printf("%3i: unchanged: %i\n", msg->readcount, oldnum);
-		//}
 		//char p[51];
 		//sprintf(p, "unchanged entity %d\n", oldnum);
 		//OutputDebugString(p);
@@ -571,7 +529,7 @@ Snapshot* ClientNetworker::DecodeDeltaSnapshot(NetMsg* msg)
 		}
 		else
 		{
-			oldstate = &oldsnap->entdata[oldindex];//oldstate = &oldsnap->ents[oldindex];//&cl.parseEntities[(oldframe->parseEntitiesNum + oldindex) & (MAX_PARSE_ENTITIES-1)];
+			oldstate = &oldsnap->entdata[oldindex];
 			oldnum = oldstate->id;
 		}
 	}
@@ -631,7 +589,7 @@ void ServerClientNetworker::BuildSnapshot(ServerSnap* ss, int num_entities, Play
 		if (ent)
 		{
 			//this is the PVS check
-			if (entityManager->ShouldTransmit(ent, entities[0]))//->ShouldTransmit(entities[0]))
+			if (entityManager->ShouldTransmit(ent, entities[0]))
 			{
 				//add it to the player's snapshot
 				//logf("Ent %d Is In PVS\n", e->id);
@@ -675,7 +633,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 	//ok, lets build the snapshot :D
 
 	//first write important data
-	msg->WriteByte(73);//id
+	msg->WriteByte(NetworkingPackets::Snapshot);//id
 	msg->WriteDouble(frame->timef);
 	msg->WriteFloat(frame->tod);
 	msg->WriteInt(this->acknowledgedMove[0]);
@@ -690,7 +648,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 	//write number of local players
 	msg->WriteByte(frame->num_player_snapshots);
 	for (int i = 0; i < frame->num_player_snapshots; i++)
-		manager->BuildDeltaPlayerSnapshot(oldframe ? &oldframe->player_snapshots[i]/*GetPlayerSnapshot<PlayerSnapshot>(i)*/ : 0, &frame->player_snapshots[i]/*GetPlayerSnapshot<PlayerSnapshot>(i)*/, msg);
+		manager->BuildDeltaPlayerSnapshot(oldframe ? &oldframe->player_snapshots[i] : 0, &frame->player_snapshots[i], msg);
 
 
 	//then write entities
@@ -722,7 +680,7 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 		}
 		else
 		{
-			oldent = &oldframe->entdata[oldframe->snapshotEntities[oldindex]];//oldindex];//oldent = &oldframe->ents[oldindex];//&svs.snapshotEntities[(0+oldindex)];// % svs.numSnapshotEntities];
+			oldent = &oldframe->entdata[oldframe->snapshotEntities[oldindex]];
 			oldnum = oldent->id;
 		}
 		//check if type is the same as well
@@ -734,7 +692,8 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 				//write delete message
 				WriteDeltaEntity(msg, oldent, NULL, true);
 				//write full update
-				WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
+				//todo can use a baseline here at NULL to reduce needed bandwidth
+				WriteDeltaEntity(msg, NULL, newent, true);
 
 				oldindex++;
 				newindex++;
@@ -752,7 +711,8 @@ NetMsg* ServerClientNetworker::BuildDeltaSnapshot(EntityManagerBase* manager)
 
 		if (newnum < oldnum)
 		{
-			WriteDeltaEntity(msg, NULL/*&sv.svEntities[newnum].baseline*/, newent, true);
+			//todo baseline here at NULL
+			WriteDeltaEntity(msg, NULL, newent, true);
 			newindex++;
 			continue;
 		}
@@ -842,7 +802,6 @@ void ClientNetworker::CorrectPlayerPos(int last, PlayerBase** local_players, int
 					//correct based on server position if its more than 15m from us
 					//todo make this do something more useful
 					player->SetPosition(np);
-					//player->position = np;
 					//if (player->vehicle)
 					//	player->vehicle->position = np;
 				}
@@ -863,18 +822,12 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 		signed char forwardmove, rightmove, upmove;
 	} usercmd_t;
 
-	//todo, compact this a bit
-
 	// Send the player position
 	PlayerUpdatePacket n;
 	n.id = 1;//todo remove packet id from message structs and move it to send
 	n.playerID = player_id;
 	n.flags = player->GetFlags();
-	//if (player->planet)
-	//n.parent = player->planetid;
-	//else
-	n.parent = -1;
-
+	n.parent = player->GetParent();
 	n.weapon = player->selected_weapon;
 
 	//lets pass deltas
@@ -883,13 +836,8 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 	n.y = pos.y;// - moves[this->lastsentmove-1%100].y;
 	n.z = pos.z;// - moves[this->lastsentmove-1%100].z;
 
-	n.velocity = player->GetVelocity();// velocity;
+	n.velocity = player->GetVelocity();
 	n.view = player->view;
-
-	/*if (player->vehicle)
-		n.rotation = player->vehicle->rotationq;
-	else
-		n.rotation = Quaternion::IDENTITY;*/
 	n.rotation = player->GetRotation();
 
 	n.binds = 0;
@@ -908,9 +856,6 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 	n.commandid = player->lastsentmove;
 	n.lastsnapshot = lastSnapshotNum;
 
-	//if (in_menu)//this->showchat || this->freeze)
-	//	n.binds = 0;
-
 	if (n.lastsnapshot)
 	{
 		player->moves[player->lastsentmove % 100] = n;
@@ -921,7 +866,7 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 
 void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 {
-	if (packetID == 5)//add new player entity
+	if (packetID == NetworkingPackets::AddPlayer)//add new player entity
 	{
 		PlayerInitialUpdate *p = (PlayerInitialUpdate*)buffer;
 
@@ -930,7 +875,7 @@ void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 		for (int i = 0; i < MaxLocalPlayers; i++)
 		{
 			PlayerBase* ii = this->local_players[i];
-			if (ii && p->playerid == ii->GetID())//EntID)
+			if (ii && p->playerid == ii->GetID())
 			{
 				islocal = true;
 				player = ii;
@@ -938,13 +883,9 @@ void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 		}
 		if (islocal == false)
 		{
-			//need to give this the right classes to use
-			//need to instantiate it using something else that doesnt require knowing the class
-			PlayerBase* ent = EntityManager->CreatePlayer(p->playerid);// new CPlayerEntity;//THIS IS HOW TO CREATE NEW ENTS <-----------------------------------------------
+			PlayerBase* ent = EntityManager->CreatePlayer(p->playerid);
 			ent->SetPosition(Vec3(p->x, p->y, p->z));
-			//ent->SetModel("erebus.iqm");
 			ent->islocalplayer = false;
-			//this->EntityManager->AddEntity((CEntity*)ent, p->playerid);
 
 			memcpy(ent->name, p->name, 25);//copy the name over
 		}
@@ -955,14 +896,14 @@ void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 			memcpy(ent->name, p->name, 25);//copy the name over
 		}
 	}
-	else if (packetID == 73)//important entity data packet
+	else if (packetID == NetworkingPackets::Snapshot)//important entity data packet
 	{
 		//this is the snapshot...
 		NetMsg msg(size, buffer);
 
 		int oldn = this->lastSnapshotNum;
 		Snapshot* snap = this->DecodeDeltaSnapshot(&msg);
-		snap->time = GetTickCount();
+		snap->received_time = GetTickCount();
 
 		if (oldn >= snap->framenumber)
 		{
@@ -970,8 +911,6 @@ void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 			return;
 		}
 
-		//ok, need to figure out how to network other non entity things better like game state vars
-		//	maybe have the gamestate be a special type that acts like entities and lets you register variables to transport
 		renderer->AddPoint(size);
 
 		//get previous snapshot to calculate velocity
@@ -986,22 +925,20 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 {
 	snap->num_entities = this->Count();
 	snap->entdata = new ED[snap->num_entities];
-	//should be able to pull this out, just pass in an array of pointers to entities with class id and id at front
-	//encode teh ents
+
 	unsigned short entcount = 0;
-	//need a way to iterate over all of em
 	for (int ei = 0; ei < this->MaxID(); ei++)
 	{
 		NetworkedEntity* nent = this->GetByID(ei);
-		CEntity* ent = this->GetEntByID(ei);//lets condense this 
+		CEntity* ent = this->GetEntByID(ei);
 		if (ent)
 		{
 			int offset = (char*)ent - (char*)nent;
 			snap->entdata[entcount].id = nent->EntID;
-			snap->entdata[entcount].classid = nent->typeID;//changeme
+			snap->entdata[entcount].classid = nent->typeID;
 
 			char* data = snap->entdata[entcount].data;
-			netField_t* fields = (*GetDataTable())[snap->entdata[entcount].classid];
+			networked_field* fields = (*GetDataTable())[snap->entdata[entcount].classid];
 			if (fields == 0)
 			{
 				//logf("Got Entity with no DataTable: %s\n", "");// ent->GetClass());
@@ -1013,14 +950,10 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 			int curpos = 0;
 			while (o != FIELD_END)
 			{
-				netField_t* cf = &fields[i];
+				networked_field* cf = &fields[i];
 
 				if (cf->flags & FIELD_ENTITY)
 				{
-					//void* d = (byte*)ent + cf->offset;
-					//NetworkedEntity* e = *(NetworkedEntity**)d;
-					//byte* epd = (byte*)ent + cf->offset;
-					//CEntity* ne = *(CEntity**)(epd);
 					byte* ep = (byte*)ent + cf->offset;
 					char* epd = *(char**)(ep);//this is a pointer to a CEntity, need to add an offset
 					CEntity* ne = (CEntity*)(epd);
@@ -1091,15 +1024,13 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 {
 	//used for velocity calculation
-	//the 2x is to correct for a wierd error where velocity is 2x more than it should be
-	double fdelta = (snap->timef - oldsnap->timef)*2.0 / 1000.0;//(float)(delta)/1000.0f;
+	double fdelta = (snap->timef - oldsnap->timef) / 1000.0;
 
 	//double real = snap->time - oldsnap->time;
 	//real /= 1000;
 	//printf("Calculated: %f Sent: %f Real: %f\n", fdelta, (snap->timef - oldsnap->timef), real);
 	//last = GetTickCount();
 
-	//ok, lets ignore predicted stuff, but only if ent has prediction enabled, so maybe lets set a flag on it
 	unsigned short ents = snap->entcount;
 	for (int i = 0; i < ents; i++)
 	{
@@ -1107,7 +1038,7 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		unsigned short entid = e->id;
 
 		char* data = snap->entdata[i].data;
-		netField_t* fields = (*GetDataTable())[snap->entdata[i].classid];
+		networked_field* fields = (*GetDataTable())[snap->entdata[i].classid];
 		if (fields == 0)
 		{
 			printf("Got Entity with no DataTable: %d\n", snap->entdata[i].classid);
@@ -1116,7 +1047,8 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		//does the ent already exist?
 		CEntity* curEnt = this->GetEntByID(entid);
 		NetworkedEntity* netEnt = this->GetByID(entid);
-		int offset = -4;
+		int offset = -4;// watch out for this, it could be different
+		//todo need to calculate this
 		bool isnewent = false;
 		if (curEnt && netEnt->typeID == snap->entdata[i].classid)
 		{
@@ -1125,17 +1057,12 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		else
 		{
 			isnewent = true;
-			curEnt = this->CreateEntity(e->classid);// CreateEntity<CEntity>(e->classid);
+			curEnt = this->CreateEntity(e->classid);
 			netEnt = (NetworkedEntity*)((char*)curEnt - offset);
-			this->AddEntity(curEnt, entid);
+			this->AddEntity(curEnt, entid);//this adds the new one and removes the old entity
 
 			//printf("Added Ent From Snapshot: %s %d\n", curEnt->GetClass(), e->id);
 		}
-		//int oldm = curEnt->_model_s;
-		Vec3 oldpos = netEnt->position;
-		//ok issue is the snapshot is being applied to the rotation of the mech
-		//if (oldsnap && curEnt->IsPredicted() && snap->time%1000 > 10)//dont interpolate for predicted entities
-		//	continue;
 
 		//todo fix possible problem when entity is created and referred to in the same frame
 		// may need to do two passes over this data to find that out
@@ -1145,7 +1072,7 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		int curpos = 0;
 		while (o != FIELD_END)
 		{
-			netField_t* cf = &fields[i2];
+			networked_field* cf = &fields[i2];
 			//could have specific type for position and velocity?
 			if (cf->flags & FIELD_ENTITY)
 			{
@@ -1154,12 +1081,12 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 				if (id == -1)//null entity
 				{
 					CEntity* t = 0;
-					memcpy(d, &t, 4);
+					memcpy(d, &t, sizeof(CEntity*));
 				}
 				else
 				{
 					CEntity* t = this->GetEntByID(id);
-					memcpy(d, &t, 4);//replace 4 with field size
+					memcpy(d, &t, sizeof(CEntity*));
 				}
 				curpos += cf->bits;//field size
 			}
@@ -1231,19 +1158,22 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		//ok, need to fix quaternion networking so it actually SLERPs between them,
 		//lerp is derping over long distance since isnt orthogonal
 
+		//todo need to be careful with this as it assumes oldsnap was the most recently applied one!!
+		// this is true in my games but is not always a safe assumption
 		//calculate velocity
 		if (netEnt->predicted == false && isnewent == false && oldsnap && fdelta > 0)
 		{
-			//help, this is off by a factor of two, and idk why
-			netEnt->velocity = (netEnt->position - oldpos) / fdelta;
+			//todo need to see if this is fixed from the 2x issue
+			netEnt->velocity = (netEnt->position - netEnt->last_snap_position) / fdelta;
 		}
+		netEnt->last_snap_position = netEnt->position;
 	}
 
 	//now delete entities not in the snapshot
 	//first build list of ents in snapshot
-	//todo document this random entity limit
-	unsigned short ids[512];
-	memset(ids, 0, sizeof(unsigned short) * 512);
+	//todo need to handle this maximum entity count here
+	unsigned char ids[2048];
+	memset(ids, 0, sizeof(unsigned char) * 2048);
 
 	for (int i = 0; i < snap->entcount; i++)
 	{
@@ -1253,7 +1183,7 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 	}
 
 	//delete old entities
-	for (int i = 0; i < 512; i++)
+	for (int i = 0; i < this->MaxID(); i++)
 	{
 		if (ids[i] == 0)
 		{

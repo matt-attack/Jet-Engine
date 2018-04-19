@@ -11,8 +11,7 @@ enum TerrainDefs
 	PatchSizePower = 5,//2^x = PatchSize
 	PatchSize = 1 << PatchSizePower,// 32,//16,
 
-	//PatchMaxDensity = PatchSize,//32,//56 for 64,//32 for 32,//24 for size of 16
-	PatchMaxLOD = PatchSizePower * 2,//10,//for 32, or 8 for 16
+	PatchMaxLOD = PatchSizePower * 2,//for 32, or 8 for 16
 
 	//todo, lets use this granularity
 	TexturePatchSize = 32,
@@ -37,7 +36,7 @@ class TerrainPatch
 	CIndexBuffer ibuffer;
 
 	int size;
-	int wx,wy;//world x and y positions
+	int wx, wy;//world x and y positions
 	
 public:
 	float miny, maxy;

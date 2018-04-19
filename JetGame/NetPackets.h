@@ -12,24 +12,7 @@ struct PlayerDisconnect
 	char id;
 	char plyid;
 };
-/*struct RespawnPack
-{
-	char id;
-	int size;
-	int planet;
-	float x;
-	float y;
-	float z;
-};*/
 
-/*struct damage_data
-{
-	int player_number;
-	int damage;
-	int damage_group;
-	Vec3 direction;//local direction
-	float torque;//todo: needs to affect vertical and horizontal
-};*/
 #pragma pack(pop)
 
 struct PlayerUpdatePacket
@@ -44,13 +27,10 @@ struct PlayerUpdatePacket
 	int commandid;
 
 	//char state;
-	//unsigned char flags;
 	float x;
 	float y;
 	float z;
 
-
-	//redo me later ok
 	Quaternion rotation;//for vehicles
 
 	//this contains all "binds" to perform actions
@@ -88,26 +68,11 @@ struct InitialPacket//send to tell client the join was successful
 	//all of these are custom and optional
 	char localplyid;
 	double time;
-	int planet;
+	int parent;
 	float x;
 	float y;
 	float z;
 };
 #pragma pack(pop)
-
-/*struct CEffectPacket
-{
-	unsigned char id;
-	int eid;
-	int entityid;
-	int entityid2;
-	float ox;
-	float oy;
-	float oz;
-	float dx;
-	float dy;
-	float dz;
-	float magnitude;
-};*/
 
 #endif

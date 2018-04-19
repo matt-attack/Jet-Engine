@@ -24,7 +24,7 @@ ObjModel::ObjModel()
 	this->OutFrames = 0;
 	this->animate = false;
 	this->type = RenderableType::Indexed;
-	this->material = 0;//&mat_generic;
+	this->material = 0;
 
 	this->castsShadows = 1;
 	this->receivesShadows = 1;
@@ -64,7 +64,7 @@ void ObjModel::SetAnimation(char* name)
 	}
 	else
 		this->animation = 0;
-};
+}
 
 void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transforms)
 {
@@ -76,7 +76,7 @@ void ObjModel::Load(const char* name, Matrix3x4* frames, JointTransform* transfo
 
 		delete[] this->JointTransforms;
 
-		data = resources.get_unsafe<ModelData>(name);//renderer->GetOrLoadModel((char*)name);
+		data = resources.get_unsafe<ModelData>(name);
 		if (data->num_joints > 0)
 		{
 			if (frames == 0)
@@ -185,15 +185,11 @@ void ObjModel::BlendAnimate(Animation* anim1, int frame1, int frame2, float curf
 
 		if (this->JointTransforms[i].enabled)
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat * this->JointTransforms[i].transform;
-			else this->OutFrames[i] = mat * this->JointTransforms[i].transform;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = this->JointTransforms[i].transform * mat* this->OutFrames[m->joints[i].parent];
 			else this->OutFrames[i] = this->JointTransforms[i].transform*mat;
 		}
 		else
 		{
-			//if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat;
-			//else this->OutFrames[i] = mat;
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = mat * this->OutFrames[m->joints[i].parent];// * mat;
 			else this->OutFrames[i] = mat;
 		}
@@ -238,15 +234,11 @@ void ObjModel::BlendAnimate(Animation* anim, float curframe, Animation* anim2, f
 
 		if (this->JointTransforms[i].enabled)
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat * this->JointTransforms[i].transform;
-			else this->OutFrames[i] = mat * this->JointTransforms[i].transform;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = this->JointTransforms[i].transform * mat* this->OutFrames[m->joints[i].parent];
 			else this->OutFrames[i] = this->JointTransforms[i].transform*mat;
 		}
 		else
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat;
-			else this->OutFrames[i] = mat;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = mat * this->OutFrames[m->joints[i].parent];// * mat;
 			else this->OutFrames[i] = mat;
 
@@ -282,15 +274,11 @@ void Animate(ModelData* m, JointTransform* JointTransforms, Matrix3x4* OutFrames
 
 		if (JointTransforms[i].enabled)
 		{
-			/*if (m->joints[i].parent >= 0) OutFrames[i] = OutFrames[m->joints[i].parent] * mat * JointTransforms[i].transform;
-			else OutFrames[i] = mat * JointTransforms[i].transform;*/
 			if (m->joints[i].parent >= 0) OutFrames[i] = JointTransforms[i].transform * mat* OutFrames[m->joints[i].parent];
 			else OutFrames[i] = JointTransforms[i].transform*mat;
 		}
 		else
 		{
-			/*if (m->joints[i].parent >= 0) OutFrames[i] = OutFrames[m->joints[i].parent] * mat;
-			else OutFrames[i] = mat;*/
 			if (m->joints[i].parent >= 0) OutFrames[i] = mat * OutFrames[m->joints[i].parent];// * mat;
 			else OutFrames[i] = mat;
 		}
@@ -325,15 +313,11 @@ void ObjModel::Animate(Animation* anim, int frame1, int frame2, float blend)
 
 		if (this->JointTransforms[i].enabled)
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat * this->JointTransforms[i].transform;
-			else this->OutFrames[i] = mat * this->JointTransforms[i].transform;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = this->JointTransforms[i].transform * mat* this->OutFrames[m->joints[i].parent];
 			else this->OutFrames[i] = this->JointTransforms[i].transform*mat;
 		}
 		else
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat;
-			else this->OutFrames[i] = mat;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = mat * this->OutFrames[m->joints[i].parent];// * mat;
 			else this->OutFrames[i] = mat;
 		}
@@ -365,21 +349,14 @@ void ObjModel::Animate(Animation* anim, float curframe)
 		Vec3 p = pose1[i].translation*(1 - frameoffset) + pose2[i].translation*frameoffset;
 
 		Matrix3x4 mat = Matrix3x4(q, p);//oomat1*(1 - blend) + oomat2*blend;
-		//char o[500];
-		//sprintf(o, "bone %s %d %d\n", m->joints[i].name, m->joints[i].parent, 0);
-		//log(o);
 
 		if (this->JointTransforms[i].enabled)
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat * this->JointTransforms[i].transform;
-			else this->OutFrames[i] = mat * this->JointTransforms[i].transform;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = this->JointTransforms[i].transform * mat* this->OutFrames[m->joints[i].parent];
 			else this->OutFrames[i] = this->JointTransforms[i].transform*mat;
 		}
 		else
 		{
-			/*if (m->joints[i].parent >= 0) this->OutFrames[i] = this->OutFrames[m->joints[i].parent] * mat;
-			else this->OutFrames[i] = mat;*/
 			if (m->joints[i].parent >= 0) this->OutFrames[i] = mat * this->OutFrames[m->joints[i].parent];// * mat;
 			else this->OutFrames[i] = mat;
 		}
@@ -597,8 +574,6 @@ CTexture* ObjModel::GetPositionMap()
 	renderer->SetViewport(&oldvp);
 
 	this->position_map = crt;
-	//I shouldnt have to do this, fix me later
-	//this->position_map->texture = crt->GetColorResourceView();
 
 	return this->position_map;
 }

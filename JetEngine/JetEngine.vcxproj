@@ -105,6 +105,7 @@
     <ClCompile Include="Graphics\RenderTexture.cpp" />
     <ClCompile Include="Graphics\Shader.cpp" />
     <ClCompile Include="GUI\gui_slider.cpp" />
+    <ClCompile Include="GUI\gui_tabpages.cpp" />
     <ClCompile Include="GUI\gui_window.cpp" />
     <ClCompile Include="IMaterial.cpp" />
     <ClCompile Include="Math\AABB.cpp" />

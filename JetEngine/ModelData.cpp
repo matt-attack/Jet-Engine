@@ -484,8 +484,6 @@ void ModelData::LoadOBJ(ModelData* ret, const char* path)
 
 void ModelData::LoadIQM(ModelData* m, const char* path)
 {
-	Sleep(200);
-	printf("in load iqm\n");
 #ifndef ANDROID
 	FILE* f = fopen(path, "rb");
 	if (f)

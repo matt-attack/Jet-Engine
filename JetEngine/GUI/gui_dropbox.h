@@ -22,20 +22,20 @@ public:
 		this->text = 0;
 		this->setsize(100,40);
 		//this->callback = 0;
-	};
+	}
 
 	~gui_dropbox()
 	{
 		if (this->text)
 			delete[] this->text;
-	};
+	}
 
 	char* text;
 
 	void init()
 	{
 		this->m_inactivecolor = 0xFFFFFFFF;
-	};
+	}
 
 	void settext(char* txt)
 	{
@@ -45,7 +45,7 @@ public:
 		unsigned int l = strlen(txt);
 		this->text = new char[l+1];
 		strcpy(this->text, txt);
-	};
+	}
 
 	void AddItem(const std::string& item)
 	{
@@ -118,16 +118,23 @@ public:
 		}
 		//renderer->DrawText(this->m_position.left + 10, this->m_position.top, this->text, 0xFFFFFFFF);
 		return 1;
-	};
+	}
 
 	std::string GetSelected()
 	{
 		return this->items[this->selected];
 	}
 
-	void SetSelected(int id)
+	int Selected()
+	{
+		return this->selected;
+	}
+
+	void SetSelected(int id, bool cb = true)
 	{
 		this->selected = id;
+		if (this->callback && cb)
+			callback(this);
 	}
 
 	//virtual int  wm_rendermouse(coord x, coord y);
@@ -163,14 +170,14 @@ public:
 			this->m_position.bottom -= 25*this->items.size();
 
 		return 1;
-	};
+	}
 
 	virtual int  wm_keydown(int key)
 	{
 		//use arrow keys
 		
 		return 1;
-	};
+	}
 	//virtual int  wm_command(gui_window *win, int cmd, int param) { return(0); };
 	//virtual int  wm_cansize(coord x, coord y);
 	//virtual int  wm_size(coord x, coord y, int cansize);

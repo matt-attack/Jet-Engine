@@ -210,6 +210,21 @@ IMaterial::IMaterial(const char* name)
 	GetList()[name] = this;//add myself to the material list
 }
 
+IMaterial::IMaterial(const char* name, const IMaterial* tc) : IMaterial(name)
+{
+	this->filter = tc->filter;
+	this->diffuse = tc->diffuse;
+	this->normal = tc->normal;
+	this->cullmode = tc->cullmode;
+	this->alpha = tc->alpha;
+	this->alphatest = tc->alphatest;
+	this->base_material = tc->base_material;
+	this->depthhack = tc->depthhack;
+	this->shader_builder = tc->shader_builder;
+	this->shader_name = tc->shader_name;
+	this->surface_shader = tc->surface_shader;
+}
+
 IMaterial::~IMaterial()
 {
 	//if (this->texture)
@@ -511,5 +526,5 @@ void IMaterial::SetDefine(const std::string& name, const std::string& value)
 	auto shaders = resources.get_unsafe<ShaderBuilder>(this->shader_name);
 
 	//apply the changes
-	shaders->InvalidateCache();
+	shaders->InvalidateCache(this);
 }

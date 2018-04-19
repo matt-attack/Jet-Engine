@@ -36,15 +36,13 @@ public:
 	ServerNetworker networker;
 	
 	unsigned int tickrate;//how many updates are performed in a second
-	int listenserver_state;
-	bool localserver;
-
+	
 	int player_count;
-	PlayerBase* players[MaxPlayers];//this is a silly arbitrary limit, we should have a define for this
+	PlayerBase* players[MaxPlayers];
 
 	EntityManagerBase* EntityManager;
 
-	double time;
+	float time_of_day;
 
 	Server(EntityManagerBase* manager, int tickrate, bool use_tcp);
 	~Server();
