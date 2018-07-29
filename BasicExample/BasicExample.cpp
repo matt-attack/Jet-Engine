@@ -15,9 +15,11 @@
 #pragma comment (lib, "dxgi.lib")
 #pragma comment (lib, "dinput8.lib")
 #pragma comment (lib, "dxguid.lib")
-#pragma comment (lib, "d3dx11.lib")
+//#pragma comment (lib, "d3dx11.lib")
 #pragma comment (lib, "Psapi.lib")
-#pragma comment (lib, "d3dx10.lib")
+#pragma comment (lib, "hid.lib")
+#pragma comment (lib, "DirectXTex.lib")
+//#pragma comment (lib, "d3dx10.lib")
 #pragma comment (lib, "OpenAL32.lib")
 #pragma comment (lib, "XInput.lib")
 
@@ -147,8 +149,8 @@ public:
 		}
 
 		//r.AddRenderable(&t);
-		fix this being so confusing
-		ok, dont call r.add for terrain, need to call t.render
+		//fix this being so confusing
+		//ok, dont call r.add for terrain, need to call t.render
 		t.Render(&cam, 0);
 
 		r.Render(&cam, renderer);

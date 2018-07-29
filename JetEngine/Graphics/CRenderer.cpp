@@ -617,10 +617,11 @@ void CRenderer::SetAALevel(int samples)
 	context->RSSetState(rs_none);
 }
 
-void CRenderer::Init(Window* w, int scrx, int scry)
+bool CRenderer::Init(Window* w, int scrx, int scry)
 {
 	auto hWnd = (HWND)w->GetOSHandle();
 	this->Init(hWnd, scrx, scry);
+	return true;
 }
 
 
@@ -3028,7 +3029,7 @@ void CRenderer::SetPrimitiveType(enum PrimitiveType mode)
 	}
 }
 
-void CRenderer::ApplyCam(CCamera* cam)//kinda pointless to do all the time, but its pretty cheap :/
+void CRenderer::ApplyCam(const CCamera* cam)//kinda pointless to do all the time, but its pretty cheap :/
 {
 	this->SetMatrix(VIEW_MATRIX, &cam->_matrix);
 	this->SetMatrix(PROJECTION_MATRIX, &cam->_projectionMatrix);

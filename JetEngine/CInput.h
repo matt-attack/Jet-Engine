@@ -148,12 +148,13 @@ struct Binding
 	};
 	int button;//for controller
 	int joy_button;//for joystick or non XInput controller, starts at 1
+	std::string vr_action;
 
 	bool oldstate[4];//one for each player
 
 	Binding() {}
-	Binding(BindingType type, bool lmb, int button = 0, int joy_button = -1) : type(type), left(lmb), button(button), joy_button(joy_button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
-	Binding(BindingType type, int key, int button = 0, int joy_button = -1) : type(type), key(key), button(button), joy_button(joy_button) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
+	Binding(BindingType type, bool lmb, int button = 0, int joy_button = -1, std::string vr_action = "") : type(type), left(lmb), button(button), joy_button(joy_button), vr_action(vr_action) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
+	Binding(BindingType type, int key, int button = 0, int joy_button = -1, std::string vr_action = "") : type(type), key(key), button(button), joy_button(joy_button), vr_action(vr_action) { for (int i = 0; i < 4; i++) oldstate[i] = false; }
 };
 
 struct RawDevice
@@ -189,6 +190,8 @@ public:
 	CInput();
 
 	void Update();
+
+	void EOFUpdate();
 
 	bool first_player_controller;
 
@@ -241,6 +244,9 @@ public:
 	//others are for joysticks
 	float GetAxis(int player, int axis);
 
+	int last_direction[4][4];//0 = center, 1 = up, -1 = down per axis
+	int GetAxisDirection(int player, int axis);
+
 	bool UsingJoystick(int player)
 	{
 		if (player == 0 && active_joystick)
@@ -253,7 +259,9 @@ public:
 	HANDLE active_joystick = 0;
 	std::map<HANDLE, RawDevice> devices;
 	std::vector<Controller> controllers;
+private:
 	void UpdateControllers();
 
+public:
 	bool* kb;
 };

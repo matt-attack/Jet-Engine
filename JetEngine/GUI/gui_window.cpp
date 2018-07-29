@@ -55,6 +55,7 @@ int gui_window::renderall(coord x, coord y, coord mx, coord my, int drawme)
 	int x2 = this->m_position.left + x;
 	int y2 = this->m_position.top + y;
 
+	int i = 1;
 	for (auto it = m_subwins.begin(); it != m_subwins.end(); it++)
 	{
 		gui_window* win = 0;
@@ -73,7 +74,16 @@ int gui_window::renderall(coord x, coord y, coord mx, coord my, int drawme)
 		}*/
 
 		if (win)
-			win->renderall(x2, y2, mx, my, true);
+		{
+			if (i == this->current_selection)
+			{
+				win->renderall(x2, y2, win->m_position.left+1, win->m_position.top+1, true);
+			}
+			else
+				win->renderall(x2, y2, mx, my, true);
+		}
+
+		i++;
 	}
 	return 1;
 }
@@ -96,6 +106,29 @@ gui_window* gui_window::findchildatcoord(coord x, coord y, int flags)//picks top
 		}
 	}
 	return topmost;
+}
+
+#include "gui_button.h"
+void gui_window::Enter()
+{
+	// get the selected item and hit enter on it
+	if (this->current_selection <= 0)
+		return;
+
+	auto iter = this->m_subwins.begin();
+	for (int i = 1; i < current_selection; i++)
+	{
+		iter++;
+	}
+
+	gui_window* win = *iter;
+	gui_button* button = dynamic_cast<gui_button*>(win);
+	if (button)
+	{
+		button->wm_lclick(0, 0);
+	}
+
+	current_selection = 0;// clear it so we go back to hidden
 }
 
 int gui_window::wm_paint(coord x, coord y, coord mx, coord my, bool mo)

@@ -42,12 +42,12 @@ Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 	float objsYmin = FLT_MAX;
 	float objsYmax = -FLT_MAX;
 	Vec3 boxCorners[6];
-	boxCorners[0] = view*ii->aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-	boxCorners[1] = view*ii->aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-	boxCorners[2] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.max.z);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-	boxCorners[3] = view*Vec3(ii->aabb.min.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-	boxCorners[4] = view*Vec3(ii->aabb.max.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-	boxCorners[5] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
+	boxCorners[0] = view * ii->aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+	boxCorners[1] = view * ii->aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+	boxCorners[2] = view * Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.max.z);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+	boxCorners[3] = view * Vec3(ii->aabb.min.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
+	boxCorners[4] = view * Vec3(ii->aabb.max.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
+	boxCorners[5] = view * Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
 
 	//TransformArray(boxCorners, _countof(boxCorners), view);
 	for (unsigned int corner_i = 0; corner_i < 6; corner_i++)
@@ -71,8 +71,8 @@ TreeBillboard* FoliageRenderer::AddTree(float fx, float z)
 	int x = (int)fx / tile_size;
 	int y = (int)z / tile_size;
 
-	this->tiles[x + y*this->tiles_dim].data.push_back({});
-	return &this->tiles[x + y*this->tiles_dim].data.back();
+	this->tiles[x + y * this->tiles_dim].data.push_back({});
+	return &this->tiles[x + y * this->tiles_dim].data.back();
 }
 
 #include "../Util/Noise.h"
@@ -101,9 +101,9 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	{
 		for (int y = 0; y < num; y++)
 		{
-			TreeTile* tile = &tiles[x + y*num];
-			tile->x = x*tile_size;
-			tile->y = y*tile_size;
+			TreeTile* tile = &tiles[x + y * num];
+			tile->x = x * tile_size;
+			tile->y = y * tile_size;
 			tile->size = tile_size;
 		}
 	}
@@ -134,8 +134,8 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 		{
 			int model = rand() % this->tree_models.size();
 
-			float x = 0 + xd*ix + 0.0f*xd;
-			float z = 0 + yd*iy + 0.0f*yd;
+			float x = 0 + xd * ix + 0.0f*xd;
+			float z = 0 + yd * iy + 0.0f*yd;
 			x += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*xd)))) - 0.4f*xd;
 			z += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*yd)))) - 0.4f*yd;
 			//data[i].position += (Vec3::random(0.8*xd, 0, 0.8*yd) - Vec3(0.4*xd,0,0.4*yd));// +Vec3(512, 0, 512);
@@ -143,7 +143,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			if (normal.y < 0.9)
 				continue;
 
-			float noise = noise2d_perlin(x/300.0, z/300.0, 84652, 3, 0.9);
+			float noise = noise2d_perlin(x / 300.0, z / 300.0, 84652, 3, 0.9);
 			if (noise < 0.3)
 				continue;
 
@@ -151,7 +151,7 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			tree->position.x = x;
 			tree->position.z = z;
 			tree->position.y = y;
-			float h = 1.0+(rand() % 100)/100.0f;
+			float h = 1.0 + (rand() % 100) / 100.0f;
 			float w = 1.0 + (rand() % 100) / 100.0f;
 			tree->size.x = this->tree_models[model].dimensions.x*w;
 			tree->size.y = this->tree_models[model].dimensions.y*h;
@@ -167,17 +167,17 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
 	{
 		if (this->tiles[i].data.size() > 0)
-			this->tiles[i].vb.Data(this->tiles[i].data.data(), this->tiles[i].data.size()*sizeof(TreeBillboard), sizeof(TreeBillboard));
+			this->tiles[i].vb.Data(this->tiles[i].data.data(), this->tiles[i].data.size() * sizeof(TreeBillboard), sizeof(TreeBillboard));
 	}
 
 	VertexElement elm9[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
 	{ ELEMENT_FLOAT3, USAGE_NORMAL },
 		//{ ELEMENT_FLOAT3, USAGE_TEXCOORD },
 	{ ELEMENT_FLOAT2, USAGE_TANGENT },
-	//{ ELEMENT_FLOAT2, USAGE_NORMAL },
-	//{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
-	{ ELEMENT_COLOR, USAGE_COLOR },
-	{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT } };
+		//{ ELEMENT_FLOAT2, USAGE_NORMAL },
+		//{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT },
+		{ ELEMENT_COLOR, USAGE_COLOR },
+		{ ELEMENT_FLOAT, USAGE_BLENDWEIGHT } };
 	this->vd = renderer->GetVertexDeclaration(elm9, 5);
 
 	//ok, need to make geometry shaders reloadable too
@@ -372,6 +372,7 @@ void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 
 	//this->texture = resources.get<CTexture>("smoke.png");
 	renderer->SetPixelTexture(4, this->texture);
+	renderer->SetPixelTexture(5, this->normals);
 
 	//render tiles
 	for (int i = 0; i < this->tiles_dim*this->tiles_dim; i++)
@@ -391,34 +392,47 @@ void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 	renderer->context->GSSetShader(0, 0, 0);
 }
 
-int rrr = 0;
+#include "../IMaterial.h"
+
 void FoliageRenderer::GenerateImpostors()
 {
+	//todo need to call this on lighting updates
 	if (this->texture == 0)
-		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT, true);
-	else if (hack++ > 1)
-		return;
+	{
+		this->normals = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_UNKNOWN, true);
+		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT, true);
+	}
+	//else if (hack++ > 1)
+	//	return;
 
 	auto rt = (CRenderTexture*)this->texture;
+	auto nrt = (CRenderTexture*)this->normals;
 	CCamera cam;
 
 	auto oldrt = renderer->GetRenderTarget(0);
-	renderer->SetRenderTarget(0, rt);
+
+	//Set the render targers
+	ID3D11RenderTargetView* views[2] = { rt->color, nrt->color };
+	renderer->context->OMSetRenderTargets(2, views, rt->depth);
 
 	Viewport old;
 	renderer->GetViewport(&old);
 
 	rt->Clear(0, 0, 0, 0);
+	nrt->Clear(0, 0, 0, 0);
 
 	renderer->EnableAlphaBlending(false);
-	//todo need to not have to do lighting in this, lets export normals
-	r.SetAmbient(Vec3(0.6, 0.6, 0.6), Vec3(0.6, 0.6, 0.6));
 
-	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
+	//todo need to not have to do lighting in this, lets export normals
+	r.SetAmbient(ambient, ambient);
+
+	cam._matrix = Matrix4::BuildMatrix(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1));//
+	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 
 	if (this->tree_models.size() > 8)
 		throw 7;
-
+//	lets do a quick pass through render system to clean up any junk in lighting and figure out how to delete a material
+	//	also make sure we dont leak directx objects literally everywhere
 	//render each view
 	for (int m = 0; m < this->tree_models.size(); m++)
 	{
@@ -437,10 +451,17 @@ void FoliageRenderer::GenerateImpostors()
 
 			//model.aabb.min = Vec3(model.t->bounds[25].bbmin);// -Vec3(2, 0, 10);
 			//model.aabb.max = Vec3(model.t->bounds[25].bbmax);// +Vec3(2, 0, -10);
-			model->matrix = Matrix4::RotationMatrixZ((3.14159265 / 4.0) *((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
+			//ok, need to make sure the normals are properly rotated, sometimes it seems this matrix cancels out any change in normals
+				// need to note that this works the opposite of rotating the camera around the object
+			//	also need to make sure the normals are properly oriented the same as they will be in view space
+			// todo ok, I need to actually move the camera around the object or else the normals just get rotated, either that or I need to
+			//	skip rotating just the normals;
+			model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
 
 
 			auto ii = model;
+			AABB aabb = ii->aabb;
+			aabb.Transform(Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f));
 			Matrix4 view = cam._matrix;
 			float objsNear = FLT_MAX, objsFar = -FLT_MAX;
 			float objsXmin = FLT_MAX;
@@ -448,18 +469,18 @@ void FoliageRenderer::GenerateImpostors()
 			float objsYmin = FLT_MAX;
 			float objsYmax = -FLT_MAX;
 			Vec3 boxCorners[6];
-			boxCorners[0] = view*ii->aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-			boxCorners[1] = view*ii->aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-			boxCorners[2] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.max.z);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-			boxCorners[3] = view*Vec3(ii->aabb.min.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-			boxCorners[4] = view*Vec3(ii->aabb.max.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-			boxCorners[5] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
+			boxCorners[0] = view * aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+			boxCorners[1] = view * aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+			boxCorners[2] = view * Vec3(aabb.min.x, aabb.max.y, aabb.max.z);//Vec3(_position.x, _position.y, _position.z+16);
+			boxCorners[3] = view * Vec3(aabb.min.x, aabb.min.y, aabb.max.z);//Vec3(_position.x+16, _position.y, _position.z+16);
+			boxCorners[4] = view * Vec3(aabb.max.x, aabb.min.y, aabb.max.z);//Vec3(_position.x+16, _position.y+16, _position.z+16);
+			boxCorners[5] = view * Vec3(aabb.min.x, aabb.max.y, aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
 
 			//TransformArray(boxCorners, _countof(boxCorners), view);
 			for (unsigned int corner_i = 0; corner_i < 6; corner_i++)
 			{
 				if (boxCorners[corner_i].z < objsNear) objsNear = boxCorners[corner_i].z;
-				if (boxCorners[corner_i].z > objsFar) objsFar = boxCorners[corner_i].z;
+				if (boxCorners[corner_i].z > objsFar)  objsFar  = boxCorners[corner_i].z;
 				if (boxCorners[corner_i].x < objsXmin) objsXmin = boxCorners[corner_i].x;
 				if (boxCorners[corner_i].x > objsXmax) objsXmax = boxCorners[corner_i].x;
 				if (boxCorners[corner_i].y < objsYmin) objsYmin = boxCorners[corner_i].y;
@@ -476,14 +497,41 @@ void FoliageRenderer::GenerateImpostors()
 
 			model->color = 0xFFFFFFFF;
 
+			IMaterial* mats[20];
+			//need to temporarily replace all the materials with ones with the right shaders
+			for (int i = 0; i < model->data->num_meshes; i++)
+			{
+				mats[i] = model->mesh_materials[i];
+				if (this->tree_models[m].impostor_mats[i])
+				{
+					model->mesh_materials[i] = this->tree_models[m].impostor_mats[i];
+				}
+				else
+				{
+					IMaterial* mat = new IMaterial((std::string(mats[i]->name) + "_raw").c_str(), mats[i]);
+					model->mesh_materials[i] = mat;
+					model->mesh_materials[i]->SetDefine("RAW_OUTPUT", "true");
+					this->tree_models[m].impostor_mats[i] = mat;
+					mat->Update(renderer);
+				}
+			}
+
 			r.Render(&cam, model);
+
+			for (int i = 0; i < model->data->num_meshes; i++)
+			{
+				//model->mesh_materials[i]->Release();
+				//IMaterial::GetList().erase(IMaterial::GetList().find(model->mesh_materials[i]->name));
+				//delete model->mesh_materials[i];
+				model->mesh_materials[i] = mats[i];
+			}
 		}
 	}
 
 	renderer->SetRenderTarget(0, &oldrt);
 	renderer->SetViewport(&old);
 
-	//todo add generate mips flag
-	//todo: make this work
+	// Generate mipmaps for the trees
+	renderer->context->GenerateMips(this->normals->texture_rv);
 	renderer->context->GenerateMips(this->texture->texture_rv);
 }

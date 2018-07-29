@@ -27,6 +27,20 @@ public:
 	int RemoveWindow(gui_window *w);
 	void DeleteChildren();
 
+	// Handling menu item selection
+	int current_selection = 0;
+	void Up()
+	{
+		if (current_selection > 1)
+			current_selection--;
+	}
+	void Down()
+	{
+		if (current_selection < this->m_subwins.size())// todo need to handle only the right type of labels
+			current_selection++;
+	}
+	void Enter();
+
 	void Show(void) { m_bIsShown = true; }
 	void Hide(void) { m_bIsShown = false; }
 	bool IsShown(void) { return(m_bIsShown); }

@@ -14,7 +14,7 @@ struct TreeBillboard
 };
 class FoliageRenderer
 {
-	CTexture* texture;
+	CTexture* texture, *normals;
 	CShader* shader;
 	CShader* shader_shadow;
 	
@@ -26,6 +26,7 @@ class FoliageRenderer
 	{
 		Vec2 dimensions;
 		ObjModel* model;
+		IMaterial* impostor_mats[8] = { 0 };
 	};
 	std::vector<TreeModel> tree_models;
 	std::vector<ObjModel*> render_models[8];//stupid hack
@@ -46,6 +47,8 @@ class FoliageRenderer
 public:
 	FoliageRenderer();
 	~FoliageRenderer();
+
+	Vec3 ambient;
 
 	void Init(HeightmapTerrainSystem* system);
 

@@ -362,6 +362,7 @@ void SoundManager::ThreadUpdate()
 
 void SoundManager::SetPosition(const Vec3& pos)
 {
+	alDopplerFactor(0.1f);
 	AL_CHECK( alListener3f(AL_POSITION, pos.x, pos.y, pos.z) );	
 }
 

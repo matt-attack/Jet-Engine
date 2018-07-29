@@ -3,7 +3,6 @@
 #include "../Util/Profile.h"
 
 #include "../IMaterial.h"
-//#include <D3DX11.h>
 
 #include "../camera.h"
 #include "RenderTexture.h"
@@ -28,7 +27,6 @@ Renderer::Renderer()
 	this->shadowMapDepthBias = 0.0f;
 	this->shadowMaxDist = 150;//350
 	this->shadowSplitLogFactor = 0.9f;
-	//this->ambient = Vec3(0.2175f, 0.2175, 0.2175);
 	this->sun_light = Vec3(0.9f, 0.9, 0.9);
 	this->_shadows = true;//should default to false eventually
 	this->SetAmbient(Vec3(0.4, 0.4, 0.54), Vec3(0.2, 0.2, 0.2));
@@ -456,7 +454,9 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 
 	//set rt back
 	//renderer->SetRenderTarget(0, &oldrt);
-	renderer->context->OMSetRenderTargets(1, &renderer->renderTargetView, renderer->depthStencilView);
+	renderer->context->OMSetRenderTargets(1, &oldrt.color, oldrt.depth);
+
+	//renderer->context->OMSetRenderTargets(1, &renderer->renderTargetView, renderer->depthStencilView);
 
 	renderer->SetCullmode(CULL_CW);
 }
@@ -859,7 +859,6 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 void Renderer::Render(CCamera* cam, Renderable* r)
 {
 	/* 4. RENDER OBJECTS */
-	//renderer->SetMatrix(VIEW_MATRIX, &globalview);
 	//Parent* last = 0;//keeps track of what view matix is active
 	//IMaterial* lastm = (IMaterial*)-1;
 	//todo: only do this once per frame
@@ -938,8 +937,8 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		Light found_lights[6];//max per pixel
 		//move this into an external function to clean up this code
 		//hack for the moment 
-		const Vec3 position = rc.position;// rc.source ? rc.source->matrix.GetTranslation() : rc.position;
-		const float radius = rc.radius;// rc.source ? 10 : rc.radius;
+		const Vec3 position = rc.position;
+		const float radius = rc.radius;
 		//todo: get enemy spawning system and deaths
 		//todo: perhaps allow more lights if necessary
 		for (auto light : this->lights)
@@ -1047,9 +1046,6 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 		CCamera culling;
 		BuildShadowFrustum(&tmpCamera, culling, this->dirToLight);
 
-		//AABB frustumBB = tmpCamera.GetFrustumAABB();
-		//const BOX &frustumBB = tmpCamera.GetMatrices().GetFrustumBox();
-		//scene.ListObjectsIntersectingSweptBox(objs, frustumBB, g_DirToLight);
 		//need to make list of all renderables in frustum
 		std::vector<Renderable*> locals;
 		for (auto ren : this->renderables)

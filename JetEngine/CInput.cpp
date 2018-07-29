@@ -15,7 +15,30 @@ void CInput::Update()
 	GetCursorPos(&m_pos);
 	ScreenToClient(window, &m_pos);
 #endif
+
 	this->UpdateControllers();
+}
+
+void CInput::EOFUpdate()
+{
+	//save old axis directions
+	for (int p = 0; p < 4; p++)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			this->last_direction[p][i] = this->GetAxisDirection(p, i);
+		}
+	}
+}
+
+int CInput::GetAxisDirection(int player, int axis)
+{
+	float v = this->GetAxis(player, axis);
+	if (v > 0.5)
+		return 1;
+	else if (v < -0.5)
+		return -1;
+	return 0;
 }
 
 void CInput::UpdateControllers()
@@ -161,6 +184,7 @@ float CInput::GetAxis(int player, int axis)
 		}
 		else
 		{
+			res = bs;
 			if (controller)
 			{
 				Vec3 dir = this->controllers[controllerid].GetLeftStick();
@@ -184,6 +208,7 @@ float CInput::GetAxis(int player, int axis)
 		}
 		else
 		{
+			res = bs;
 			if (controller)
 			{
 				Vec3 dir = (this->controllers[controllerid].GetLeftStick());
@@ -204,6 +229,7 @@ float CInput::GetAxis(int player, int axis)
 		}
 		else
 		{
+			res = bs;
 			if (controller)
 			{
 				Vec3 dir = this->controllers[controllerid].GetRightStick();
@@ -226,6 +252,7 @@ float CInput::GetAxis(int player, int axis)
 		}
 		else
 		{
+			res = bs;
 			if (controller)
 			{
 				Vec3 dir = this->controllers[controllerid].GetRightStick();

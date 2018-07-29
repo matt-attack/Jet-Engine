@@ -41,6 +41,7 @@ void OSInit(HWND hWnd)
 
 void CGame::Init(Window* window)
 {
+	//need escape and back button also to only do rising edge of controller buttons (A) for menus
 	this->input.kb = this->keyboard;
 
 	OSInit((HWND)window->GetOSHandle());
@@ -258,7 +259,7 @@ void CGame::Update()
 	this->window->ProcessMessages();
 
 	//update input stuff
-	this->input.UpdateControllers();
+	this->input.Update();
 
 	if (states.size() > 0)
 	{
@@ -294,6 +295,7 @@ void CGame::Update()
 	this->Draw();//render the frame
 
 	//reset input
+	input.EOFUpdate();
 	input.deltaX = 0;
 	input.deltaY = 0;
 	input.left_mouse = false;
@@ -307,15 +309,19 @@ void CGame::Update()
 #endif
 }
 
+#include <JetEngine/Graphics/VRRenderer.h>
+
 void CGame::Draw()
 {
 	renderer->shader = 0;//makes shader reloading work
 
+	VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
+
 	//update settings
 	r._shadows = this->GetSettingBool("cl_shadows");
 	float samples = this->GetSettingFloat("cl_aa_samples");
-	renderer->SetAALevel(samples);
-	renderer->EnableVsync(this->GetSettingBool("cl_vsync"));
+	renderer->SetAALevel(vr ? 0 : samples);
+	renderer->EnableVsync(vr ? 0 : this->GetSettingBool("cl_vsync"));
 	r.SetMaxShadowDist(this->GetSettingFloat("cl_shadow_dist"));
 	SoundManager::GetInstance()->SetMasterVolume(this->GetSettingFloat("cl_volume") / 100.0f);
 

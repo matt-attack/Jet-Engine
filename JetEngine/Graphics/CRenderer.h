@@ -68,6 +68,7 @@ class CIndexBuffer;
 class CShader;
 class CCamera;
 class Font;
+class VRRenderer;
 
 extern CRenderer* renderer;
 
@@ -236,6 +237,7 @@ class CRenderer
 	friend class CWorld;
 	friend class Font;
 	friend class CShader;
+	friend class VRRenderer;
 
 	ID3D11BlendState* bs_solid;
 	ID3D11BlendState* bs_alpha;
@@ -324,7 +326,7 @@ public:
 
 #ifdef _WIN32
 	void Init(HWND hWnd, int scrx, int scry);
-	void Init(Window* wnd, int scrx, int scry);
+	virtual bool Init(Window* wnd, int scrx, int scry);
 #else
 	void Init(int scrx, int scry);
 #endif
@@ -340,7 +342,7 @@ public:
 	bool Vsync() { return this->vsync; }
 
 	void Resize(int scrx, int scry);
-	void Present();
+	virtual void Present();
 
 	void DrawFullScreenQuad();
 	void DrawRect(Rect* rct, COLOR color, bool setshader = true);
@@ -487,7 +489,7 @@ public:
 
 	void DrawIcon(int x, int y, int size, int id, COLOR color = COLOR_ARGB(255, 255, 255, 255));
 
-	void ApplyCam(CCamera* cam);
+	void ApplyCam(const CCamera* cam);
 
 	void DrawBoundingBox(const OBB bb, COLOR color = COLOR_ARGB(255, 255, 255, 255));
 
