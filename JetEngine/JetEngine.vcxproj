@@ -87,7 +87,6 @@
     <ClCompile Include="Graphics\Models\BlockModel.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CInput.cpp" />
-    <ClCompile Include="DbgNew.cpp" />
     <ClCompile Include="Graphics\Decals.cpp" />
     <ClCompile Include="Defines.cpp" />
     <ClCompile Include="Graphics\CIndexBuffer.cpp" />

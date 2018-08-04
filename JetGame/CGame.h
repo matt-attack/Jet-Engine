@@ -11,17 +11,6 @@
 #include <map>
 #include <string.h>
 
-#include "../JetEngine/DbgNew.h"
-
-
-#ifdef _DEBUG   
-#ifndef DBG_NEW      
-#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )     
-#define new DBG_NEW   
-#endif
-#endif
-
-
 #undef MessageBox
 
 enum MouseEvent

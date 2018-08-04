@@ -2,7 +2,7 @@
 
 #include "CRenderer.h"
 
-#include "../../openvr/headers/openvr.h"
+#include "../../../openvr/headers/openvr.h"
 
 /*namespace vr
 {

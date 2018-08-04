@@ -16,3 +16,17 @@ Includes:
 - Math libraries
 - Xbox controller support
 - Low level wrappers over graphics library concepts (vertex buffers, textures)
+
+
+#Building
+
+
+##Dependencies
+
+The build currently requires openvr [https://github.com/ValveSoftware/openvr.git](https://github.com/ValveSoftware/openvr.git) to be installed in the same directory
+in order for the engine to build.
+
+## Building
+
+Open any one of the solution files with Visual Studio 2017 and hit build.
+

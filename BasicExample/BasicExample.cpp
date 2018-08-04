@@ -92,8 +92,8 @@ public:
 	virtual void Init(CGame* game)
 	{
 		t.Load(2);
-		//terrain.GenerateHeightmap();
-		t.LoadHeightmap("Content/heightmap.r16");
+		t.GenerateHeightmap();
+		//t.LoadHeightmap("Content/heightmap.r16");
 	}
 
 	virtual void Cleanup() {};
