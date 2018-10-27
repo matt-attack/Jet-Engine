@@ -129,6 +129,7 @@ public:
 };
 
 //used for a basic mesh renderable
+#include "CVertexBuffer.h"
 class BasicRenderable: public Renderable
 {
 public:
@@ -136,12 +137,54 @@ public:
 
 	float light;
 	float depthoverride;
+	float radius;
+
+	CVertexBuffer my_vb;
 
 	BasicRenderable()
 	{
 		this->depthoverride = 0.0f;
 		this->alpha = false;
 	}
+
+	struct EzVert
+	{
+		Vec3 pos;
+		Vec3 normal;
+		Vec3 tangent;
+		float u, v;
+	};
+
+	static void AddRect(std::vector<EzVert>& a, const Vec3& top_left, const Vec3& right, const Vec3& down)
+	{
+		const Vec3 normal = right.cross(down).getnormal();
+
+		EzVert vert;
+		vert.normal = normal;
+		vert.tangent = Vec3(0, 0, 0);
+
+		vert.pos = top_left;
+		vert.u = 0.0f;
+		vert.v = 0.0f;
+		a.push_back(vert);
+
+		vert.pos = top_left + right;
+		vert.u = 1.0f;
+		vert.v = 0.0f;
+		a.push_back(vert);
+
+		vert.pos = top_left + down;
+		vert.u = 0.0f;
+		vert.v = 1.0f;
+		a.push_back(vert);
+
+		vert.pos = top_left + right + down;
+		vert.u = 1.0f;
+		vert.v = 1.0f;
+		a.push_back(vert);
+	}
+
+	void SetMeshEasy(const std::string& material_name, const std::string& image_name, const EzVert* vertex, int count);
 
 	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	{
@@ -155,6 +198,9 @@ public:
 		rc.mesh.ib = 0;
 		rc.mesh.vb = this->vb;
 		rc.mesh.primitives = vcount/3;
+		rc.position = this->matrix.GetTranslation();
+		rc.transform = &this->matrix;
+		rc.radius = this->radius;
 		queue->push_back(rc);
 	}
 };

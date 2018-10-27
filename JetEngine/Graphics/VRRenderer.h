@@ -10,6 +10,12 @@
 	class IVRSystem;
 }*/
 
+enum Eye
+{
+	Left_Eye,
+	Right_Eye
+};
+
 class VRRenderer : public CRenderer
 {
 	unsigned int render_width, render_height;
@@ -24,13 +30,24 @@ class VRRenderer : public CRenderer
 	//todo cache things in here
 	Matrix4 left_project, right_projection;
 
+	bool fake = false;
+
 	void UpdatePoses();
 
 public:
 
+	// zero is HMD, one is left, two is right generally
+	int GetNumTrackedPoses();
+
+	Matrix4 GetControllerPose(int id);
+
 	CRenderTexture *left_eye, *right_eye;
 
-	bool Init(Window* win, int xres, int yres);
+	void BindEye(Eye eye);
+
+	bool Init(Window* win, int xres, int yres, bool fake = false);
+
+	void Clear(float a, float r, float g, float b);
 
 	void SubmitTextures();
 
@@ -38,7 +55,12 @@ public:
 
 	Matrix4 GetHMDPose()
 	{
-		return this->hmd_view;
+		Matrix4 hmd = this->hmd_view;
+		hmd._m44[2][0] *= -1.0;
+		hmd._m44[2][1] *= -1.0;
+		hmd._m44[2][2] *= -1.0;
+		hmd._m44[2][3] *= -1.0;
+		return hmd;
 	}
 
 	void GetLeftEyePMatrix(Matrix4& mat);

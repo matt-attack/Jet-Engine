@@ -932,6 +932,8 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 			shaderchange = true;
 		}
 
+		renderer->context->PSSetSamplers(3, 1, &this->shadowSampler_linear);
+
 		//find applicable lights then set'em up
 		int num_lights = 0;
 		Light found_lights[6];//max per pixel

@@ -223,6 +223,30 @@ void CRenderer::SetViewport(Viewport* vp)
 #endif
 }
 
+void CRenderer::SetViewport(int height, int width)
+{
+	this->xres = width;
+	this->yres = height;
+#ifndef USEOPENGL
+	unsigned int viewports = 1;
+	D3D11_VIEWPORT viewport;
+	viewport.Height = height;
+	viewport.Width = width;
+	viewport.TopLeftX = 0;
+	viewport.TopLeftY = 0;
+	viewport.MaxDepth = 1.0;
+	viewport.MinDepth = 0.0;
+	this->context->RSSetViewports(1, &viewport);
+#else
+	vp->Height = this->yres;
+	vp->Width = this->xres;
+	vp->X = 0;
+	vp->Y = 0;
+	vp->MaxZ = 1.0f;
+	vp->MinZ = 0.0f;
+#endif
+}
+
 #include "CTexture.h"
 
 void CRenderer::SetPixelTexture(int stage, ID3D11ShaderResourceView** texs, int count)
@@ -959,29 +983,6 @@ void CRenderer::Init(int scrx, int scry)
 
 	this->gui_texture = resources.get_unsafe<CTexture>("controls.png");
 
-	//D3DX11_IMAGE_LOAD_INFO info;
-	//ZeroMemory(&info, sizeof(D3DX11_IMAGE_LOAD_INFO));
-	//info.Format = DXGI_FORMAT_UNKNOWN;
-	//info.MipLevels = 4;
-	//this->terrain_texture = new CTexture;
-	//HRESULT h = D3DX11CreateShaderResourceViewFromFileA(renderer->device, "texture.png", 0, 0, &this->terrain_texture->texture, 0);
-	//if (FAILED(h))
-	//	printf("uhoh");
-	/*HRESULT h = D3DXCreateTextureFromFileExA(d3ddev,
-	"texture.png",
-	D3DX_DEFAULT,
-	D3DX_DEFAULT,
-	4,
-	0,
-	D3DFMT_UNKNOWN,
-	D3DPOOL_MANAGED,
-	D3DX_FILTER_LINEAR,
-	D3DX_FILTER_POINT,//point works better with alpha, but looks wierd
-	D3DCOLOR_XRGB(255, 255, 255),//makes white clear
-	NULL,
-	NULL,
-	&terrain_texture);*/
-
 	//missing_texture = resources.get_unsafe<CTexture>("missing.png")->texture;
 
 	this->passthrough = new CShader("Content/Shaders/passthrough.shdr", "vs_main", "Content/Shaders/passthrough.shdr", "ps_main");
@@ -1508,7 +1509,7 @@ void CRenderer::SetMatrix(int type, const Matrix4* mat)
 	}
 }
 
-CShader* CRenderer::SetShader(int id)//todo, add caching of last set shader
+CShader* CRenderer::SetShader(int id)
 {
 	if (this->shader == this->shaders[id])
 		return this->shaders[id];//yay optimization
@@ -1527,7 +1528,7 @@ CShader* CRenderer::SetShader(int id)//todo, add caching of last set shader
 	return this->shaders[id];
 }
 
-CShader* CRenderer::SetShader(CShader* shdr)//todo, add caching of last set shader
+CShader* CRenderer::SetShader(CShader* shdr)
 {
 	if (this->shader == shdr)
 		return shdr;//yay optimization
@@ -1545,6 +1546,85 @@ CShader* CRenderer::SetShader(CShader* shdr)//todo, add caching of last set shad
 
 	return shdr;
 }
+
+struct TLVERTEX3
+{
+	Vec3 pos;
+	COLOR color;
+	float u;
+	float v;
+};
+
+CVertexBuffer r3dbuffer;
+void CRenderer::DrawRect3D(const Vec3& top_left, const Vec3& right, const Vec3& down, COLOR vertexColor)
+{
+	TLVERTEX3 vertices[4];
+
+	//Lock the vertex buffer
+	//this->rectangle_v_buffer->Lock(0, 0, (void**)&vertices, NULL);
+
+	//Setup vertices
+	//A -0.5f modifier is applied to vertex coordinates to match texture
+	//and screen coords. Some drivers may compensate for this
+	//automatically, but on others texture alignment errors are introduced
+	//More information on this can be found in the Direct3D 9 documentation
+	vertices[0].color = vertexColor;
+	vertices[0].pos = top_left;
+	vertices[0].u = 0.0f;
+	vertices[0].v = 0.0f;
+
+	vertices[1].color = vertexColor;
+	vertices[1].pos = top_left + right;
+	vertices[1].u = 1.0f;
+	vertices[1].v = 0.0f;
+
+	vertices[2].color = vertexColor;
+	vertices[2].pos = top_left + down;
+	vertices[2].u = 0.0f;
+	vertices[2].v = 1.0f;
+
+	vertices[3].color = vertexColor;
+	vertices[3].pos = vertices[1].pos + down;
+	vertices[3].u = 1.0f;
+	vertices[3].v = 1.0f;
+
+	//this->rectangle_v_buffer.SetVertexDeclaration(this->GetVertexDeclaration(8));
+	r3dbuffer.Data(vertices, sizeof(vertices), sizeof(TLVERTEX3));
+
+	//D3DXMATRIX matIdentity;
+	//D3DXMatrixIdentity(&matIdentity);
+	//d3ddev->SetTransform(D3DTS_WORLD, &matIdentity);
+
+	this->SetCullmode(CULL_NONE);
+	//d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	if (true)
+	{
+		if (this->current_texture)
+			this->SetShader(this->unlit_textured);
+		else
+			this->SetShader(this->passthrough);
+	}
+
+	VertexElement elm2[] = { { ELEMENT_FLOAT3, USAGE_POSITION },
+	{ ELEMENT_COLOR, USAGE_COLOR },
+	{ ELEMENT_FLOAT2, USAGE_TEXCOORD } };
+
+	r3dbuffer.SetVertexDeclaration(this->GetVertexDeclaration(elm2, 3));
+
+	this->shader->BindIL(&r3dbuffer.vd);
+
+	r3dbuffer.Bind();
+
+	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
+	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
+
+	this->DrawPrimitive(PT_TRIANGLEFAN, 0, 4);
+}
+
+/*void CRenderer::DrawRect3DUV(const Vec3& top_left, const Vec3& bottom_right, float minu, float maxu, float minv, float maxv, COLOR c)
+{
+
+}*/
 
 
 void CRenderer::DrawRect(Rect* rct, COLOR vertexColor, bool setShader)

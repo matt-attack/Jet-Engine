@@ -6,8 +6,9 @@
 #include <JetEngine/gui/gui_window.h>
 #include <JetEngine/gui/gui_progressbar.h>
 #include <JetEngine/Util/CThread.h>
+#include <JetEngine/Graphics/Renderable.h>
 
-
+class CRenderTexture;
 class CLoadingState;
 
 struct LoadingThreadData
@@ -31,6 +32,10 @@ class CLoadingState : public CGameState
 
 	LoadingThreadData* thread_data;
 	CThread thread;
+
+	BasicRenderable floor, gui;
+	CRenderTexture* gui_texture;
+
 public:
 	CLoadingState(void);
 	~CLoadingState(void);

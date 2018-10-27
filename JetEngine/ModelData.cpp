@@ -741,7 +741,6 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 		m->meshes = nmeshes;
 		m->bounds = bounds;
 		m->names = names;
-		//m->joints = joints;
 
 		m->frames = frames;
 		m->num_anims = header.num_anims;
@@ -789,9 +788,8 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 			}
 		}
 
-		//int bone_swap[75] = {0};
 		m->joints = new Joint[header.num_joints];
-		//log("Joints: ");
+
 		//int num_attachments = 0;
 		for (int i = 0; i < header.num_joints; i++)
 		{
@@ -912,8 +910,7 @@ void ModelData::LoadIQM(ModelData* m, const char* path)
 
 			if (max == 0)//lets make sure at least one bone has weight
 			{
-				m->blendweights[i * 4] = 255;//verts[i].blendweight[0] = 255;
-				//log("help");
+				m->blendweights[i * 4] = 255;
 			}
 
 			int bi = m->blendindices[i * 4 + ind];//verts[i].blendindex[ind];
@@ -979,7 +976,6 @@ std::vector<ModelData::OutVert> ModelData::DoDecal(Joint* bone, const Vec3& dire
 			Vec3 t3(&this->VertexArray[this->TriangleArray[i].Vertex[2]].X);
 
 			//renderer->DebugDrawOBB(OBB(AABB(), Matrix4::Identity));
-			//printf("found possible vertex");
 
 			Vec3 normal = (t1 - t2).cross(t1 - t3);
 

@@ -5,8 +5,13 @@
 
 #pragma comment (lib, "../../openvr/lib/win32/openvr_api.lib")
 
-bool VRRenderer::Init(Window* win, int xres, int yres)
+bool VRRenderer::Init(Window* win, int xres, int yres, bool fake)
 {
+	if (fake)
+	{
+		render_height = render_width = 1000;
+		goto finish;
+	}
 	// Loading the SteamVR Runtime
 	vr::EVRInitError eError = vr::VRInitError_None;
 
@@ -16,10 +21,10 @@ bool VRRenderer::Init(Window* win, int xres, int yres)
 	{
 		hmd = NULL;
 		char buf[1024];
-		sprintf_s(buf, ARRAYSIZE(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
-		std::string temp(buf);
-		std::wstring wtemp(temp.begin(), temp.end());
-		MessageBoxW(0, wtemp.c_str(), L"VR_Init Failed", 0);
+		//sprintf_s(buf, ARRAYSIZE(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+		//std::string temp(buf);
+		//std::wstring wtemp(temp.begin(), temp.end());
+		//MessageBoxW(0, wtemp.c_str(), L"VR_Init Failed", 0);
 		return false;
 	}
 
@@ -47,6 +52,7 @@ bool VRRenderer::Init(Window* win, int xres, int yres)
 		return false;
 	}
 
+finish:
 	// Create Context and shizzle
 	CRenderer::Init(win, xres, yres);
 
@@ -59,8 +65,33 @@ bool VRRenderer::Init(Window* win, int xres, int yres)
 	return true;
 }
 
+void VRRenderer::Clear(float a, float r, float g, float b)
+{
+	left_eye->Clear(a, r, g, b);
+	right_eye->Clear(a, r, g, b);
+}
+
+void VRRenderer::BindEye(Eye eye)
+{
+	auto rt = eye == Eye::Left_Eye ? this->left_eye : this->right_eye;
+
+	renderer->SetRenderTarget(0, rt);
+
+	Viewport vp;
+	vp.Height = this->render_height;
+	vp.Width = this->render_width;
+	vp.X = vp.Y = 0;
+	vp.MaxZ = 1.0;
+	vp.MinZ = 0.0;
+	renderer->SetViewport(&vp);
+}
+
 void VRRenderer::SubmitTextures()
 {
+	if (fake)
+	{
+		return;
+	}
 	vr::Texture_t leftEyeTexture = { left_eye->texture, vr::TextureType_DirectX, vr::ColorSpace_Auto };
 	vr::EVRCompositorError error1 = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture);
 	vr::Texture_t rightEyeTexture = { right_eye->texture, vr::TextureType_DirectX, vr::ColorSpace_Auto };
@@ -126,7 +157,7 @@ Matrix4 GetHMDMatrixProjectionEye(vr::IVRSystem* hmd, vr::Hmd_Eye nEye)
 {
 	if (!hmd)
 		return Matrix4();
-	// TODO check here
+
 	vr::HmdMatrix44_t mat = hmd->GetProjectionMatrix(nEye, 0.1, 5000);
 
 	return Matrix4(
@@ -172,6 +203,14 @@ Matrix4 ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
 
 void VRRenderer::UpdatePoses()
 {
+	if (fake)
+	{
+		// return our mouselook/kb camera
+		this->valid_poses = 1;
+		//this->hmd_view = whatever it is
+		return;
+	}
+
 	vr::VRCompositor()->WaitGetPoses(tracked_poses_vr, vr::k_unMaxTrackedDeviceCount, NULL, 0);
 
 	valid_poses = 0;
@@ -207,4 +246,14 @@ void VRRenderer::UpdatePoses()
 	{
 		printf("pose not valid");
 	}
+}
+
+Matrix4 VRRenderer::GetControllerPose(int id)
+{
+	return this->tracked_poses[id];
+}
+
+int VRRenderer::GetNumTrackedPoses()
+{
+	return this->valid_poses;
 }

@@ -35,17 +35,17 @@ private:
 	Vec3 _lookAt;
 
 public:
-	Vec3 GetUp()
+	Vec3 GetUp() const
 	{
 		return this->_upDir;
 	}
 
-	Vec3 GetRight()
+	Vec3 GetRight() const
 	{
 		return this->_right;
 	}
 
-	Vec3 GetForward()
+	Vec3 GetForward() const
 	{
 		return this->_lookAt;
 	}

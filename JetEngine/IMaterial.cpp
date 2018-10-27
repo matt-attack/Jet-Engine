@@ -299,7 +299,7 @@ void IMaterial::Update(CRenderer* renderer)
 {
 	//todo: support generated textures that dont exist as a file
 	//updates internal data like shaders/textures
-	if (this->diffuse.length() > 0)
+	if (this->diffuse.length() > 0 && this->diffuse != "DYNAMIC")//if dynamically set texture, do nothing
 	{
 		//try and load
 		auto tex = resources.get_unsafe<CTexture>(diffuse);
@@ -527,4 +527,10 @@ void IMaterial::SetDefine(const std::string& name, const std::string& value)
 
 	//apply the changes
 	shaders->InvalidateCache(this);
+}
+
+void IMaterial::SetDynamicDiffuseTexture(CTexture* tex)
+{
+	this->diffuse = "DYNAMIC";
+	this->texture = tex->texture_rv;
 }

@@ -116,6 +116,9 @@ public:
 	//this should load the correct shader pointers
 	virtual void Update(CRenderer* renderer);
 
+	// This sets the diffuse texture to a raw one instead of a file
+	void SetDynamicDiffuseTexture(CTexture* tex);
+
 
 	//gets the list of materials currently created organized by name
 	static std::map<std::string, IMaterial*>& GetList()

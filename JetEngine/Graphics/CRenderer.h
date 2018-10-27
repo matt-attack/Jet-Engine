@@ -349,11 +349,17 @@ public:
 	void DrawRectUV(Rect* rct, float minu, float maxu, float minv, float maxv, COLOR vertexColor, bool set_shader = true);
 	void DrawRectUV(Rect* rct, Vec2 top_left, Vec2 top_right, Vec2 bottom_left, Vec2 bottom_right, COLOR color, bool set_shader = true);
 
+	
+	void DrawRect3D(const Vec3& top_left, const Vec3& right, const Vec3& down, COLOR c);
+	void DrawRect3DUV(const Vec3& top_left, const Vec3& right, const Vec3& down, float minu, float maxu, float minv, float maxv, COLOR c);
+
 	void ClipToScreenPosition(float &x, float &y);
 	void ScreenToClipPosition(float &x, float &y);
 
 	void GetViewport(Viewport* vp);
 	void SetViewport(Viewport* vp);
+	void SetViewport(int height, int width);//sets everything else to defaults, ez mode 
+
 
 	//text rendering related stuff
 private:

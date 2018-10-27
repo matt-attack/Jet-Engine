@@ -197,7 +197,7 @@ CTexture* CTexture::Create(int xRes, int yRes, DXGI_FORMAT format, const char* i
 	data.pSysMem = in_data;// this->heights;
 	data.SysMemPitch = xRes * 4;
 	data.SysMemSlicePitch = xRes * yRes * element_size;
-	auto hr3 = renderer->device->CreateTexture2D(&desc1, &data, &pTexture);
+	auto hr3 = renderer->device->CreateTexture2D(&desc1, in_data ? &data : 0, &pTexture);
 	if (FAILED(hr3))
 		throw 7;
 

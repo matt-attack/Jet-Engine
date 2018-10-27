@@ -72,7 +72,7 @@ void CGame::Init(Window* window)
 
 	//maybe integrate sounds into the resource manager?
 
-	SoundManager::GetInstance()->AddSound("Content/Sounds/select.wav", "select");
+	
 	SoundManager::GetInstance()->Update();
 
 	resources.init();
