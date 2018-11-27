@@ -108,9 +108,6 @@
     <ClCompile Include="TerrainSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DbgNew.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="GUI\gui_slider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

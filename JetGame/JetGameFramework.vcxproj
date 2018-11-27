@@ -42,11 +42,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\space\Desktop\JetNet;C:\Users\space\Desktop\JetEngine;$(IncludePath);C:\Users\space\Desktop\openal-soft\openal-soft\include</IncludePath>
+    <IncludePath>C:\Users\space\Desktop\openal-soft\openal-soft\include;C:\Users\space\Desktop\JetEngine;C:\Users\space\Desktop\JetNet;$(IncludePath)</IncludePath>
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Users\Matthew\Desktop\JetNet\;C:\Users\Matthew\Desktop\JetEngine;$(IncludePath);C:\Users\Matthew\Desktop\openal-soft\openal-soft-1.16.0\include;</IncludePath>
+    <IncludePath>C:\Users\space\Desktop\openal-soft\openal-soft\include;C:\Users\space\Desktop\JetEngine;C:\Users\space\Desktop\JetNet;$(IncludePath)</IncludePath>
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
