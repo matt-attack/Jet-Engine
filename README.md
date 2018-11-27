@@ -12,10 +12,11 @@ Includes:
 - Basic geometry shader based particle systems
 - Material system
 - Live asset reloading
-- Sound
+- Sound using OpenAL
 - Math libraries
-- Xbox controller support
+- Xbox controller and Joystick support
 - Low level wrappers over graphics library concepts (vertex buffers, textures)
+- OpenVR support and utilities
 
 
 #Building
@@ -23,10 +24,16 @@ Includes:
 
 ##Dependencies
 
-The build currently requires openvr [https://github.com/ValveSoftware/openvr.git](https://github.com/ValveSoftware/openvr.git) to be installed in the same directory
-in order for the engine to build.
+Download the following dependencies into the same directory as this repo:
+
+* [https://github.com/ValveSoftware/openvr.git](https://github.com/ValveSoftware/openvr.git)
+* [https://github.com/Microsoft/DirectXTex.git](https://github.com/Microsoft/DirectXTex.git)
+* [https://github.com/kcat/openal-soft.git](https://github.com/kcat/openal-soft.git)
+* [https://github.com/matt-attack/netlibrary.git](https://github.com/matt-attack/netlibrary.git)
 
 ## Building
 
-Open any one of the solution files with Visual Studio 2017 and hit build.
+First download and build all of the dependencies listed above.
+
+Then open the `BasicExample.sln` file in Visual Studio 2017 (lower versions may also be supported) and hit the play (build and run) button.
 
