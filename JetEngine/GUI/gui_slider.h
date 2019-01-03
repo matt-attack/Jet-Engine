@@ -24,11 +24,13 @@ public:
 		this->m_inactivecolor = 0xFFFFFFFF;
 	}
 
-	int position;
-	int max;
-	void SetRange(int range)
+	double position;
+	double max;
+	double min;
+	void SetRange(double min, double max)
 	{
-		max = range;
+		this->max = max;
+		this->min = min;
 	}
 
 	//void (*callback)(int pos);
@@ -45,10 +47,10 @@ public:
 		drag = true;
 		this->screentoclient(x,y);
 
-		float frac = (float)this->position/(float)max;
-		int range = abs(this->m_position.right - this->m_position.left) - 40;//range to place
+		double frac = this->position/1000.0;
+		double range = abs(this->m_position.right - this->m_position.left) - 40;//range to place
 
-		int pos = (float)range*frac;
+		int pos = range*frac;
 		drag_offset = pos-x;//-y
 		return 1;
 	}
@@ -57,6 +59,11 @@ public:
 	{
 		drag = false;
 		return 1;
+	}
+
+	double GetValue()
+	{
+		return (this->position / 1000.0)*(max - min) + min;
 	}
 
 	virtual int wm_ldrag(coord x, coord y)
@@ -68,12 +75,12 @@ public:
 			float frac = (float)this->position/(float)max;
 			int range = abs(this->m_position.right - this->m_position.left) - 40;//range to place
 
-			this->position = (((float)(x + drag_offset))/((float)range))*(float)max;
+			this->position = (((double)(x + drag_offset))/((double)range))*1000.0;
 
 			if (position < 0)
 				position = 0;
-			else if (position > this->max)
-				position = max;
+			else if (position > 1000.0)
+				position = 1000.0;
 
 			if (callback)
 				this->callback(position);
@@ -93,8 +100,8 @@ public:
 
 			if (position < 0)
 				position = 0;
-			else if (position > max)
-				position = max;
+			else if (position > 1000)
+				position = 1000;
 
 			if (this->callback)
 				callback(position);

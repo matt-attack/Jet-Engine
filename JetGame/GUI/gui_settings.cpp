@@ -150,7 +150,7 @@ gui_settings::gui_settings(CGame* game)
 	stab->AddWindow(label);
 	this->volume.setpos(130,40);
 	this->volume.setsize(150,30);
-	this->volume.SetRange(100);
+	this->volume.SetRange(0,100);
 	this->volume.position = SoundManager::GetInstance()->GetMasterVolume()*100.0f;
 	this->volume.callback = [game](int volume)
 	{
@@ -168,7 +168,7 @@ gui_settings::gui_settings(CGame* game)
 	gtab->AddWindow(label);
 	this->shadowdist.setpos(180,120);
 	this->shadowdist.setsize(150,30);
-	this->shadowdist.SetRange(300);
+	this->shadowdist.SetRange(0,300);
 	this->shadowdist.position = game->GetSettingFloat("cl_shadow_dist");
 	this->shadowdist.callback = [game](int volume)
 	{

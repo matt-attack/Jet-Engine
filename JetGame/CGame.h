@@ -13,35 +13,6 @@
 
 #undef MessageBox
 
-enum MouseEvent
-{
-	ENG_R_DOWN = 1,
-	ENG_R_UP = 2,
-	ENG_L_DOWN = 3,
-	ENG_L_UP = 4,
-	ENG_L_DRAG = 5,
-	ENG_R_DRAG = 6,
-	ENG_M_MOVE = 7,
-
-	ENG_WHEEL_DOWN = 8,
-	ENG_WHEEL_UP = 9
-};
-
-enum TouchEvent
-{
-	ENG_T_TAP = 20,
-	ENG_T_MOVE = 21,
-	ENG_T_DOWN = 22,
-	ENG_T_UP = 23
-};
-
-enum KbEvent
-{
-	ENG_KEY_DOWN = 1,
-	ENG_KEY_UP = 2,
-	ENG_CHAR = 3
-};
-
 class Window;
 
 struct Setting

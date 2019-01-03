@@ -61,10 +61,13 @@ public:
 #include <JetEngine/TerrainSystem.h>
 #include <JetEngine/Graphics/Renderable.h>
 
+#include <JetEngine/GUI/gui_slider.h>
+
 //your gamestate
 class MyGameState : public CGameState
 {
 	gui_window desktop;
+	gui_slider slider;
 
 	CCamera cam;
 	HeightmapTerrainSystem t;
@@ -81,6 +84,12 @@ public:
 		cam.SetNear(0.1);
 		cam.SetFar(5000);
 		cam.PerspectiveProjection();
+
+		slider.setpos(50, 50);
+		slider.setsize(100, 50);
+		slider.SetRange(-100, 100);
+		
+		desktop.AddWindow(&slider);
 	}
 
 	~MyGameState(void)
@@ -106,7 +115,7 @@ public:
 	virtual void Pause() {};
 	virtual void Resume() {};
 
-	virtual void MouseEvent(CGame* game, int x, int y, int eventId) {  };
+	virtual void MouseEvent(CGame* game, int x, int y, int eventId) { this->desktop.process_mouse_events(eventId, x, y); };
 	virtual void KeyboardEvent(CGame* game, int eventType, int keyId) { };
 
 	virtual void HandleEvents(CGame* game, int messagetype, void* data1, void* data2) {};
@@ -156,6 +165,8 @@ public:
 		r.Render(&cam, renderer);
 
 		r.Finish();
+
+		desktop.renderall(0, 0, 0, 0);
 	}
 };
 

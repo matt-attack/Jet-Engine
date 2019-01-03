@@ -23,18 +23,21 @@ int gui_slider::wm_paint(coord x, coord y, coord mx, coord my, bool mouseover)
 	renderer->DrawRectUV(&r, 0.0f, 1.0f, 0.0f, 50.0f/512.0f, color);
 
 	char txt[50];
-	sprintf(txt, "%d", this->position);
-	renderer->DrawText(r.right + 5, r.top, txt, COLOR_ARGB(255,255,255,255));
+	sprintf(txt, "%0.1f", (float)this->GetValue());
+	Rect rr = r;
+	rr.left = r.right + 10;
+	rr.right = r.right + 500;
+	renderer->DrawText(rr, txt, COLOR_ARGB(255,255,255,255), 2);
 
 	if (mouseover)
 		color = 0xFFFF00FF;
 	else
 		color = COLOR_ARGB(255,108,108,108);
 
-	float frac = (float)this->position/(float)max;
-	int range = abs(this->m_position.right - this->m_position.left) - 44;//range to place
+	double frac = this->position/1000.0;
+	double range = abs(this->m_position.right - this->m_position.left) - 44;//range to place
 
-	int pos = (float)range*frac;
+	int pos = range*frac;
 	//fix this last part
 	r.left = r.left + pos;
 	r.right = r.left + 40;

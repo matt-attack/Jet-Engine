@@ -1,5 +1,7 @@
 #include "gui_window.h"
 
+#include "../CInput.h"
+
 gui_window::gui_window()
 {
 	this->m_bIsShown = true;
@@ -312,4 +314,29 @@ bool gui_window::isactive(void)
 	if (!m_parent) return(1);
 	if (!m_parent->isactive()) return(0);
 	return(this == m_parent->m_subwins.back());//[m_parent->m_subwins.size()-1]);
+}
+
+bool gui_window::process_mouse_events(int eventId, int x, int y)
+{
+	if (eventId == ENG_L_DOWN)
+	{
+		if (this->wm_lbuttondown(x, y))
+			return true;//dont bother passing it down if we capture it
+	}
+	else if (eventId == ENG_R_UP)
+	{
+		if (this->wm_rclick(x, y))
+			return true;//dont bother passing it down if we capture it
+	}
+	else if (eventId == ENG_L_UP)
+	{
+		if (this->wm_lclick(x, y))
+			return true;//dont bother passing it down, we captured it
+	}
+	else if (eventId == ENG_L_DRAG)
+	{
+		if (this->wm_ldrag(x, y))
+			return true;//dont bother passing it down if we capture it
+	}
+	return false;
 }

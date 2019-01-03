@@ -12,15 +12,17 @@ typedef unsigned long gui_wincolor;
 class gui_window
 {
 	bool m_bIsShown;
+	int current_selection = 0;// used for menu item selection with a controller
 public:
-	gui_window(); // boring
-	virtual ~gui_window(); // boring
-	virtual void init(void); // boring
+	gui_window();
+	virtual ~gui_window();
+	virtual void init(void);
+
 	gui_window *getparent(void) { return(m_parent); }
 	void setparent(gui_window* p) {this->m_parent = p;};
 
 	/////////////
-	// section I:  window management controls
+	// window management controls
 	/////////////
 
 	int AddWindow(gui_window *w);
@@ -28,7 +30,6 @@ public:
 	void DeleteChildren();
 
 	// Handling menu item selection
-	int current_selection = 0;
 	void Up()
 	{
 		if (current_selection > 1)
@@ -41,6 +42,7 @@ public:
 	}
 	void Enter();
 
+	// Hiding and showing
 	void Show(void) { m_bIsShown = true; }
 	void Hide(void) { m_bIsShown = false; }
 	bool IsShown(void) { return(m_bIsShown); }
@@ -55,7 +57,7 @@ public:
 	}
 
 	/////////////
-	// Section II: coordinates
+	// coordinates
 	/////////////  
 
 	void setpos(coord x1, coord y1); // boring
@@ -66,24 +68,21 @@ public:
 	void screentoclient(coord &x, coord &y);
 	void clienttoscreen(coord &x, coord &y);
 
-	int virtxtopixels(coord virtx); // convert GUI units to actual pixels
-	int virtytopixels(coord virty); // ditto
-
 	virtual gui_window *findchildatcoord(coord x, coord y, int flags = 0);
 
-	/////////////
-	// Section III: Drawing Code
-	/////////////
+	bool process_mouse_events(int eventId, int x, int y);
+
+	///////////////
+	// Drawing Code
+	///////////////
 
 	// renders this window + all children recursively
 	int renderall(coord x, coord y, coord mx, coord my, int drawme = 1); 
 
-	//gui_wincolor &getcurrentcolorset(void) 
-	//{ return(isactive() ? m_activecolors : m_inactivecolors); }
 
-	/////////////
-	// Messaging stuff to be discussed in later Parts
-	/////////////
+	//////////////
+	// Window Messages for input
+	//////////////
 
 	int calcall(void); 
 
