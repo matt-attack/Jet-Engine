@@ -612,7 +612,7 @@ const int sdf_spacing[] = {
 0
 };*/
 
-
+#include "Shader.h"
 
 bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 {
@@ -673,44 +673,11 @@ bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 	this->height = this->spacing['O'][4];//'b'?
 
 #ifdef _WIN32
-	renderer->CreateShader(19, "Shaders/font.shdr");
+	//renderer->CreateShader(19, "Shaders/font.shdr");
 
-	this->texture = resources.get_unsafe<CTexture>("Oxygen-Regular.ttf_sdf.png");
-	/*GLuint vertexShader = glCreateShader( GL_VERTEX_SHADER );
-	glShaderSource( vertexShader, 1, &vertexSource, 0 );
-	glCompileShader( vertexShader );
+	this->shader = new CShader("Content/Shaders/font.shdr", "vs_main", "Content/Shaders/font.shdr", "ps_main");
 
-	GLuint fragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
-	glShaderSource( fragmentShader, 1, &fragmentSource, 0 );
-	glCompileShader( fragmentShader );
-
-	shader = glCreateProgram();
-	glAttachShader( shader, vertexShader );
-	glAttachShader( shader, fragmentShader );
-
-	glLinkProgram( shader );
-
-	glUseProgram(shader);*/
-	//posAttrib = glGetAttribLocation( shader, "pos" );
-
-	//texUnif = 0;//glGetUniformLocation( shader, "texture");
-	//colorUnif = 0;//glGetUniformLocation( shader, "Color");
-
-	//glGenBuffers( 1, &vb );
-
-	int shaderCompiled = 1;
-	//glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &shaderCompiled);//bad
-	if (shaderCompiled == 0)
-	{
-		return false;
-	}
-
-	//GLint shaderCompiled;
-	//glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &shaderCompiled);//bad
-	if (shaderCompiled == 0)
-	{
-		return false;
-	}
+ 	this->texture = resources.get_unsafe<CTexture>("Oxygen-Regular.ttf_sdf.png");
 
 	return true;
 #else
@@ -772,7 +739,7 @@ bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 #endif
 };
 
-#include "Shader.h"
+
 #ifdef _WIN32
 #undef DrawText
 /* Here is the data order in the following array:
@@ -787,9 +754,7 @@ bool Font::Load(int texid, int texw, int texh, int charw, int charh)
 
 void Font::DrawText(const char* txt, float x, float y, float sx, float sy, unsigned int color)
 {
-	//if (showdebug > 2)
-	//	return;
-	auto shader = renderer->SetShader(19);
+	auto shader = renderer->SetShader(this->shader);
 	//this probably doesnt need to be here
 	renderer->SetCullmode(CULL_NONE);
 
@@ -801,7 +766,7 @@ void Font::DrawText(const char* txt, float x, float y, float sx, float sy, unsig
 	//glDepthFunc(GL_LEQUAL);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	auto old = renderer->current_texture;
-	renderer->SetPixelTexture(0, this->texture);//"VeraMoBI.ttf_sdf.png"));//glyphsblack.png"));
+	renderer->SetPixelTexture(0, this->texture);
 
 	//renderer->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	renderer->SetPrimitiveType(PT_TRIANGLELIST);

@@ -9,9 +9,6 @@
 #include <sstream>
 #include <iostream>
 
-#ifdef _WIN32
-//#include <d3dx11.h>
-#endif
 
 std::map<std::string, IMaterial*> materials;
 
@@ -30,7 +27,7 @@ public:
 
 	ShaderBuilder()
 	{
-		
+
 	}
 
 	~ShaderBuilder()
@@ -63,12 +60,16 @@ public:
 	void InvalidateCache()
 	{
 		for (auto& shader : this->shaders)
+		{
 			for (int i = 0; i < (1 << num_builder_options); i++)
+			{
 				if (shader.second[i])
 				{
 					delete shader.second[i];
 					shader.second[i] = 0;
 				}
+			}
+		}
 	}
 
 	void InvalidateCache(IMaterial* mat)
@@ -77,11 +78,13 @@ public:
 			return;
 
 		for (int i = 0; i < (1 << num_builder_options); i++)
+		{
 			if (shaders[mat][i])
 			{
 				delete shaders[mat][i];
 				shaders[mat][i] = 0;
 			}
+		}
 	}
 
 	static ShaderBuilder* load_as_resource(const std::string &path, ShaderBuilder* res)
@@ -121,8 +124,8 @@ private:
 		this->defines = defines;
 
 		//add defines to definitions list
-		char** list = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size()));// [num_builder_options + 1];
-		char** definitions = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size())); //[num_builder_options + 1];
+		char** list = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size()));
+		char** definitions = (char**)_alloca(sizeof(char*)*(num_builder_options + 1 + defines.size()));
 		char* options[] = { "SKINNING", "DIFFUSE_MAP", "NORMAL_MAP", "POINT_LIGHTS", "SHADOWS", "ALPHA_TEST" };
 		//build the list
 		int size = 0;
@@ -144,9 +147,9 @@ private:
 		//add extra definitions
 		for (auto ii : this->defines)
 		{
-			list[size] = new char[ii.first.size() + 1];// (char*)ii.first.c_str();
+			list[size] = new char[ii.first.size() + 1];
 			strcpy(list[size], ii.first.c_str());
-			definitions[size] = new char[ii.second.size() + 1];// (char*)ii.second.c_str();
+			definitions[size] = new char[ii.second.size() + 1];
 			strcpy(definitions[size++], ii.second.c_str());
 		}
 

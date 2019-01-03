@@ -30,62 +30,61 @@ VS_OUTPUT vs_main( in VS_INPUT In )
 	return Out;
 };
 
-int Iterations = 128;
-float2 Pan = float2(0.5, 0);
-float Zoom = 3;
-float Aspect = 1;
-float2 JuliaSeed = float2(0.39, -0.2);
-float3 ColorScale = float3(4, 5, 6);
-
-float ComputeValue(float2 v, float2 offset)
-{
-	float vxsquare = 0;
-	float vysquare = 0;
-
-	int iteration = 0;
-	int lastIteration = 128;//Iterations;
-
-	do
-	{
-		vxsquare = v.x * v.x;
-		vysquare = v.y * v.y;
-
-		v = float2(vxsquare - vysquare, v.x * v.y * 2) + offset;
-
-		iteration++;
-
-		if ((lastIteration == 128/*Iterations*/) && (vxsquare + vysquare) > 4.0)
-		{
-			lastIteration = iteration + 1;
-		}
-	}
-	while (iteration < lastIteration);
-
-	return (float(iteration) - (log(log(sqrt(vxsquare + vysquare))) / log(2.0))) / float(128);//Iterations);
-}
-
 float Time = 3;
 float4 ps_main( in VS_OUTPUT In) : SV_Target
 {
 	float4 col = Texture.Sample(TextureSampler, In.TexCoord);
+	
+	//texture is 512x512
+	float4 outc;
+	//try a 3x1 box filter?
+	//for (int i = -1; i < 2; i++)
+	int i = 0;
+	{
+	  float off = (1.0/3.0)*(1.0/512.0)*(float)i;
+	  float d = abs(ddx(In.TexCoord));
+	  off = (1.0f/3.0f)*d*(float)i;
+	  float4 col = Texture.Sample(TextureSampler, In.TexCoord + float2(off, 0));
+	  
+	  float mask = col.a;
+	  col.a = col.a >= 0.2f ? 1.0f : 0.0f;
+	  //float afwidth = 0;//length(float2(ddx(mask), ddy(mask))) * 0.70710678118654757;
+      //col.a = smoothstep(0.4-afwidth, 0.4+afwidth, mask);
+	  col.a = smoothstep(0.2,0.5,mask);
+	  if (i == 0)
+		outc.rgb = col.a;
+	  else if (i == 1)
+        outc.rgb = col.a;
+	  else
+	    outc.rgb = col.a;
+	}
+	//this is probably somewhat wrong
+	//if (outc.r < 0.2 || outc.b < 0.2)
+	// outc.g = 0;
+	  
+	float alpha = (outc.r + outc.g + outc.b)/3.0;
+	//alpha = 0;
+	//if (outc.r > 0 || outc.g > 0 || outc.b > 0)
+	 //alpha = 1;
+	return float4(outc.r, outc.g, outc.b, alpha)*color;
+	
+	//need to sample for each subpixel
+	//and do this for each
+	
 	float mask = col.a;
-		//col.a = col.a >= 0.35f ? 1.0f : 0.0f;
- float afwidth = length(float2(ddx(mask), ddy(mask))) * 0.70710678118654757;
+	//col.a = col.a >= 0.35f ? 1.0f : 0.0f;
+	float afwidth = length(float2(ddx(mask), ddy(mask))) * 0.70710678118654757;
     col.a = smoothstep(0.4-afwidth, 0.4+afwidth, mask);
 	//col.a = smoothstep(0.2,0.65,mask);//antialias?
-		//col.a = col.a >= 0.3f ? 1.0f : 0.0f;
-		//clip( col.a < 0.5f ? -1 : 1 );//alpha test
-	float4 ColorScale = float4(4,5,6,0);
-	//float2 v = (In.TexCoord - 0.5)*fmod(Time, 4)/*3*//*Zoom*/*float2(1,1/*Aspect*/) + 0.5;//Pan;
-	
-	//float val = ComputeValue(v, v);
-	//return float4(sin(val * ColorScale.x), sin(val * ColorScale.y), sin(val * ColorScale.z), 1);
-//return float4(1,1,1,1);
+	//col.a = col.a >= 0.3f ? 1.0f : 0.0f;
+	//clip( col.a < 0.5f ? -1 : 1 );//alpha test
+
+	//return float4(1,1,1,1);
 	return float4(1,1,1,col.a)*color;
 
-		//glow
-		//float4 glowTexel = tex2D(TextureSampler,In.TexCoord + float2(0.01,0.01));//use for dropshadow
-		//float4 glowc = float4(0,0,0,col.a) + smoothstep(0.3,0.7,glowTexel.a);
-		//col = lerp(glowc, Color, glowTexel.a);
-		//return col;//float4(1,1,1,col.a);//*Color;//tex2D(TextureSampler, In.TexCoord);//In.Diffuse;
+	//glow
+	//float4 glowTexel = tex2D(TextureSampler,In.TexCoord + float2(0.01,0.01));//use for dropshadow
+	//float4 glowc = float4(0,0,0,col.a) + smoothstep(0.3,0.7,glowTexel.a);
+	//col = lerp(glowc, Color, glowTexel.a);
+	//return col;//float4(1,1,1,col.a);//*Color;//tex2D(TextureSampler, In.TexCoord);//In.Diffuse;
 };

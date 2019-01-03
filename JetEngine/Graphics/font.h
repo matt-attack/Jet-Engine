@@ -17,6 +17,7 @@ struct Glyph
 };
 
 #undef DrawText
+class CShader;
 class Font
 {
 	CVertexBuffer buffer;
@@ -27,7 +28,7 @@ public:
 	int height;
 
 	int fonttexid;
-	unsigned int shader;
+	CShader* shader;
 
 	Glyph glyphs[256];
 
