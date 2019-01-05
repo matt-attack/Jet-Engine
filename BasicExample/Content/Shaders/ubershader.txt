@@ -284,7 +284,7 @@ float4 ps_main(in VS_OUTPUT In) : SV_Target
 	//light += AmbientUp;
              
 	//return float4(1,1,1,1);
-	//return float4(In.Normal, 1);
+	return float4(In.Normal, 1);
 	//return float4(normal, 1);
 	//return float4(In.Tangent, 1);
 	//In.Diffuse.rgb = In.Normal;

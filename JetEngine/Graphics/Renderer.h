@@ -73,15 +73,18 @@ public:
 	int rdrawn;
 
 	//ok several different types of light
-	//1. directional
+	//1. directional (only one per scene in this case)
 	//2. point directional (approximated point with no falloff)
-	//3. point //not gonna be implemented for a while
+	//3. point
+	//4. spot
 	struct Light
 	{
 		int type;
 		Vec3 position;
 		Vec3 color;
-		float radius;
+		float radius;//distance for spot lights
+		float angle;//in degrees for spot lights
+		Vec3 direction;//for spot lights
 		float lifetime;
 	};
 	std::vector<Light> lights;

@@ -1,13 +1,24 @@
 
-#ifdef POINT_LIGHTS
+//#ifdef POINT_LIGHTS
 #define NUM_POINT 3
-#endif
+//#endif
+
+//#ifdef SPOT_LIGHTS
+#define NUM_SPOT 1
+//#endif
 
 //lighting data
 struct PointLight
 {
 	float4 position;
-	float3 color;
+	float4 color;
+};
+
+struct SpotLight
+{
+	float4 position;
+	float4 color;
+	float4 direction;
 };
 
 cbuffer Lighting
@@ -16,9 +27,12 @@ cbuffer Lighting
 	float3 LightColor;
 	float3 AmbientDown;
 	float3 AmbientRange;
-#ifdef NUM_POINT
+//#ifdef NUM_POINT
 	PointLight lights[NUM_POINT];
-#endif
+//#endif
+//#ifdef NUM_SPOT
+	SpotLight spot_lights[NUM_SPOT];
+//#endif
 };
 
 #ifdef SHADOWS
@@ -60,6 +74,7 @@ sampler TextureSampler4 : register(s3) = sampler_state
 };
 #endif
 
+#ifdef SHADOWS
 //do not use me, I am an internal function
 float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldPos)
 {
@@ -79,7 +94,7 @@ float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldP
 
 	//standard 1 sample
 	float4 lightingPosition = mul(float4(WorldPos,1), ShadowMats[iCurrentCascadeIndex]);
-	float shadowdepth = float(tex.SampleCmpLevelZero(ShadowSampler, lightingPosition.xy, lightingPosition.z - 0.001));//*0.8;
+	float shadowdepth = float(tex.SampleCmpLevelZero(ShadowSampler, lightingPosition.xy, lightingPosition.z - 0.002));//*0.8;
 	//rl *= l*shadowdepth;// + AmbientColor;
 	//if (shadowdepth == 0)//+ 0.002 < lightingPosition.z)
 		//rl *= (AmbientColor-l)*(1-shadowdepth)+l;// + l;//AmbientColor
@@ -88,6 +103,7 @@ float SampleMap(Texture2D tex, int iCurrentCascadeIndex, float rl, float3 WorldP
 
 	return rl*shadowdepth;
 }
+#endif
 
 const static float CASCADE_COUNT_FLAG = 3;
 float calculate_shadow(float3 WorldPos, float Depth, float Dot)
@@ -126,15 +142,48 @@ float calculate_shadow(float3 WorldPos, float Depth, float Dot)
 	}
 	return rl;
 #else
-	return rl;
+	return Dot;
 #endif
 }
 
-float3 calculate_light(float3 WorldPos, float3 normal)
+float3 calculate_light_no_ambient(float3 WorldPos, float3 normal)
 {
 	float3 light = float3(0,0,0);
 #ifdef NUM_POINT
 	for (int i = 0; i < NUM_POINT; i++)
+	{
+		float3 pos = lights[i].position.xyz;
+		float dist = distance(pos, WorldPos);
+		float3 dir = normalize(pos - WorldPos);
+		float radius = lights[i].position.w;
+		float d = (1-pow(dist/radius,4))*dot(dir, normal);
+		if (dist < radius & d > 0)
+			light += lights[i].color.rgb*d;
+	}
+#endif
+
+#ifdef NUM_SPOT
+	for (int i = 0; i < 1; i++)
+	{
+		float3 pos = spot_lights[i].position;
+		float dist = distance(pos, WorldPos);
+		float3 dir = normalize(pos - WorldPos);
+		float radius = 150;//spot_lights[i].position.w;
+		float d = dot(dir, normal)*(1-pow(dist/radius,4));
+		d *= smoothstep(0.96, 0.98, dot(dir, -spot_lights[i].direction.xyz));// > 0.96;// > 0.9;//spot_lights[i].color.w;
+		if (dist < radius & d > 0)
+			light += spot_lights[i].color.rgb*d;
+	}
+#endif
+
+	return light;
+}
+
+float3 calculate_light(float3 WorldPos, float3 normal)
+{
+	//float3 light = float3(0,0,0);
+#ifdef NUM_POINT
+	/*for (int i = 0; i < NUM_POINT; i++)
 	{
 		float3 pos = lights[i].position;
 		float dist = distance(pos, WorldPos);
@@ -143,8 +192,19 @@ float3 calculate_light(float3 WorldPos, float3 normal)
 		float d = (1-pow(dist/radius,4))*dot(dir, normal);
 		if (dist < radius & d > 0)
 			light += lights[i].color*d;
-	} 
+	}*/
 #endif
+
+	float3 light = calculate_light_no_ambient(WorldPos, normal);
+
+    //Ambient lighting
+	//float3 AmbientDown = float3(0.2,0.2,0.2);
+	//float3 AmbientUp = float3(0.4,0.4,0.54);
+	//float3 AmbientRange = AmbientUp - AmbientDown;
+	//ambient light round two
+	float up = normal.y * 0.5 + 0.5;
+    float3 ambient = AmbientDown + up * AmbientRange;
+    light += ambient;
 
 	return light;
 }

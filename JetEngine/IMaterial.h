@@ -25,7 +25,6 @@ class IMaterial: public Resource
 public:
 	//User configured material booleans
 
-	//int key;//generated from properties of material, used for sorting
 	bool alpha;//alpha blending
 	bool alphatest;//alpha test
 	bool depthhack;//use this for first person weapons views

@@ -54,12 +54,6 @@ struct PlayerInitialUpdate
 	float z;
 };
 
-/*struct PlayerDisconnect
-{
-	char id;
-	char plyid;
-};*/
-
 #pragma pack(push)
 #pragma pack(1)
 struct InitialPacket//send to tell client the join was successful

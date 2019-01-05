@@ -83,6 +83,26 @@ void ResourceManager::update()
 			iter->second->m_resmgr = this;
 			this->reload_lock.unlock();
 		}
+		else
+		{
+			std::map<std::string, Resource *>::iterator iter = this->children.find(resname);
+			if (iter != children.end()) {
+				FILE* f = fopen(filename, "rb");
+				if (f == 0)
+					return;
+				fclose(f);
+
+				logf("[ResourceManager] Reloading file %s!\n", filename);
+
+				log("it was a loaded resource\n");
+				this->reload_lock.lock();
+				iter->second->Reload(this, filename);
+				iter->second->m_resmgr = this;
+				this->reload_lock.unlock();
+			}
+		}
+
+		
 
 #ifndef MATT_SERVER
 		//load material textures here I guess

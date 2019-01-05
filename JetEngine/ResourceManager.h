@@ -165,6 +165,8 @@ public:
 
 	void update();
 
+	std::map<std::string, Resource*> children;//todo clean me when removing things
+
 	std::mutex reload_lock;
 private:
 	std::mutex resource_lock;

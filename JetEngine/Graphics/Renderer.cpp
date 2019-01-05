@@ -58,7 +58,7 @@ void Renderer::Init(CRenderer* renderer)
 
 	for (int i = 0; i < SHADOW_MAP_MAX_CASCADE_COUNT; i++)
 	{
-		auto drt = CRenderTexture::Create(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D24_UNORM_S8_UINT);// DXGI_FORMAT_R24G8_TYPELESS);
+		auto drt = CRenderTexture::Create(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
 		this->shadowMapViews[i] = drt->GetDepthResourceView();
 		this->shadowMapTextures[i] = drt->texture_depth;
@@ -82,9 +82,7 @@ void Renderer::Init(CRenderer* renderer)
 	comparisonSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
 
 	// Point filtered shadows can be faster, and may be a good choice when
-	// rendering on hardware with lower feature levels. This sample has a
-	// UI option to enable/disable filtering so you can see the difference
-	// in quality and speed.
+	// rendering on hardware with lower feature levels.
 
 	auto res = renderer->device->CreateSamplerState(
 		&comparisonSamplerDesc,
@@ -330,9 +328,9 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 	for (auto obj : *objs)
 	{
 		if (obj->type == Skinned)
-			shader = renderer->SetShader(this->shader_ss);// 13);
+			shader = renderer->SetShader(this->shader_ss);
 		else
-			shader = renderer->SetShader(this->shader_s);//2);
+			shader = renderer->SetShader(this->shader_s);
 
 		Matrix4 world = (obj->matrix*shadowmat).Transpose();
 
@@ -804,6 +802,12 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Vec4 pos;
 			Vec4 color;
 		};
+		struct sl
+		{
+			Vec4 pos;
+			Vec4 color;
+			Vec4 direction;
+		};
 		struct mdata
 		{
 			Vec4 direction;
@@ -811,6 +815,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Vec4 ambient_down;
 			Vec4 ambient_range;
 			pl lights[3];
+			sl slights[1];
 		};
 #pragma pack(pop)
 		auto data = (mdata*)cb.pData;
@@ -825,6 +830,11 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			data->lights[i].color.xyz = light_list[i].color;
 			data->lights[i].pos.w = light_list[i].radius;
 		}
+		data->slights[0].pos.xyz = light_list[3].position;
+		data->slights[0].pos.w = light_list[3].radius;
+		data->slights[0].color.xyz = light_list[3].color;
+		data->slights[0].color.w = cos(light_list[3].angle*3.14159265f/180.0f);
+		data->slights[0].direction.xyz = light_list[3].direction;
 		renderer->context->Unmap(shader->buffers.lighting.buffer, 0);
 
 		if (shader_changed)
@@ -941,6 +951,12 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//hack for the moment 
 		const Vec3 position = rc.position;
 		const float radius = rc.radius;
+
+		//lets add the spot light
+
+		//currently supports one spot light
+		found_lights[3].color = Vec3(0, 0, 0);
+
 		//todo: get enemy spawning system and deaths
 		//todo: perhaps allow more lights if necessary
 		for (auto light : this->lights)
@@ -948,10 +964,20 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 			if (num_lights < 6 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
 			{
 				//apply it
-				found_lights[num_lights++] = light;
+				if (num_lights == 3)
+				{
+					num_lights++;
+				}
+				if (light.type == 4)
+				{
+					found_lights[3] = light;
+				}
+				else
+				{
+					found_lights[num_lights++] = light;
+				}
 			}
 		}
-
 
 		auto oldshdr = renderer->shader;
 
@@ -965,6 +991,7 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//only need to do this for shader builder shaders
 		//todo, use materials that have/dont have these so we dont do extra work
 		//todo make this one command
+		//todo lets make this not silly
 		if (rc.material_instance.extra)
 			renderer->SetPixelTexture(8, rc.material_instance.extra);
 		if (rc.material_instance.extra2)

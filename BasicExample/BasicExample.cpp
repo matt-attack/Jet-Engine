@@ -129,6 +129,16 @@ public:
 		cam.SetNear(0.1);
 		cam.SetFar(5000);
 		cam.PerspectiveProjection();
+
+		Renderer::Light l;
+		l.angle = 90;
+		l.color = Vec3(1, 0.2, 0.2);
+		l.direction = cam.GetForward();
+		l.position = cam._pos;
+		l.type = 4;
+		l.radius = 150;
+		l.lifetime = 1000;
+		r.lights.push_back(l);
 		
 		renderer->DrawText(0, 50, "Hello", 0xFFFFFFFF);
 
@@ -165,6 +175,8 @@ public:
 		r.Render(&cam, renderer);
 
 		r.Finish();
+
+		r.lights.clear();
 
 		desktop.renderall(0, 0, 0, 0);
 	}

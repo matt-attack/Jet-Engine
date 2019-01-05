@@ -16,7 +16,7 @@ const int num_builder_options = 6;
 class ShaderBuilder : public Resource
 {
 	std::string path;
-
+	std::vector<std::string> includes;
 public:
 
 	std::map<IMaterial*, CShader*[1 << num_builder_options]> shaders;
@@ -38,6 +38,8 @@ public:
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)
 	{
+
+
 		if (this->path.length())
 		{
 			for (auto& shader : this->shaders)
@@ -55,6 +57,32 @@ public:
 			return;
 		}
 		this->path = path;
+
+		std::ifstream t;
+		int length;
+		t.open(path, std::ios::binary | std::ios::ate);      // open input file
+		t.seekg(0, std::ios::end);    // go to the end
+		length = t.tellg();           // report location (this is the length)
+		t.seekg(0, std::ios::beg);    // go back to the beginning
+		char* buffer = new char[length + 1];    // allocate memory for a buffer of appropriate dimension
+		t.read(buffer, length);       // read the whole file into the buffer
+		t.close();                    // close file handle
+		buffer[length] = 0;
+
+		//look for any includes
+		std::string str(buffer);
+		int index = str.find("#include");
+		if (index > 0)
+		{
+			int end = str.find('\n', index);
+			std::string ipath = str.substr(index, end - index);
+			//add it as a hook for reloading
+
+			int sbegin = ipath.find('"') + 1;
+			ipath = ipath.substr(sbegin, ipath.find('"', sbegin) - sbegin);
+			ipath = "Shaders/" + ipath;
+			resources.children[ipath] = this;
+		}
 	}
 
 	void InvalidateCache()
