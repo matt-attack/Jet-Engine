@@ -181,20 +181,6 @@ float3 calculate_light_no_ambient(float3 WorldPos, float3 normal)
 
 float3 calculate_light(float3 WorldPos, float3 normal)
 {
-	//float3 light = float3(0,0,0);
-#ifdef NUM_POINT
-	/*for (int i = 0; i < NUM_POINT; i++)
-	{
-		float3 pos = lights[i].position;
-		float dist = distance(pos, WorldPos);
-		float3 dir = normalize(pos - WorldPos);
-		float radius = lights[i].position.w;
-		float d = (1-pow(dist/radius,4))*dot(dir, normal);
-		if (dist < radius & d > 0)
-			light += lights[i].color*d;
-	}*/
-#endif
-
 	float3 light = calculate_light_no_ambient(WorldPos, normal);
 
     //Ambient lighting

@@ -7,6 +7,10 @@
 
 #include "../Math/Matrix.h"
 
+#include "../HierchicalGrid.h"
+
+#include "../ObjectPool.h"
+
 //perhaps just move to a bunch of Mesh renderables (or "draw orders") with a transform, parent, a vb, an ib, and a material
 //there would be just 3 types, indexed, non indexed, and indexed+skinned
 //then shaders can be autoselected/generated based on material and vertex format
@@ -26,23 +30,29 @@ class ID3D11Buffer;
 class CRenderTexture;
 class CRenderer;
 class CShader;
+class IMaterial;
+class LightReference;
 
 class Renderer
 {
+	friend class LightReference;
+	friend class IMaterial;
 	//have several lists of renderables
 public:
 	std::vector<Renderable*> renderables;
 private:
 	
+	// Shadow shaders
 	CShader *shader_s, *shader_ss, *shader_sa;
-	Vec3 ambient_bottom, ambient_range;
 
+	// Global light colors
+	Vec3 ambient_bottom, ambient_range;
 	Vec3 sun_light;
 
 	ID3D11SamplerState* shadowSampler;
 	ID3D11SamplerState* shadowSampler_linear;
 
-	//shadowmapping stuff
+	// Shadowmapping stuff
 	float shadowMappingSplitDepths[SHADOW_MAP_MAX_CASCADE_COUNT];
 	ID3D11Texture2D *shadowMapTextures[SHADOW_MAP_MAX_CASCADE_COUNT];
 	CRenderTexture* shadowMapSurfaces[SHADOW_MAP_MAX_CASCADE_COUNT];
@@ -58,15 +68,13 @@ private:
 	void CalcShadowMapSplitDepths(float *outDepths, CCamera* camera, float maxdist);
 	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, CCamera* cam, std::vector<Renderable*>* objs, int id);
 
-	std::mutex todo_lock;
-	std::queue<std::function<void()>> todo;
-
 	Parent* cur_parent;
+
+	bool shadows_;
 
 public:
 	int current_matrix;
 	Matrix4 matrix_block[2000];//todo: allocate these on heap
-	std::queue<std::function<void(int)>> render_tasks;
 
 public:
 	int rcount;
@@ -77,36 +85,42 @@ public:
 	//2. point directional (approximated point with no falloff)
 	//3. point
 	//4. spot
+
+	enum class LightType
+	{
+		Point = 1,
+		Spot
+	};
 	struct Light
 	{
-		int type;
+		LightType type;
 		Vec3 position;
 		Vec3 color;
 		float radius;//distance for spot lights
 		float angle;//in degrees for spot lights
 		Vec3 direction;//for spot lights
+
+		//if this is set to < 0 the light lifetime is unmanaged by the renderer
 		float lifetime;
 	};
-	std::vector<Light> lights;
 
+private:
 
+	HierarchicalGrid light_grid_;
+	ObjectPool<Light> light_pool_;
+public:
 
-	void AddPreRenderTask(std::function<void()> in)
+	//need to come up with light datastructure, quadtree ? cant be searching n lights every time
+
+	LightReference AddLight(const Light& data);
+
+	/*void RemoveLight(Light* l)
 	{
-		todo_lock.lock();
-		todo.push(in);
-		todo_lock.unlock();
-	}
+		light_quadtree_.remove(l);
+		light_pool_.free(l);
+	}*/
 
 	Renderer();
-
-	std::mutex mutex;
-	void Wait()
-	{
-		//wait for the mutex to be unused
-		mutex.lock();
-		mutex.unlock();
-	}
 
 	void Init(CRenderer* renderer);
 
@@ -131,10 +145,9 @@ public:
 		this->renderables.clear();
 	}
 
-	bool _shadows;
 	void EnableShadows(bool yn)
 	{
-		this->_shadows = true;
+		this->shadows_ = yn;
 	}
 
 	void SetMaxShadowDist(float dist)
@@ -185,5 +198,70 @@ private:
 };
 
 extern Renderer r;
+
+class LightReference
+{
+	friend class Renderer;
+	Renderer::Light* light_;
+	int light_index_;
+
+public:
+
+	LightReference()
+	{
+
+	}
+
+	LightReference(Renderer::Light* l, int index) :
+		light_(l),
+		light_index_(index)
+	{
+
+	}
+
+	void Move(const Vec3& position, const Vec3& direction)
+	{
+		// remove it, move it, then add it again
+		int rect[4];
+		GetRect(rect);
+		r.light_grid_.Remove(light_index_, rect);
+
+		light_->position = position;
+		light_->direction = direction;
+
+		GetRect(rect);
+		r.light_grid_.Insert(light_index_, rect);
+	}
+
+	void GetRect(int * rect)
+	{
+		if (light_->type == Renderer::LightType::Point)
+		{
+			rect[0] = light_->position.x - light_->radius;
+			rect[1] = light_->position.z - light_->radius;
+			rect[2] = light_->position.x + light_->radius;
+			rect[3] = light_->position.z + light_->radius;
+		}
+		else
+		{
+			float half_radius = light_->radius * 0.5f;
+			Vec3 midpoint = light_->position + light_->direction*half_radius;
+			rect[0] = midpoint.x - half_radius;
+			rect[1] = midpoint.z - half_radius;
+			rect[2] = midpoint.x + half_radius;
+			rect[3] = midpoint.z + half_radius;
+		}
+	}
+
+	void Remove()
+	{
+		int rect[4];
+		GetRect(rect);
+		r.light_grid_.Remove(light_index_, rect);
+
+		//deallocate light
+		throw 7;
+	}
+};
 
 #endif

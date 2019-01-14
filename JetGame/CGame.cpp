@@ -318,7 +318,7 @@ void CGame::Draw()
 	VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
 
 	//update settings
-	r._shadows = this->GetSettingBool("cl_shadows");
+	r.EnableShadows(this->GetSettingBool("cl_shadows"));
 	float samples = this->GetSettingFloat("cl_aa_samples");
 	renderer->SetAALevel(vr ? 0 : samples);
 	renderer->EnableVsync(vr ? 0 : this->GetSettingBool("cl_vsync"));

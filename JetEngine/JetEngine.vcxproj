@@ -107,6 +107,7 @@
     <ClCompile Include="GUI\gui_slider.cpp" />
     <ClCompile Include="GUI\gui_tabpages.cpp" />
     <ClCompile Include="GUI\gui_window.cpp" />
+    <ClCompile Include="HierchicalGrid.cpp" />
     <ClCompile Include="IMaterial.cpp" />
     <ClCompile Include="Math\AABB.cpp" />
     <ClCompile Include="Math\geom.cpp" />

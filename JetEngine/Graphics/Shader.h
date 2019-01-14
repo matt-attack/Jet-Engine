@@ -37,7 +37,7 @@ struct UniformBuffers
 
 struct D3D11_INPUT_ELEMENT_DESC;
 
-//need to make sure to handle if vertex shader has these as well, check if id's are different
+
 class CShader: public Resource
 {
 	friend class CRenderer;

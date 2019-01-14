@@ -71,6 +71,8 @@ class MyGameState : public CGameState
 
 	CCamera cam;
 	HeightmapTerrainSystem t;
+
+	LightReference spot_;
 public:
 	MyGameState(void)
 	{
@@ -90,6 +92,16 @@ public:
 		slider.SetRange(-100, 100);
 		
 		desktop.AddWindow(&slider);
+
+		Renderer::Light l;
+		l.angle = 90;
+		l.color = Vec3(1, 0.2, 0.2);
+		l.direction = cam.GetForward();
+		l.position = cam._pos;
+		l.type = Renderer::LightType::Spot;
+		l.radius = 150;
+		l.lifetime = 1000;
+		spot_ = r.AddLight(l);
 	}
 
 	~MyGameState(void)
@@ -130,15 +142,20 @@ public:
 		cam.SetFar(5000);
 		cam.PerspectiveProjection();
 
-		Renderer::Light l;
+		/*Renderer::Light l;
 		l.angle = 90;
 		l.color = Vec3(1, 0.2, 0.2);
 		l.direction = cam.GetForward();
 		l.position = cam._pos;
-		l.type = 4;
+		l.type = Renderer::LightType::Spot;
 		l.radius = 150;
 		l.lifetime = 1000;
-		r.lights.push_back(l);
+		r.lights.push_back(l);*/
+
+		spot_.Move(cam._pos, cam.GetForward());
+
+		//ok, so lets have an array of temporary lights, holding handles to each one in the main array with a lifetime, they get removed at the end
+		//	also a quad tree data structure holding all of them. All the lights should ultimately be in a single array with the quadtree holding pointers to each
 		
 		renderer->DrawText(0, 50, "Hello", 0xFFFFFFFF);
 
@@ -176,7 +193,7 @@ public:
 
 		r.Finish();
 
-		r.lights.clear();
+		//r.lights.clear();
 
 		desktop.renderall(0, 0, 0, 0);
 	}

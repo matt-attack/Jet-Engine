@@ -20,7 +20,7 @@ struct shadow_data
 };
 
 
-Renderer::Renderer()
+Renderer::Renderer() : light_pool_(1000), light_grid_(10000,0,0)
 {
 	this->shadowSplits = 3;
 	this->dirToLight = Vec3(0, -1, 0);
@@ -28,7 +28,7 @@ Renderer::Renderer()
 	this->shadowMaxDist = 150;//350
 	this->shadowSplitLogFactor = 0.9f;
 	this->sun_light = Vec3(0.9f, 0.9, 0.9);
-	this->_shadows = true;//should default to false eventually
+	this->shadows_ = true;//should default to false eventually
 	this->SetAmbient(Vec3(0.4, 0.4, 0.54), Vec3(0.2, 0.2, 0.2));
 }
 
@@ -36,13 +36,13 @@ void Renderer::Init(CRenderer* renderer)
 {
 	shader_ss = resources.get_unsafe<CShader>("Shaders/skinned_shadow.vsh");
 	shader_s = resources.get_unsafe<CShader>("Shaders/shadow.vsh");
-	shader_sa = resources.get_unsafe<CShader>("Shaders/alpha_shadow.vsh");// renderer->CreateShader
+	shader_sa = resources.get_unsafe<CShader>("Shaders/alpha_shadow.vsh");
 
 	//create common constant buffers
 	//bind each buffer
 	D3D11_BUFFER_DESC bufferDesc;
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	bufferDesc.ByteWidth = sizeof(shadow_data);// cdesc.Size;
+	bufferDesc.ByteWidth = sizeof(shadow_data);
 	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	bufferDesc.MiscFlags = 0;
@@ -519,16 +519,6 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	RPROFILE("RendererProcess");
 	GPUPROFILEGROUP("Renderer::Render");
 
-	//execute pre-frame commands (from other threads and such
-	todo_lock.lock();//lock
-	while (todo.size())
-	{
-		todo.back()();
-		todo.pop();
-	}
-	todo_lock.unlock();//unlock
-
-
 	renderer->ApplyCam(cam);
 
 	this->rcount = this->renderables.size();
@@ -645,7 +635,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 
 	//setup vars for shadows
-	if (this->_shadows)
+	if (this->shadows_)
 	{
 		for (int li = 0; li < shadowSplits; li++)
 			renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
@@ -656,10 +646,11 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 
 	//sort the lights by size so that largest lights get picked
-	std::sort(this->lights.begin(), this->lights.end(), [](const Light& a, const Light& b)
+	//todo how to handle this
+	/*std::sort(this->lights.begin(), this->lights.end(), [](const Light& a, const Light& b)
 	{
 		return a.radius > b.radius;
-	});
+	});*/
 
 	//ok, lets be dumb and update materials here
 	for (auto ii : IMaterial::GetList())
@@ -689,7 +680,8 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	this->ProcessQueue(cam, renderqueue);
 
 	//removing old lights
-	for (int i = 0; i < this->lights.size(); i++)
+	// TODO replace this
+	/*for (int i = 0; i < this->lights.size(); i++)
 	{
 		if (this->lights[i].lifetime > 0)
 		{
@@ -697,7 +689,7 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			if (this->lights[i].lifetime < 0)
 				this->lights.erase(this->lights.begin() + i--);
 		}
-	}
+	}*/
 
 	//debug draw shadow frustums
 	if (showdebug == 0)
@@ -737,6 +729,10 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 	//clean this up ok
 	//todo, only do this if the rc source has changed
 	auto matrix = &rc->source->matrix;// rc->transform;
+
+	auto wVP = (*matrix)*renderer->view*renderer->projection;
+	wVP.MakeTranspose();
+
 	if (shader->buffers.matrices.buffer)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
@@ -749,11 +745,10 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
+		// todo fix this dumb needing to transpose literally all of this
 		data->world = matrix->Transpose();
 		data->view = renderer->view.Transpose();
 		data->projection = renderer->projection.Transpose();
-		auto wVP = (*matrix)*renderer->view*renderer->projection;
-		wVP.MakeTranspose();
 		data->wvp = wVP;
 
 		renderer->context->Unmap(shader->buffers.matrices.buffer, 0);
@@ -772,8 +767,6 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 			Matrix4 wvp;
 		};
 		auto data = (mdata*)cb.pData;
-		auto wVP = (*matrix)*renderer->view*renderer->projection;
-		wVP.MakeTranspose();
 		data->wvp = wVP;
 		renderer->context->Unmap(shader->buffers.wvp.buffer, 0);
 
@@ -792,7 +785,6 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 
 	if (shader->buffers.lighting.buffer)
 	{
-		Vec3 dir = this->dirToLight;
 		D3D11_MAPPED_SUBRESOURCE cb;
 		renderer->context->Map(shader->buffers.lighting.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
 #pragma pack(push)
@@ -819,10 +811,9 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		};
 #pragma pack(pop)
 		auto data = (mdata*)cb.pData;
-		data->direction.xyz = dir;
+		data->direction.xyz = this->dirToLight;
 		data->ambient_down.xyz = this->ambient_bottom;
 		data->ambient_range.xyz = this->ambient_range;
-		//data->ambient.xyz = this->ambient;// Vec4(0.2175f, 0.2175, 0.2175, 0.2175);//rc->source->ambientlight;
 		data->daylight = Vec4(this->sun_light, 1);//rc->source->daylight;
 		for (int i = 0; i < 3; i++)
 		{
@@ -947,28 +938,33 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//find applicable lights then set'em up
 		int num_lights = 0;
 		Light found_lights[6];//max per pixel
-		//move this into an external function to clean up this code
-		//hack for the moment 
-		const Vec3 position = rc.position;
-		const float radius = rc.radius;
-
-		//lets add the spot light
 
 		//currently supports one spot light
 		found_lights[3].color = Vec3(0, 0, 0);
 
+		std::vector<int> lights;
+		int rect[4];
+		rect[0] = rc.position.x - rc.radius;
+		rect[1] = rc.position.z - rc.radius;
+		rect[2] = rc.position.x + rc.radius;
+		rect[3] = rc.position.z + rc.radius;
+		this->light_grid_.Query(rect, lights);
+
 		//todo: get enemy spawning system and deaths
 		//todo: perhaps allow more lights if necessary
-		for (auto light : this->lights)
+
+
+		for (auto i : lights)
 		{
-			if (num_lights < 6 && light.position.dist(position) < (light.radius + radius)/*entity radius needs to go here*/)
+			Light& light = light_pool_[i];
+			if (num_lights < 6)
 			{
 				//apply it
 				if (num_lights == 3)
 				{
 					num_lights++;
 				}
-				if (light.type == 4)
+				if (light.type == LightType::Spot)
 				{
 					found_lights[3] = light;
 				}
@@ -1041,7 +1037,7 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 
 void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 {
-	if (this->_shadows == false)
+	if (this->shadows_ == false)
 		return;
 
 	PROFILE("DrawShadows");
@@ -1139,4 +1135,20 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 			renderer->DrawRect(&r, 0xFFFFFFF);
 		}
 	}
+}
+
+LightReference Renderer::AddLight(const Light& data)
+{
+	int index;
+	Light* l = light_pool_.allocate_with_index(index);
+	*l = data;
+
+	//insert it into the quadtree
+	LightReference lr(l, index);
+
+	int rect[4];
+	lr.GetRect(rect);
+	light_grid_.Insert(index, rect);
+
+	return lr;
 }

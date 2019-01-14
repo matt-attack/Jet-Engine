@@ -371,7 +371,7 @@ void IMaterial::Update(CRenderer* renderer)
 			(this->skinned ? SKINNING : 0) |
 			0;// (POINT_LIGHTS);
 
-		if (r._shadows)
+		if (r.shadows_)
 			id |= SHADOWS;
 
 		//supply the surface shader here and have it pick from the right list based on that
