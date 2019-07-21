@@ -443,7 +443,7 @@ void BasicModel::MakeFlatModel(int blockid, float scale)
 //IMaterial bmat(5, Linear, 0, CULL_CW, false);
 //IMaterial bamat(5, Linear, 0, CULL_CW, true);
 
-void BasicModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+void BasicModel::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	RenderCommand rc;
 	rc.alpha = this->material->alpha;
@@ -453,7 +453,7 @@ void BasicModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	rc.mesh.ib = 0;
 	rc.mesh.primitives = this->verts;
 	rc.mesh.vb = this->vb;
-	rc.mesh.OutFrames = 0;
+	rc.mesh.skinning_frames = 0;
 	rc.source = this;
 	queue->push_back(rc);
 }

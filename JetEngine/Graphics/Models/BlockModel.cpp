@@ -606,7 +606,7 @@ void BlockModel::Load(bool fast)//todo, time and optimize, also add smooth torch
 
 
 #ifndef MATT_SERVER
-void BlockModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+void BlockModel::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	if (this->dirty)
 		this->Load();
@@ -619,7 +619,7 @@ void BlockModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	rc.mesh.ib = 0;
 	rc.mesh.primitives = this->_solidIndex;
 	rc.mesh.vb = &this->v_buffer;
-	rc.mesh.OutFrames = 0;
+	rc.mesh.skinning_frames = 0;
 	rc.source = this;
 	rc.material = this->tex ? &blockmt : &blockm;
 	queue->push_back(rc);

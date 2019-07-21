@@ -45,7 +45,10 @@ enum RenderableType
 //all the main details required to render a mesh's vertex or index data
 struct RMesh
 {
-	Matrix3x4* OutFrames;
+	// todo maybe add a pointer to skinning data including these two
+	int num_frames;
+	Matrix3x4* skinning_frames;
+
 	CIndexBuffer* ib;
 	int primitives;
 	int num_indices;
@@ -62,19 +65,22 @@ struct MaterialInstanceBlock
 
 
 class Renderable;
-struct RenderCommand
+class RenderCommand
 {
+public:
 	IMaterial* material;
 	MaterialInstanceBlock material_instance;
 	RMesh mesh;
 	Matrix4* transform;
-	Renderable* source;//used to get positioning data
 	bool alpha;//use this for flags
 	float dist;//for sorting
 
 	//for lighting, a bit o a hack
 	Vec3 position;
 	float radius;
+
+//private:
+	Renderable* source;// for debugging only
 };
 
 class CEntity;
@@ -82,6 +88,7 @@ class Renderable
 {
 	friend class Renderer;
 
+public:
 	bool updated;//if the pre-render hook has been called
 
 	//add type here, ibo or just vbo based
@@ -105,8 +112,6 @@ public:
 
 	CVertexBuffer* vb;
 
-	float daylight, ambientlight;
-
 	//decouple me from entity system later, use lambdas
 	IPreRenderable* entity;//used for update hooks
 
@@ -125,7 +130,7 @@ public:
 	virtual ~Renderable() {};
 
 	//this is where you submit meshes to the queue, and call render on all of your children
-	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue) {};
+	virtual void Render(const CCamera* cam, std::vector<RenderCommand>* queue) {};
 };
 
 //used for a basic mesh renderable

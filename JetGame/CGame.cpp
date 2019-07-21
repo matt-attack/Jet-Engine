@@ -16,6 +16,8 @@
 
 #include <AL\al.h>
 
+#define USE_RENDER_THREAD
+
 void initKeyboard(HWND han_Window)//should be setup input
 {
 	RAWINPUTDEVICE Rid[2];
@@ -37,6 +39,88 @@ void OSInit(HWND hWnd)
 	initKeyboard(hWnd);
 
 	XInputEnable(true);
+}
+
+#include <JetEngine/Graphics/VRRenderer.h>
+#include <JetEngine/IMaterial.h>
+
+#include <JetEngine/Graphics/RenderTexture.h>
+
+void CGame::RenderLoop()
+{
+#ifdef USE_RENDER_THREAD
+	while (true)
+#endif
+	{
+		// wait until we get data to begin
+#ifdef USE_RENDER_THREAD
+		r.start_lock_.wait();
+#endif
+		if (this->needs_resize_)
+		{
+			//if (renderer)
+			renderer->Resize(this->xres_, this->yres_);
+			this->needs_resize_ = false;
+		}
+
+		// swap buffers
+		std::swap(this->add_camera_, this->process_camera_);
+		std::swap(this->add_clear_color_, this->process_clear_color_);
+
+		renderer->shader = 0;//makes shader reloading work
+
+		VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
+
+		//update render settings
+		r.EnableShadows(this->GetSettingBool("cl_shadows"));// todo make sure to not sure this outside of the renderer
+		float samples = this->GetSettingFloat("cl_aa_samples");
+		renderer->SetAALevel(vr ? 0 : samples);
+		renderer->EnableVsync(vr ? 0 : this->GetSettingBool("cl_vsync"));
+		r.SetMaxShadowDist(this->GetSettingFloat("cl_shadow_dist"));
+
+		//ok, lets be dumb and update materials here
+		// todo maybe move this, definately need to move it for VR
+		for (auto ii : IMaterial::GetList())
+			ii.second->Update(renderer);
+
+		r.ThreadedRender(renderer, &this->process_camera_, this->process_clear_color_);
+
+		renderer->FlushDebug();
+
+		//draw stuff like message boxes
+		this->base_gui.renderall(0, 0, input.m_pos.x, input.m_pos.y, 0);
+
+		if (showdebug)
+		{
+			renderer->SetFont("Arial", 20);
+
+			unsigned int mem = 0;
+#ifdef _WIN32
+			PROCESS_MEMORY_COUNTERS pmc;
+			GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+			mem = pmc.WorkingSetSize;
+#endif
+
+			float rft = 0;
+			if (Profiles.find({ "FrameTime", 0 }) != Profiles.end())
+				rft = Profiles[{"FrameTime", 0}]->average;
+			float rp = 0;
+			if (Profiles.find({ "RendererProcess", 0 }) != Profiles.end())
+				rp = Profiles[{"RendererProcess", 0}]->average;
+			renderer->DrawStats(1 / this->timer.GetFPS(), rft, mem, rp);
+
+			if (showdebug >= 2)
+				ProfilesDraw();
+		}
+
+		renderer->ResetStats();
+
+		{
+			PROFILE("Present");
+			GPUPROFILE("Present");
+			renderer->Present();//exclude this from rft
+		}
+	}
 }
 
 void CGame::Init(Window* window)
@@ -69,15 +153,19 @@ void CGame::Init(Window* window)
 	SoundManager::GetInstance()->Initialize("hello", false);
 	SoundManager::GetInstance()->Enable();
 	SoundManager::GetInstance()->SetMasterVolume(0.5f);
-
-	//maybe integrate sounds into the resource manager?
-
 	
 	SoundManager::GetInstance()->Update();
 
 	resources.init();
 
 	r.Init(renderer);//initialize the pipeline
+
+	// startup the renderer thread, if we want multithreaded rendering
+#ifdef USE_RENDER_THREAD
+	render_thread_ = std::thread([this]() {
+		this->RenderLoop();
+	});
+#endif
 
 	this->timer.Start();
 
@@ -252,7 +340,7 @@ void CGame::Update()
 	GPUPROFILE("FrameTime");
 
 	//delete old states
-	for (int i = 0; i < this->to_delete.size(); i++)
+	for (size_t i = 0; i < this->to_delete.size(); i++)
 		delete this->to_delete[i];
 	this->to_delete.clear();
 
@@ -267,6 +355,9 @@ void CGame::Update()
 		this->input.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
 		this->input.first_player_controller = this->GetSettingBool("cl_controller");
 	}
+
+	//update settings
+	SoundManager::GetInstance()->SetMasterVolume(this->GetSettingFloat("cl_volume") / 100.0f);
 
 	SoundManager::GetInstance()->Update();
 
@@ -309,64 +400,25 @@ void CGame::Update()
 #endif
 }
 
-#include <JetEngine/Graphics/VRRenderer.h>
 
 void CGame::Draw()
 {
-	renderer->shader = 0;//makes shader reloading work
-
-	VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
-
-	//update settings
-	r.EnableShadows(this->GetSettingBool("cl_shadows"));
-	float samples = this->GetSettingFloat("cl_aa_samples");
-	renderer->SetAALevel(vr ? 0 : samples);
-	renderer->EnableVsync(vr ? 0 : this->GetSettingBool("cl_vsync"));
-	r.SetMaxShadowDist(this->GetSettingFloat("cl_shadow_dist"));
-	SoundManager::GetInstance()->SetMasterVolume(this->GetSettingFloat("cl_volume") / 100.0f);
-
 	// let the state draw the screen
 	{
 		GPUPROFILEGROUP("Game Render");
 		if (states.size() > 0)
 			states.back()->Draw(this, elapsedtime);
 	}
+#ifndef USE_RENDER_THREAD
+	this->RenderLoop();
+#else
+	// wait for the renderer to be free so we dont get ahead of ourselves
+	r.start_lock_.notify();
 
-	renderer->FlushDebug();
+	// theres a bit of free time here if you want to do something...
 
-	//draw stuff like message boxes
-	this->base_gui.renderall(0, 0, input.m_pos.x, input.m_pos.y, 0);
-
-	if (showdebug)
-	{
-		renderer->SetFont("Arial", 20);
-
-		unsigned int mem = 0;
-#ifdef _WIN32
-		PROCESS_MEMORY_COUNTERS pmc;
-		GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-		mem = pmc.WorkingSetSize;
+	r.renderable_lock_.wait();// wait for the renderer to start before moving to the next frame
 #endif
-
-		float rft = 0;
-		if (Profiles.find({ "FrameTime", 0 }) != Profiles.end())
-			rft = Profiles[{"FrameTime", 0}]->average;
-		float rp = 0;
-		if (Profiles.find({"RendererProcess", 0}) != Profiles.end())
-			rp = Profiles[{"RendererProcess", 0}]->average;
-		renderer->DrawStats(1 / this->timer.GetFPS(), rft, mem, rp);
-
-		if (showdebug >= 2)
-			ProfilesDraw();
-	}
-
-	renderer->ResetStats();
-
-	{
-		PROFILE("Present");
-		GPUPROFILE("Present");
-		renderer->Present();//exclude this from rft
-	}
 }
 
 CInput* CGame::GetInput()

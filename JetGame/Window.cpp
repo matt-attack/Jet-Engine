@@ -185,8 +185,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	}
 	case WM_SIZE:
 	{
-		if (renderer)
-			renderer->Resize((int)LOWORD(lParam), (int)HIWORD(lParam));
+		if (game)
+			game->Resize((int)LOWORD(lParam), (int)HIWORD(lParam));
 
 		//window->x_size = (int)LOWORD(lParam);
 		//window->y_size = (int)HIWORD(lParam);

@@ -11,8 +11,6 @@
 
 #include "../ModelData.h"
 
-Renderer r;
-
 struct shadow_data
 {
 	Vec4 splits;
@@ -20,7 +18,7 @@ struct shadow_data
 };
 
 
-Renderer::Renderer() : light_pool_(1000), light_grid_(10000,0,0)
+Renderer::Renderer() : light_pool_(1000), light_grid_(10000,0,0), renderable_lock_(1)//start as ready
 {
 	this->shadowSplits = 3;
 	this->dirToLight = Vec3(0, -1, 0);
@@ -122,7 +120,7 @@ float Lerp2(float a, float b, float t)
 	return a + (b - a)*t;
 }
 
-void Renderer::CalcShadowMapSplitDepths(float *outDepths, CCamera* camera, float maxdist)
+void Renderer::CalcShadowMapSplitDepths(float *outDepths, const CCamera* camera, float maxdist)
 {
 	float camNear = max(camera->_near, 10);
 	float camFar = min(min(camera->_far, shadowMaxDist), maxdist);
@@ -147,7 +145,7 @@ Matrix4 mv[SHADOW_MAP_MAX_CASCADE_COUNT * 2 + 1];
 void Renderer::CalcShadowMapMatrices(
 	Matrix4 &outViewProj,
 	Matrix4 &outShadowMapTexXform,
-	CCamera* cam, std::vector<Renderable*>* objs, int id)
+	const CCamera* cam, std::vector<Renderable*>* objs, int id)
 {
 	PROFILE("CalcShadowMapMatrices");
 	Vec3 upDir = Vec3(0, 1, 0);
@@ -513,15 +511,13 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 	out.BuildViewFrustum();
 }
 
-
-void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's parent is the same as the cameras, just render nicely
+void Renderer::GenerateQueue(const CCamera* cam, const std::vector<Renderable*>& renderables, std::vector<RenderCommand>& renderqueue)
 {
-	RPROFILE("RendererProcess");
-	GPUPROFILEGROUP("Renderer::Render");
+	RPROFILE("Renderer::GenerateQueue");
 
-	renderer->ApplyCam(cam);
+	this->rcount = renderables.size();
 
-	this->rcount = this->renderables.size();
+	this->rdrawn = 0;
 
 	//camera contains local camera angles
 	Parent* parent = cam->parent;
@@ -543,7 +539,221 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		}
 	}
 	else
+	{
 		globalview = localview;
+	}
+
+	Vec3 worldcampos = globalview.GetTranslation();
+
+	for (unsigned int i = 0; i < renderables.size(); i++)//loop through all renderables to calculate sorting factors
+	{
+		Renderable* r = renderables[i];
+		if (r->parent != cam->parent || r->aabb.max.x == FLT_MAX || cam->BoxInFrustum(r->aabb))//frustum cull
+		{
+			// 2. Calculate sort indices! 
+			Vec3 pos = r->matrix.GetTranslation();
+			if (r->parent == cam->parent)
+				r->dist = cam->_pos.distsqr(pos);
+			else if (r->parent == 0)
+				r->dist = worldcampos.distsqr(pos);
+			else//get to global
+			{
+				Vec3 wpos = r->parent->LocalToWorld(r->matrix.GetTranslation());
+				r->dist = worldcampos.distsqr(wpos);
+			}
+
+			//push children renderables to list and process
+			int old_size = renderqueue.size();
+			r->Render(cam, &renderqueue);
+
+			//save matrices for the new things
+			for (int i = old_size; i < renderqueue.size(); i++)
+			{
+				auto ptr = &this->matrix_block[this->current_matrix++];
+				renderqueue[i].transform = ptr;
+				*ptr = renderqueue[i].source->matrix;
+			}
+
+			//update predraw hooks
+			if (r->updated == false)
+			{
+				//if we have an entity, update it before rendering
+				if (r->entity)
+					r->entity->PreRender();
+				r->updated = true;
+			}
+		}
+	}
+
+	/* 3. Sort by distance and shader *///need to also sort by shader/texture, especially for shadows
+	{
+		PROFILE("SortRenderCommands");
+		std::sort(renderqueue.begin(), renderqueue.end(),
+			[](const RenderCommand& a, const RenderCommand& b)
+		{
+			if (a.alpha && b.alpha)
+				return a.dist > b.dist;
+			else if (a.alpha)
+				return false;
+			else if (b.alpha)
+				return true;
+
+			return a.dist < b.dist;
+		});
+	}
+}
+
+#include "VRRenderer.h"
+
+void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color)
+{
+	// swap buffers
+	std::swap(add_queue_, process_queue_);
+	std::swap(add_prequeue_, process_prequeue_);
+	std::swap(add_renderables_, process_renderables_);
+
+	// todo this is kinda dangerous, also theres a limit of 2000 matrices...
+	this->current_matrix = 0;
+
+	// mark the renderables as not updated
+	for (int i = 0; i < process_renderables_.size(); i++)
+	{
+		process_renderables_[i]->updated = false;
+	}
+
+	// Run the pre-render queue
+	for (size_t i = 0; i < process_prequeue_.size(); i++)
+	{
+		process_prequeue_[i]();
+	}
+	process_prequeue_.clear();
+
+	//todo change the camera matrix for VR, and generate queues twice if the FOV is too wide
+	std::vector<RenderCommand> commands;
+	GenerateQueue(cam, process_renderables_, commands);
+
+	// todo
+	Matrix4 shadowMapViewProjs[SHADOW_MAP_MAX_CASCADE_COUNT];
+	this->RenderShadowMaps(shadowMapViewProjs, cam, process_renderables_);
+	rendered_shadows_ = true;
+
+	//unlock
+	renderable_lock_.notify();
+
+	VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
+
+	//actually render
+	if (vr)
+	{
+		// Render scene for VR
+		CRenderTexture ot = renderer->GetRenderTarget(0);
+		vr->Clear(clear_color.a, clear_color.r,
+			clear_color.g, clear_color.b);
+
+
+		Viewport ovp;
+		renderer->GetViewport(&ovp);
+
+		// Need to flip z axis of this for it to work with directx
+		Matrix4 hmd = vr->GetHMDPose();
+
+		//auto tem = this->local_players[0]->cam;
+		//this->local_players[0]->UpdateView();
+		//this->camera = this->local_players[0]->cam;
+		//this->local_players[0]->cam = tem;
+
+		CCamera lc, rc;
+		lc = *cam;
+		rc = *cam;
+
+		Matrix4 eye;
+		vr->GetLeftEyeVMatrix(eye);
+
+		//Model * View * Projection the sequence is Model * View * Eye^-1 * Projection.  
+		lc._matrix = lc._matrix*hmd*eye;// this->local_players[0]->cam._matrix *hmd;// hmd * eye;
+		vr->GetLeftEyePMatrix(lc._projectionMatrix);
+
+		vr->GetRightEyeVMatrix(eye);
+		rc._matrix = rc._matrix*hmd*eye; //rc._matrix*(hmd*eye.Inverse());// this->local_players[0]->cam._matrix *hmd;// hmd * eye;
+		vr->GetRightEyePMatrix(rc._projectionMatrix);
+
+		//Actually render
+		vr->BindEye(Left_Eye);
+		//this->RenderScene(lc, this->local_players[0]);
+		ProcessQueue(&lc, commands);
+		//r.Render(cam, renderer, r.process_renderables_);
+
+		vr->BindEye(Right_Eye);
+		ProcessQueue(&rc, commands);
+		//this->RenderScene(rc, this->local_players[0]);
+		//r.Render(cam, renderer, r.process_renderables_);
+
+
+		renderer->SetRenderTarget(0, &ot);
+
+		renderer->SetViewport(&ovp);
+	}
+	else
+	{
+		renderer->Clear(clear_color.a, clear_color.r,
+			clear_color.g, clear_color.b);
+	}
+
+	// todo lets just lock on renderables and remove mutable state from them
+
+	//ok, now render our viewports set by the game
+	
+	ProcessQueue(cam, commands);
+	//add new render function that runs on a queue
+	//r.Render(cam, renderer, r.process_renderables_);
+
+	//now draw guis if we arent in VR
+	for (size_t i = 0; i < process_queue_.size(); i++)
+	{
+		process_queue_[i]();
+	}
+	process_queue_.clear();
+	process_renderables_.clear();
+
+	EndFrame();
+}
+
+//okay, todo lets make this take in a list of renderables instead of having it stored inside
+void Renderer::Render(CCamera* cam, 
+	CRenderer* render,
+	const std::vector<Renderable*>& renderables,
+	bool regenerate_shadowmaps)//if the renderable's parent is the same as the cameras, just render nicely
+{
+	RPROFILE("RendererProcess");
+	GPUPROFILEGROUP("Renderer::Render");
+
+	renderer->ApplyCam(cam);
+
+	//this->rcount = renderables.size();
+
+	//camera contains local camera angles
+	Parent* parent = cam->parent;
+	this->cur_parent = cam->parent;
+
+	//lets generalize some more and get multiple parent hierachys working
+
+	//compute both local and global camera matrices
+	Matrix4 localview = cam->_matrix;
+	Matrix4 globalview;
+	if (parent)
+	{
+		globalview = parent->mat*localview;//todo, handle stacks of parents
+		Parent* current = parent->parent;
+		while (false)//current)
+		{
+			globalview *= parent->mat;
+			current = parent->parent;
+		}
+	}
+	else
+	{
+		globalview = localview;
+	}
 
 	this->rdrawn = 0;
 
@@ -562,13 +772,20 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 	this->current_matrix = 0;
 
+	//maybe for vr I should use the union of the two frustums so I only have to cull once? though, this only works with non fancy headsets (< 180o FoV). So I need to support
+	//	both cases
+
+	//	supposedly for the culling I just need to move the camera back (interpupilary distance/2.0)*M[0,0] and center it between the eyes
+
+	//okay, need to do this cull and submit stage in the main thread atm lets separate this from the rest of the function
+
 	/* 1. CULL AND SUBMIT STAGE*/
-	for (unsigned int i = 0; i < this->renderables.size(); i++)//loop through all renderables to calculate sorting factors
+	/*for (unsigned int i = 0; i < renderables.size(); i++)//loop through all renderables to calculate sorting factors
 	{
-		Renderable* r = this->renderables[i];
+		Renderable* r = renderables[i];
 		if (r->parent != cam->parent || r->aabb.max.x == FLT_MAX || cam->BoxInFrustum(r->aabb))//frustum cull
 		{
-			/* 2. Calculate sort indices! */
+			// 2. Calculate sort indices! 
 			Vec3 pos = r->matrix.GetTranslation();
 			if (r->parent == cam->parent)
 				r->dist = cam->_pos.distsqr(pos);
@@ -584,13 +801,13 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 			int old_size = renderqueue.size();
 			r->Render(cam, &renderqueue);
 
-			//update matrices
-			/*for (int i = old_size; i < renderqueue.size(); i++)
+			//save matrices for the new things
+			for (int i = old_size; i < renderqueue.size(); i++)
 			{
-			auto ptr = &this->matrix_block[this->current_matrix++];
-			renderqueue[i].transform = ptr;
-			*ptr = renderqueue[i].source->matrix;
-			}*/
+				auto ptr = &this->matrix_block[this->current_matrix++];
+				renderqueue[i].transform = ptr;
+				*ptr = renderqueue[i].source->matrix;
+			}
 
 			//update predraw hooks
 			if (r->updated == false)
@@ -601,7 +818,9 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 				r->updated = true;
 			}
 		}
-	}
+	}*/
+	GenerateQueue(cam, renderables, renderqueue);
+
 	//add more shadow settings
 
 	//should be in a flat tree like layout, parents always need to come before children
@@ -611,15 +830,22 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	Matrix4 shadowMapViewProjs[SHADOW_MAP_MAX_CASCADE_COUNT];
 
 	//clear resources
-	ID3D11ShaderResourceView* stuff[4] = { 0 };
-	renderer->context->PSSetShaderResources(1, shadowSplits, stuff);
+	//ID3D11ShaderResourceView* stuff[4] = { 0 };
+	//renderer->context->PSSetShaderResources(1, shadowSplits, stuff);
 
 	//could try and only draw this every other frame on low end computers
-	this->RenderShadowMaps(shadowMapViewProjs, cam);
+	//also need to figure out what to do with this since it looks at renderables for drawing shadows
+	//maybe also need to do this on the main thread?
+	// todo make this run more in the rendering thread
+	if (regenerate_shadowmaps || rendered_shadows_ == false)
+	{
+		this->RenderShadowMaps(shadowMapViewProjs, cam, renderables);
+		rendered_shadows_ = true;
+	}
 
 	/* 3. Sort by distance and shader *///need to also sort by shader/texture, especially for shadows
-	{
-		PROFILE("SortRenderables");
+	/*{
+		PROFILE("SortRenderCommands");
 		std::sort(renderqueue.begin(), renderqueue.end(),
 			[](const RenderCommand& a, const RenderCommand& b)
 		{
@@ -632,10 +858,10 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 
 			return a.dist < b.dist;
 		});
-	}
+	}*/
 
 	//setup vars for shadows
-	if (this->shadows_)
+	/*if (this->shadows_)
 	{
 		for (int li = 0; li < shadowSplits; li++)
 			renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
@@ -644,17 +870,6 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		renderer->context->PSSetSamplers(3, 1, &this->shadowSampler_linear);
 		//renderer->context->PSSetSamplers(3, 1, &this->shadowSampler);
 	}
-
-	//sort the lights by size so that largest lights get picked
-	//todo how to handle this
-	/*std::sort(this->lights.begin(), this->lights.end(), [](const Light& a, const Light& b)
-	{
-		return a.radius > b.radius;
-	});*/
-
-	//ok, lets be dumb and update materials here
-	for (auto ii : IMaterial::GetList())
-		ii.second->Update(renderer);
 
 	//update common constant buffers
 	{
@@ -667,33 +882,24 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 		data->matrices[1] = shadowMapTexXforms[1];
 		data->matrices[2] = shadowMapTexXforms[2];
 		renderer->context->Unmap(this->shadow_buffer, 0);
-	}
+	}*/
 
 	/* 4. RENDER OBJECTS */
 	GPUPROFILE2("Execute Commands");
-	//todo why am I doing this
-	renderer->SetFilter(10, FilterMode::Point);
-
-	render->SetMatrix(VIEW_MATRIX, &globalview);
 
 	//execute all of the render commands
 	this->ProcessQueue(cam, renderqueue);
 
-	//removing old lights
-	// TODO replace this
-	/*for (int i = 0; i < this->lights.size(); i++)
-	{
-		if (this->lights[i].lifetime > 0)
-		{
-			this->lights[i].lifetime -= 0.01;//hack
-			if (this->lights[i].lifetime < 0)
-				this->lights.erase(this->lights.begin() + i--);
-		}
-	}*/
+
+	// Debug draw
+
+	render->SetMatrix(VIEW_MATRIX, &globalview);
 
 	//debug draw shadow frustums
 	if (showdebug == 0)
+	{
 		mv[SHADOW_MAP_MAX_CASCADE_COUNT * 2] = cam->_matrix;
+	}
 	if (showdebug > 1)
 	{
 		renderer->ApplyCam(cam);
@@ -718,6 +924,24 @@ void Renderer::Render(CCamera* cam, CRenderer* render)//if the renderable's pare
 	}
 }
 
+void Renderer::EndFrame()
+{
+	rendered_shadows_ = false;
+
+	//remove old lights, todo maybe this functionality shouldnt be in the renderer
+	for (int i = 0; i < temporary_lights_.size(); i++)
+	{
+		temporary_lights_[i].second -= 0.016;//hack, assumes 60fps, todo changeme
+		if (temporary_lights_[i].second < 0)
+		{
+			temporary_lights_[i].first.Remove();
+			temporary_lights_[i].first.light_ = 0;
+			temporary_lights_.erase(temporary_lights_.begin() + i--);
+		}
+	}
+}
+
+
 
 void Renderer::SetupMaterials(const RenderCommand* rc)
 {
@@ -728,7 +952,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 {
 	//clean this up ok
 	//todo, only do this if the rc source has changed
-	auto matrix = &rc->source->matrix;// rc->transform;
+	auto matrix = rc->transform;// &rc->source->matrix;// rc->transform;
 
 	auto wVP = (*matrix)*renderer->view*renderer->projection;
 	wVP.MakeTranspose();
@@ -837,10 +1061,10 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		}
 	}
 
-	if (shader->buffers.skinning.buffer && rc->mesh.OutFrames)
+	if (shader->buffers.skinning.buffer && rc->mesh.skinning_frames)
 	{
 		D3D11_MAPPED_SUBRESOURCE cb;
-		int bones = static_cast<ObjModel*>(rc->source)->data->num_joints;
+		int bones = rc->mesh.num_frames;
 		renderer->context->Map(shader->buffers.skinning.buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
 		struct mdata2
 		{
@@ -848,7 +1072,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		};
 		auto data = (mdata2*)cb.pData;
 		for (int i = 0; i < bones; i++)
-			data->mats[i] = rc->mesh.OutFrames[i];
+			data->mats[i] = rc->mesh.skinning_frames[i];
 		renderer->context->Unmap(shader->buffers.skinning.buffer, 0);
 
 		if (shader_changed)
@@ -871,13 +1095,48 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 
 	r->Render(cam, &renderqueue);
 
+	std::vector<Matrix4> matrices(renderqueue.size());
+
+	for (int i = 0; i < renderqueue.size(); i++)
+	{
+		matrices[i] = renderqueue[i].source->matrix;
+		renderqueue[i].transform = &matrices[i];
+	}
+
 	renderer->ApplyCam(cam);
 
 	this->ProcessQueue(cam, renderqueue);
 }
 
-void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& renderqueue)
+void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>& renderqueue)
 {
+	//setup vars for shadows
+	if (this->shadows_)
+	{
+		for (int li = 0; li < shadowSplits; li++)
+			renderer->SetPixelTexture(li + 1, this->shadowMapViews[li]);
+
+		//setup shadow filters
+		renderer->context->PSSetSamplers(3, 1, &this->shadowSampler_linear);
+		//renderer->context->PSSetSamplers(3, 1, &this->shadowSampler);
+	}
+
+	//update common constant buffers
+	{
+		//update shadow constant buffer
+		D3D11_MAPPED_SUBRESOURCE cb;
+		renderer->context->Map(this->shadow_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &cb);
+		auto data = (shadow_data*)cb.pData;
+		data->splits = Vec4(this->shadowMappingSplitDepths);
+		data->matrices[0] = shadowMapTexXforms[0];
+		data->matrices[1] = shadowMapTexXforms[1];
+		data->matrices[2] = shadowMapTexXforms[2];
+		renderer->context->Unmap(this->shadow_buffer, 0);
+	}
+
+	//todo why am I doing this
+	renderer->SetFilter(10, FilterMode::Point);
+
 	//compute both local and global camera matrices
 	Parent* parent = this->cur_parent;
 	Matrix4 localview = cam->_matrix;
@@ -893,7 +1152,9 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		}
 	}
 	else
+	{
 		globalview = localview;
+	}
 
 	Parent* last = 0;//keeps track of what view matix is active
 	IMaterial* lastm = (IMaterial*)-1;
@@ -902,8 +1163,10 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		const RenderCommand& rc = renderqueue[i];
 		//lets fill this with all the data we need, so we dont need
 		//to go back to the source
-
-		if (last != rc.source->parent)//do I need to change the current view matrix?
+		//need a better way to handle parents
+		// todo fix this being commented out for hacking
+		//	also lets stop storing matrices in the renderer
+		/*if (last != rc.source->parent)//do I need to change the current view matrix?
 		{
 			if (rc.source->parent == parent)//object has same parent as the camera
 			{
@@ -918,11 +1181,11 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 				renderer->SetMatrix(VIEW_MATRIX, &temp);
 			}
 			else//object is in global space and has no parent
-			{
+			{*/
 				renderer->SetMatrix(VIEW_MATRIX, &globalview);
-			}
+			/*}
 			last = rc.source->parent;
-		}
+		}*/
 
 		//apply material settings
 		bool shaderchange = false;
@@ -953,8 +1216,7 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//todo: get enemy spawning system and deaths
 		//todo: perhaps allow more lights if necessary
 
-
-		for (auto i : lights)
+		/*for (auto i : lights)
 		{
 			Light& light = light_pool_[i];
 			if (num_lights < 6)
@@ -973,13 +1235,13 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 					found_lights[num_lights++] = light;
 				}
 			}
-		}
+		}*/
 
 		auto oldshdr = renderer->shader;
 
 		//ok, need to select right shader for skinned / nonskinned
 		//todo: also do shader LOD here
-		rc.material->ApplyShader(rc.mesh.OutFrames, num_lights);
+		rc.material->ApplyShader(rc.mesh.skinning_frames, num_lights);
 		shaderchange = (oldshdr != renderer->shader);
 
 		//apply per instance values
@@ -1023,7 +1285,9 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 		//		shouldnt always be setting input layout
 		//	    and primitive topology
 		if (rc.mesh.ib == 0)
+		{
 			renderer->DrawPrimitive(PT_TRIANGLELIST, 0, rc.mesh.primitives);
+		}
 		else
 		{
 			rc.mesh.ib->Bind();//make this more data oriented, can definately remove this indirection
@@ -1035,10 +1299,14 @@ void Renderer::ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& rend
 	}
 }
 
-void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
+void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam, const std::vector<Renderable*>& renderables)
 {
 	if (this->shadows_ == false)
 		return;
+
+	//clear resources
+	ID3D11ShaderResourceView* stuff[4] = { 0 };
+	renderer->context->PSSetShaderResources(1, shadowSplits, stuff);
 
 	PROFILE("DrawShadows");
 	GPUPROFILE("RenderShadows");
@@ -1073,7 +1341,7 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam)
 
 		//need to make list of all renderables in frustum
 		std::vector<Renderable*> locals;
-		for (auto ren : this->renderables)
+		for (auto ren : renderables)
 		{
 			//submit to render queue
 			if (ren->castsShadows && ren->parent == cam->parent)
@@ -1152,3 +1420,11 @@ LightReference Renderer::AddLight(const Light& data)
 
 	return lr;
 }
+
+void Renderer::AddTemporaryLight(const Light& data, float lifetime)
+{
+	//auto lr = AddLight(data);
+
+	//temporary_lights_.push_back(std::pair<LightReference, float>(lr, lifetime));
+}
+

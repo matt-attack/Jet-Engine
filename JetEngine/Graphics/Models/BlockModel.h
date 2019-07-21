@@ -49,7 +49,7 @@ public:
 	virtual void Load(bool fast = false);
 
 #ifndef MATT_SERVER
-	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue);
+	virtual void Render(const CCamera* cam, std::vector<RenderCommand>* queue);
 	//virtual void Render(CRenderer* render);
 #endif
 	void Release();

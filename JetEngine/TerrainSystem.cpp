@@ -42,7 +42,7 @@ public:
 		renderer->context->PSSetSamplers(5, 1, &this->textureSampler);
 		renderer->context->PSSetShaderResources(0, 1, &nmap->texture_rv);
 
-		renderer->SetCullmode(CULL_CW);
+		renderer->SetCullmode(CULL_CCW);//oops im ignoring my cullmode
 
 		renderer->EnableAlphaBlending(false);
 
@@ -176,9 +176,9 @@ public:
 		}
 	}
 
-	int GetLOD(CCamera* cam)
+	int GetLOD(const CCamera* cam)
 	{
-		float dist = GetDistanceToBox(x, y, size*TerrainScale, cam->_pos.x, cam->_pos.z);// sqrt((cam->_pos.x - (this->x+this->size/2))*(cam->_pos.x - (this->x+this->size/2)) + (cam->_pos.z - (this->y+this->size/2))*(cam->_pos.z - (this->y+this->size/2)));
+		float dist = GetDistanceToBox(x, y, size*TerrainScale, cam->_pos.x, cam->_pos.y);// sqrt((cam->_pos.x - (this->x+this->size/2))*(cam->_pos.x - (this->x+this->size/2)) + (cam->_pos.z - (this->y+this->size/2))*(cam->_pos.z - (this->y+this->size/2)));
 		//float d = (float)16/(float)size;
 		//d /= dist;
 
@@ -229,7 +229,7 @@ public:
 		return lod + LODboost;
 	}
 
-	void Render(float* heights, CCamera* cam, int p = 0)
+	void Render(float* heights, const CCamera* cam, int p = 0)
 	{
 		//frustum cull
 		if (cam->BoxInFrustum(this->aabb) == false)
@@ -252,8 +252,8 @@ public:
 				//allocate
 				this->patch = new TerrainPatch(x, y, size);
 				this->patch->GenerateVertices(heights);
-				this->aabb.min.y = this->patch->miny;
-				this->aabb.max.y = this->patch->maxy;
+				this->aabb.min.z = this->patch->min_height_;
+				this->aabb.max.z = this->patch->max_height_;
 
 
 				//this is bad, but oh well
@@ -295,7 +295,7 @@ public:
 		}
 	}
 
-	void Render(float* heights, CCamera* cam, std::vector<RenderCommand>* queue, int p = 0)
+	void Render(float* heights, const CCamera* cam, std::vector<RenderCommand>* queue, int p = 0)
 	{
 		//frustum cull
 		//if (cam->BoxInFrustum(this->aabb) == false)
@@ -318,8 +318,8 @@ public:
 				//allocate
 				this->patch = new TerrainPatch(x, y, size);
 				this->patch->GenerateVertices(heights);
-				this->aabb.min.y = this->patch->miny;
-				this->aabb.max.y = this->patch->maxy;
+				this->aabb.min.z = this->patch->min_height_;
+				this->aabb.max.z = this->patch->max_height_;
 
 				this->tile_id = this->root->RenderTile(this->roads, x / (TexturePatchSize * TerrainScale), y / (TexturePatchSize * TerrainScale), size / TexturePatchSize);
 
@@ -558,7 +558,7 @@ HeightmapTerrainSystem::~HeightmapTerrainSystem()
 
 std::function<void()> render;
 int flipper = 0;
-void HeightmapTerrainSystem::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+void HeightmapTerrainSystem::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	//submit for each structure
 	auto grid = this->grid[this->temp_player];
@@ -577,11 +577,12 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 	//GPUPROFILE("Terrain Render");
 
 	this->temp_player = player;
-
+	// todo need to stage these things into the renderer
 	//generate normals if not done
 	if (!done)
 	{
 		done = true;
+		// todo need to queue this stuff up to be done on the render thread
 		this->GenerateNormals();
 
 		Viewport oldvp;
@@ -656,7 +657,8 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 	this->my_material->nmap = this->nmap;
 
 
-	r.AddRenderable(this);
+	r.add_renderables_.push_back(this);
+	//r.AddRenderable(this);
 
 	flipper++;
 	//todo: later move the update outside of render
@@ -673,6 +675,7 @@ void HeightmapTerrainSystem::Render(CCamera* cam, int player)
 
 int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem::RoadData>& roads, int x, int y, int scale, int id)
 {
+	//return 0;
 	std::swap(x, y);
 
 	//remove it from the list
@@ -1255,7 +1258,7 @@ void HeightmapTerrainSystem::Load(float terrain_scale)
 	this->material->SetDefine("TERRAIN_SCALE", std::to_string(TerrainScale));
 	this->material->SetDefine("TILE_SCALE", std::to_string(32 / TexturePatchSize));//todo what is this random 32?
 	this->material->filter = FilterMode::Linear;
-	this->material->cullmode = CULL_CW;
+	this->material->cullmode = CULL_CCW;
 	this->my_material = mt;
 
 	terrain_mat = this->material;
@@ -1427,14 +1430,14 @@ float HeightmapTerrainSystem::GetHeightAndNormal(float x, float y, Vec3& normal)
 		//Vec3 n = va.cross(vb);
 
 		//lets try using 3 positions to get the tangent vectors, then getting the normal from these
-		Vec3 va = Vec3(TerrainScale, s01 - s00, 0);
-		Vec3 vb = Vec3(0, s10 - s00, TerrainScale);
-		normal = vb.cross(va).getnormal();
+		Vec3 va = Vec3(TerrainScale, 0, s01 - s00);
+		Vec3 vb = Vec3(0, TerrainScale, s10 - s00);
+		normal = va.cross(vb).getnormal();
 		float res = biLinearInterpolation(s00, s01, s10, s11, x - ix, y - iy);
 		//renderer->DrawNormals(Vec3(x, res, y), va, normal, vb);
 		return res;
 	}
-	normal = Vec3(0, 1, 0);
+	normal = Vec3(0, 0, 1);
 	return 0;
 }
 

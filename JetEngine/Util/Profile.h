@@ -117,8 +117,8 @@ void ProfileExit();//saves profile information to file
 #define PROFILE(name) StackProfile stackPrOf(name, _ReturnAddress())
 #define RPROFILE(name) StackProfile stackPrOf(name, 0)
 
-#define GPUPROFILE(name) StackProfileGPU stackPrOf2(name)
-#define GPUPROFILE2(name) StackProfileGPU stackPrOf22(name)
+#define GPUPROFILE(name) ;//StackProfileGPU stackPrOf2(name)
+#define GPUPROFILE2(name) ;//StackProfileGPU stackPrOf22(name)
 
-#define GPUPROFILEGROUP(name) StackProfileGPU stackPrOfe2(name, true)
+#define GPUPROFILEGROUP(name) ;//StackProfileGPU stackPrOfe2(name, true)
 #endif

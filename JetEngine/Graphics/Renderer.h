@@ -22,6 +22,7 @@ const unsigned int SHADOW_MAP_SIZE = 1024;
 //add settings for shadows and a settings menu/cvars
 
 #include <queue>
+#include <thread>
 
 class ID3D11SamplerState;
 class ID3D11Texture2D;
@@ -33,13 +34,48 @@ class CShader;
 class IMaterial;
 class LightReference;
 
+#include <mutex>
+#include <condition_variable>
+
+class Semaphore {
+public:
+	Semaphore(int count_ = 0)
+		: count(count_)
+	{
+	}
+
+	inline void notify() {
+		std::unique_lock<std::mutex> lock(mtx);
+		count++;
+		//cout << "thread " << tid << " notify" << endl;
+		//notify the waiting thread
+		cv.notify_one();
+	}
+	inline void wait() {
+		std::unique_lock<std::mutex> lock(mtx);
+		while (count == 0) {
+			//cout << "thread " << tid << " wait" << endl;
+			//wait on the mutex until notify is called
+			cv.wait(lock);
+			//cout << "thread " << tid << " run" << endl;
+		}
+		count--;
+	}
+private:
+	std::mutex mtx;
+	std::condition_variable cv;
+	int count;
+};
+
 class Renderer
 {
 	friend class LightReference;
 	friend class IMaterial;
 	//have several lists of renderables
 public:
-	std::vector<Renderable*> renderables;
+
+	Semaphore renderable_lock_;
+	Semaphore start_lock_;
 private:
 	
 	// Shadow shaders
@@ -65,8 +101,8 @@ private:
 	float shadowMapDepthBias;
 	Vec3 dirToLight;
 
-	void CalcShadowMapSplitDepths(float *outDepths, CCamera* camera, float maxdist);
-	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, CCamera* cam, std::vector<Renderable*>* objs, int id);
+	void CalcShadowMapSplitDepths(float *outDepths, const CCamera* camera, float maxdist);
+	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, const CCamera* cam, std::vector<Renderable*>* objs, int id);
 
 	Parent* cur_parent;
 
@@ -75,6 +111,8 @@ private:
 public:
 	int current_matrix;
 	Matrix4 matrix_block[2000];//todo: allocate these on heap
+
+	std::vector<Renderable*> add_renderables_, process_renderables_;
 
 public:
 	int rcount;
@@ -99,26 +137,22 @@ public:
 		float radius;//distance for spot lights
 		float angle;//in degrees for spot lights
 		Vec3 direction;//for spot lights
-
-		//if this is set to < 0 the light lifetime is unmanaged by the renderer
-		float lifetime;
 	};
 
 private:
 
 	HierarchicalGrid light_grid_;
 	ObjectPool<Light> light_pool_;
+
+	std::vector<std::pair<LightReference, float>> temporary_lights_;
 public:
 
 	//need to come up with light datastructure, quadtree ? cant be searching n lights every time
 
 	LightReference AddLight(const Light& data);
 
-	/*void RemoveLight(Light* l)
-	{
-		light_quadtree_.remove(l);
-		light_pool_.free(l);
-	}*/
+	// takes into account lifetimes, 0 = one frame only
+	void AddTemporaryLight(const Light& data, float lifetime);
 
 	Renderer();
 
@@ -126,24 +160,24 @@ public:
 
 	void Cleanup();
 
-	void AddRenderable(Renderable* renderable)
+	/*void AddRenderable(Renderable* renderable)
 	{
 		renderable->updated = false;
 		this->renderables.push_back(renderable);
-	}
+	}*/
+
+	// Does a threaded render 
+	void ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color);
+
+	void GenerateQueue(const CCamera* cam, const std::vector<Renderable*>& renderable, std::vector<RenderCommand>& renderqueue);
 
 	//this renders all the given renderables from the given view
-	void Render(CCamera* cam, CRenderer* render);
+	void Render(CCamera* cam, CRenderer* render, const std::vector<Renderable*>& renderables, bool regenerate_shadowmaps = false);
 
 	//draws a single renderable
 	void Render(CCamera* cam, Renderable* r);
 
 	void RenderShadowMap(int id, std::vector<Renderable*>* objs, const Matrix4& viewProj);
-
-	void Finish()//clear all renderables
-	{
-		this->renderables.clear();
-	}
 
 	void EnableShadows(bool yn)
 	{
@@ -182,11 +216,20 @@ public:
 		this->sun_light = color;
 	}
 
+	bool rendered_shadows_ = false;
+	void EndFrame();
+
+	// things to run after rendering
+	std::vector<std::function<void()>> add_queue_, process_queue_;
+
+	// things to run before rendering
+	std::vector<std::function<void()>> add_prequeue_, process_prequeue_;
+
 private:
 	//common constant buffers
 	ID3D11Buffer* shadow_buffer;
 
-	void ProcessQueue(CCamera* cam, const std::vector<RenderCommand>& renderqueue);
+	void ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>& renderqueue);
 
 	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed, const Light* lights);
 
@@ -194,7 +237,8 @@ private:
 
 	inline void SetupMaterials(const RenderCommand* rc);
 
-	inline void RenderShadowMaps(Matrix4* shadowMapViewProjs, CCamera* cam);
+	inline void RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam,
+		const std::vector<Renderable*>& renderables);
 };
 
 extern Renderer r;
@@ -260,7 +304,8 @@ public:
 		r.light_grid_.Remove(light_index_, rect);
 
 		//deallocate light
-		throw 7;
+#undef _free_dbg
+		r.light_pool_.free(light_);
 	}
 };
 

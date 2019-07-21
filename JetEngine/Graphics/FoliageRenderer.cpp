@@ -36,6 +36,7 @@ Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 
 	auto ii = model;
 	Matrix4 view = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));// cam._matrix.LookAtLHMatrix(cam._pos, Vec3(0, 0, 0), Vec3(0, 1, 0));//cam._matrix;
+	//Matrix4 view = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(0, 1, 0), Vec3(1, 0, 0));
 	float objsNear = FLT_MAX, objsFar = -FLT_MAX;
 	float objsXmin = FLT_MAX;
 	float objsXmax = -FLT_MAX;
@@ -66,10 +67,10 @@ Vec2 FoliageRenderer::GetImpostorSize(ObjModel* model)
 }
 
 
-TreeBillboard* FoliageRenderer::AddTree(float fx, float z)
+TreeBillboard* FoliageRenderer::AddTree(float inx, float iny)
 {
-	int x = (int)fx / tile_size;
-	int y = (int)z / tile_size;
+	int x = (int)inx / tile_size;
+	int y = (int)iny / tile_size;
 
 	this->tiles[x + y * this->tiles_dim].data.push_back({});
 	return &this->tiles[x + y * this->tiles_dim].data.back();
@@ -135,27 +136,27 @@ void FoliageRenderer::Init(HeightmapTerrainSystem* system)
 			int model = rand() % this->tree_models.size();
 
 			float x = 0 + xd * ix + 0.0f*xd;
-			float z = 0 + yd * iy + 0.0f*yd;
+			float y = 0 + yd * iy + 0.0f*yd;
 			x += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*xd)))) - 0.4f*xd;
-			z += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*yd)))) - 0.4f*yd;
+			y += (static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.8f*yd)))) - 0.4f*yd;
 			//data[i].position += (Vec3::random(0.8*xd, 0, 0.8*yd) - Vec3(0.4*xd,0,0.4*yd));// +Vec3(512, 0, 512);
-			float y = system->GetHeightAndNormal(x, z, normal);
-			if (normal.y < 0.9)
+			float z = system->GetHeightAndNormal(x, y, normal);
+			if (normal.z < 0.9)
 				continue;
 
-			float noise = noise2d_perlin(x / 300.0, z / 300.0, 84652, 3, 0.9);
+			float noise = noise2d_perlin(x / 300.0, y / 300.0, 84652, 3, 0.9);
 			if (noise < 0.3)
 				continue;
 
-			auto tree = this->AddTree(x, z);
+			auto tree = this->AddTree(x, y);
 			tree->position.x = x;
-			tree->position.z = z;
 			tree->position.y = y;
+			tree->position.z = z;
 			float h = 1.0 + (rand() % 100) / 100.0f;
 			float w = 1.0 + (rand() % 100) / 100.0f;
 			tree->size.x = this->tree_models[model].dimensions.x*w;
 			tree->size.y = this->tree_models[model].dimensions.y*h;
-			tree->position.y += tree->size.y / 2;
+			tree->position.z += tree->size.y / 2;
 			tree->normal = normal;
 			tree->color = COLOR_ARGB(255, rand() % 155 + 100, rand() % 155 + 100, 0);
 			tree->type = model;
@@ -200,11 +201,6 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 {
 	PROFILE("foliage render");
 
-	ID3D11DeviceContext* dc = renderer->context;
-
-	//todo: need to generate normal map in each and make sure to render at fullbright
-	this->GenerateImpostors();
-
 	float fade_distance = 100;
 
 	//ok, now lets be super dumb
@@ -218,7 +214,7 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 		int y = this->tiles[i].y + this->tiles[i].size / 2;
 		int index = i;// x + y*this->tiles_dim;
 
-		if (((x - cam._pos.x) * (x - cam._pos.x) + (y - cam._pos.z)*(y - cam._pos.z)) < dist*dist)
+		if (((x - cam._pos.x) * (x - cam._pos.x) + (y - cam._pos.y)*(y - cam._pos.y)) < dist*dist)
 		{
 			//render whats inside
 			for (int i = 0; i < this->tiles[index].data.size(); i++)
@@ -249,16 +245,19 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 					float hf = this->tiles[index].data[i].size.x / model.dimensions.x;
 					float vf = this->tiles[index].data[i].size.y / model.dimensions.y;
 
-					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, model.dimensions.y*vf / 2, 0);
+					Vec3 offset = this->tiles[index].data[i].position - Vec3(0, 0, model.dimensions.y*vf / 2);
 					rm->aabb = rm->data->joints[0].bb;
 					rm->aabb.min *= 2;
 					rm->aabb.max *= 2;
 					rm->aabb.max += offset;
 					rm->aabb.min += offset;
-					rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::TranslationMatrix(offset);
+					//rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*/*Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)**/Matrix4::TranslationMatrix(offset);
+					rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*Matrix4::TranslationMatrix(offset);
+
 					rm->color = this->tiles[index].data[i].color;
 					//add color here
-					r.AddRenderable(rm);
+					r.add_renderables_.push_back(rm);
+					//r.AddRenderable(rm);
 				}
 			}
 		}
@@ -267,6 +266,9 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 
 void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 {
+	//todo: need to generate normal map in each and make sure to render at fullbright
+	this->GenerateImpostors();
+
 	ID3D11DeviceContext* dc = renderer->context;
 	ID3D11Buffer* b = 0;
 	renderer->context->PSSetConstantBuffers(2, 1, &b);
@@ -311,10 +313,9 @@ void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 	renderer->DepthWriteEnable(false);
 	//renderer->SetDepthRange(0.0f, 0.0f);
 
-	this->shader_shadow->BindIL(&this->vd);// GetVertexDeclaration(22));
+	this->shader_shadow->BindIL(&this->vd);
 	renderer->EnableAlphaBlending(true);
 	renderer->context->GSSetShader(this->shader_shadow->gshader, 0, 0);
-	//dc->IASetInputLayout(renderer->GetVertexDeclaration(15));
 	renderer->SetPrimitiveType(PrimitiveType::PT_POINTS);
 	//dc->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
@@ -331,7 +332,7 @@ void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 			continue;
 
 		//todo, check if visible too
-		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x + tile_size, 20000, tiles[i].y + tile_size))) == false)
+		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, tiles[i].y, 0), Vec3(tiles[i].x + tile_size, tiles[i].y + tile_size, 20000))) == false)
 			continue;
 
 		//actually render it
@@ -381,7 +382,7 @@ void FoliageRenderer::RenderImpostors(CRenderer* renderer, const CCamera& cam)
 			continue;
 
 		//todo, check if visible too
-		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, 0, tiles[i].y), Vec3(tiles[i].x + tile_size, 20000, tiles[i].y + tile_size))) == false)
+		if (cam.BoxInFrustum(AABB(Vec3(tiles[i].x, tiles[i].y, 0), Vec3(tiles[i].x + tile_size, tiles[i].y + tile_size, 20000))) == false)
 			continue;
 
 		//actually render it
@@ -401,6 +402,10 @@ void FoliageRenderer::GenerateImpostors()
 	{
 		this->normals = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_UNKNOWN, true);
 		this->texture = CRenderTexture::Create(2048, 2048, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT, true);
+	}
+	else
+	{
+		return;
 	}
 	//else if (hack++ > 1)
 	//	return;
@@ -426,7 +431,8 @@ void FoliageRenderer::GenerateImpostors()
 	//todo need to not have to do lighting in this, lets export normals
 	r.SetAmbient(ambient, ambient);
 
-	cam._matrix = Matrix4::BuildMatrix(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1));//
+	//cam._matrix = Matrix4::BuildMatrix(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1));//
+	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
 
 	if (this->tree_models.size() > 8)
@@ -434,7 +440,7 @@ void FoliageRenderer::GenerateImpostors()
 //	lets do a quick pass through render system to clean up any junk in lighting and figure out how to delete a material
 	//	also make sure we dont leak directx objects literally everywhere
 	//render each view
-	for (int m = 0; m < this->tree_models.size(); m++)
+	for (size_t m = 0; m < this->tree_models.size(); m++)
 	{
 		auto model = this->tree_models[m].model;
 		for (int i = 0; i < 8; i++)
@@ -456,12 +462,13 @@ void FoliageRenderer::GenerateImpostors()
 			//	also need to make sure the normals are properly oriented the same as they will be in view space
 			// todo ok, I need to actually move the camera around the object or else the normals just get rotated, either that or I need to
 			//	skip rotating just the normals;
-			model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
+			//model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
+			model->matrix = Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
 
 
 			auto ii = model;
 			AABB aabb = ii->aabb;
-			aabb.Transform(Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f));
+			//aabb.Transform(Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f));
 			Matrix4 view = cam._matrix;
 			float objsNear = FLT_MAX, objsFar = -FLT_MAX;
 			float objsXmin = FLT_MAX;
@@ -511,6 +518,7 @@ void FoliageRenderer::GenerateImpostors()
 					IMaterial* mat = new IMaterial((std::string(mats[i]->name) + "_raw").c_str(), mats[i]);
 					model->mesh_materials[i] = mat;
 					model->mesh_materials[i]->SetDefine("RAW_OUTPUT", "true");
+					model->mesh_materials[i]->SetDefine("IMPOSTOR", "true");
 					this->tree_models[m].impostor_mats[i] = mat;
 					mat->Update(renderer);
 				}

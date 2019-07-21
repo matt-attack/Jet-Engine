@@ -94,6 +94,16 @@ void CLoadingState::Update(CGame* game, float dTime)
 
 void CLoadingState::Draw(CGame* game, float dTime)
 {
+	game->SetClearColor(1.0, 1.0, 1.0, 1.0);
+	r.add_queue_.push_back([this]() {
+		progress.setpos(renderer->xres / 2 - 200, renderer->yres / 2 - 25);
+
+		this->SetProgress(this->thread_data->percent);
+		this->SetStatus(this->thread_data->status);
+
+		desktop.renderall(0, 0, 0, 0, 1);
+	});
+	return;
 	progress.setpos(renderer->xres/2 - 200,renderer->yres/2 - 25);
 	
 	this->SetProgress(this->thread_data->percent);
@@ -119,8 +129,10 @@ void CLoadingState::Draw(CGame* game, float dTime)
 
 		vr->Clear(1, 0, 0, 0.1);
 
-		r.AddRenderable(&floor);
-		r.AddRenderable(&gui);
+		r.add_renderables_.push_back(&floor);
+		r.add_renderables_.push_back(&gui);
+		//r.AddRenderable(&floor);
+		//r.AddRenderable(&gui);
 
 		CCamera lc, rc;
 		Matrix4 hmd = vr->GetHMDPose();
@@ -137,12 +149,12 @@ void CLoadingState::Draw(CGame* game, float dTime)
 		vr->GetRightEyePMatrix(rc._projectionMatrix);
 
 		vr->BindEye(Left_Eye);
-		r.Render(&lc, vr);
+		//r.Render(&lc, vr);
 
 		vr->BindEye(Right_Eye);
-		r.Render(&rc, vr);
+		//r.Render(&rc, vr);
 
-		r.Finish();
+		//r.Finish();
 		renderer->SetRenderTarget(0, &ot);
 	}
 

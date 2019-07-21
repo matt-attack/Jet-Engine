@@ -20,27 +20,26 @@ struct vert
 
 class DecalManager
 {
-	CVertexBuffer vb;
+	CVertexBuffer vb_;
 	std::vector<vert> verts;//have a map of vectors? one for each material?
-	int maxcount; int oldest;
-	CShader* shader;
-	CTexture* texture;
+	int max_count_; int oldest_;
+	CShader* shader_;
+	CTexture* texture_;
+	bool dirty_;
+	std::mutex mutex_;
 
 public:
-	int count;
-	DecalManager(int limit)
+	int count_;
+	DecalManager(int limit) : dirty_(false), shader_(0), texture_(0), count_(0), max_count_(limit), oldest_(0)
 	{
-		count = 0;
-		maxcount = limit;
-		oldest = 0;
 		//shader = resources.get_shader("Shaders/model_diffuse.shdr");//renderer->CreateShader(4, "Shaders/model_diffuse.shdr");
 		//texture = resources.get_unsafe<CTexture>("decals.png");
 	}
 
 	~DecalManager()
 	{
-		if (texture)
-			texture->Release();
+		if (texture_)
+			texture_->Release();
 	}
 
 	void AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal);
@@ -49,8 +48,8 @@ public:
 
 	void Clear()
 	{
-		this->oldest = 0;
-		this->count = 0;
+		oldest_ = 0;
+		count_ = 0;
 		this->verts.clear();
 	}
 };

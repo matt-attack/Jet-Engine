@@ -27,6 +27,8 @@ class CGameState;
 
 extern CRenderer* renderer;
 
+#include "../JetEngine/camera.h"
+
 //your game should derive this and override the virtuals
 class CGame
 {
@@ -284,7 +286,37 @@ public:
 
 	bool keyboard[256];
 
+
+	// todo maybe abstract this into another class?
+	// also need to handle VR where the Render thread gets this transform
+	CCamera add_camera_, process_camera_;
+	void SetView(const CCamera* cam)
+	{
+		add_camera_ = *cam;
+	}
+
+	Vec4 add_clear_color_;
+	Vec4 process_clear_color_;
+	void SetClearColor(float a, float r, float g, float b)
+	{
+		add_clear_color_ = { a, r, g, b };
+	}
+
+	bool needs_resize_ = false;
+	int xres_, yres_;
+	void Resize(int x, int y)
+	{
+		// tell the render thread to perform a resize
+		xres_ = x;
+		yres_ = y;
+		needs_resize_ = true;
+	}
+
+	void RenderLoop();
+
 private:
+	std::thread render_thread_;
+
 	// the stack of states
 	std::vector<CGameState*> states;
 	std::vector<CGameState*> to_delete;

@@ -2451,37 +2451,34 @@ bool CRenderer::WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p
 	Matrix4f worl;
 	Viewport viewport;
 	worl.MakeIdentity();
-	this->ApplyCam(cam);// cam->applyCam();
+	this->ApplyCam(cam);
 	this->GetViewport(&viewport);
-	if (cam != 0)
+
+	Vec3 in;
+	if (cam->parent == 0 && parent)
+		in = parent->LocalToWorld(pos);//invmat*Vec3(ply->position.x, ply->position.y + 1.0f, ply->position.z);
+	else if (cam->parent == parent)
+		in = pos;
+	else if (cam->parent && parent)
 	{
-		Vec3 in;
-		if (cam->parent == 0 && parent)
-			in = parent->LocalToWorld(pos);//invmat*Vec3(ply->position.x, ply->position.y + 1.0f, ply->position.z);
-		else if (cam->parent == parent)
-			in = pos;
-		else if (cam->parent && parent)
-		{
-			in = parent->LocalToWorld(pos);//invmat*Vec3(ply->position.x, ply->position.y + 1.0f, ply->position.z);
-			in = cam->parent->WorldToLocal(in);//cam->parent->mat*in;
-		}
-		else if (cam->parent)
-		{
-			in = cam->parent->WorldToLocal(pos);
-		}
-
-		if (cam->SphereInFrustum(&in, 1.0f))
-		{
-			out = in.toscreen(&in, &viewport, &projection, &view, &worl);
-
-			return true;
-		}
-
-		out = in.toscreen(&in, &viewport, &projection, &view, &worl);
-
-		//not on screen
-		return false;
+		in = parent->LocalToWorld(pos);//invmat*Vec3(ply->position.x, ply->position.y + 1.0f, ply->position.z);
+		in = cam->parent->WorldToLocal(in);//cam->parent->mat*in;
 	}
+	else if (cam->parent)
+	{
+		in = cam->parent->WorldToLocal(pos);
+	}
+
+	if (cam->SphereInFrustum(&in, 1.0f))
+	{
+		out = in.toscreen(&in, &viewport, &projection, &view, &worl);
+		return true;
+	}
+
+	out = in.toscreen(&in, &viewport, &projection, &view, &worl);
+
+	//not on screen
+	return false;
 }
 
 void CRenderer::DrawIcon(int x, int y, int size, int id, COLOR color)
@@ -2873,18 +2870,6 @@ void CRenderer::DrawBoundingBox(const Vec3 min, const Vec3 max)//Vec3* ObjectBou
 	this->SetDepthRange(0, 1);
 }
 
-//lets cheat, and just add all of the beams to render to a list and render last
-struct Beam
-{
-	Vec3 start, end;
-	float size;
-	int color;
-	//CCamera* cam;
-	Vec3 cam_pos;
-};
-
-std::vector<Beam> beams;
-
 int i = 0;
 void CRenderer::FlushDebug()
 {
@@ -2893,6 +2878,7 @@ void CRenderer::FlushDebug()
 	//renderer->SetMatrix(WORLD_MATRIX, &temp);
 	//renderer->SetMatrix(VIEW_MATRIX, &this->view);
 	debugs.lock();
+
 	int size = debugs.size();
 	for (auto ii = debugs.begin(); ii != debugs.end(); ii++)
 	{
@@ -2901,14 +2887,20 @@ void CRenderer::FlushDebug()
 		if (c.type == 0)
 			this->DrawBoundingBox(c.b, c.color);
 		else
-			beams.push_back({ c.start, c.end, 2, (int)c.color, this->cam_pos });// this->DrawBeam(this->cam_pos, c.start, c.end, 2, c.color);
+		{
+			beam_mutex_.lock();
+			beams_.push_back({ c.start, c.end, 2, (int)c.color, this->cam_pos });// this->DrawBeam(this->cam_pos, c.start, c.end, 2, c.color);
+			beam_mutex_.unlock();
+		}
 #endif
 	}
+
 	if (i++ == 20)//5 frame persistance
 	{
 		i = 0;
 		debugs.clear();
 	}
+
 	debugs.unlock();
 
 	//renderer->SetDepthRange(0,1);
@@ -2917,8 +2909,17 @@ void CRenderer::FlushDebug()
 CTexture* beamtex = 0;
 void CRenderer::DrawBeams()
 {
-	if (beams.size() == 0)
+	beam_mutex_.lock();
+	if (beams_.size() == 0)
+	{
+		beam_mutex_.unlock();
 		return;
+	}
+
+	// copy the beams for rendering
+	std::vector<Beam> beams_cpy = std::move(beams_);
+	beams_.clear();
+	beam_mutex_.unlock();
 
 	if (beamtex == 0)
 		beamtex = resources.get_unsafe<CTexture>("Laser.png");
@@ -2959,7 +2960,8 @@ void CRenderer::DrawBeams()
 	auto mat = (Matrix4::Identity()*this->view*this->projection).Transpose();
 	passthrough->buffers.wvp.UploadAndSet(&mat, sizeof(mat));
 
-	for (auto beam : beams)
+	// todo use fewer draw calls later
+	for (auto beam : beams_cpy)
 	{
 		Vec3 major = beam.end - beam.start;
 		Vec3 minor;
@@ -2998,13 +3000,14 @@ void CRenderer::DrawBeams()
 
 		this->context->Draw(4, 0);
 	}
-	beams.clear();
 }
 
 void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float size, unsigned int color)
 {
-	beams.push_back({ start, end, size, (int)color, cam->_pos });
-	return;
+	beam_mutex_.lock();
+	beams_.push_back({ start, end, size, (int)color, cam->_pos });
+	beam_mutex_.unlock();
+	/*return;
 	Vec3 dir = (start - end).getnormal();
 	Vec3 right = cam->GetForward().cross(dir).getnormal();
 	if (cam->GetForward().dot(dir) < 0.05f)
@@ -3053,7 +3056,7 @@ void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float
 	this->EnableAlphaBlending(true);
 	CVertexBuffer vb;
 	vb.Data(ObjectBound, 24 * 4, 24);
-	// vb.SetVertexDeclaration(this->GetVertexDeclaration(3/*2*/));
+	// vb.SetVertexDeclaration(this->GetVertexDeclaration(3));
 
 	this->shader->BindIL(&vb.vd);
 
@@ -3072,7 +3075,7 @@ void CRenderer::DrawBeam(CCamera* cam, const Vec3& start, const Vec3& end, float
 
 	this->current_pt = PT_TRIANGLESTRIP;
 	this->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	this->context->Draw(4, 0);
+	this->context->Draw(4, 0);*/
 }
 
 void CRenderer::SetBlendMode(BlendMode mode)

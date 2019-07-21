@@ -17,8 +17,8 @@ float TerrainScale = 1.0;
 
 TerrainPatch::TerrainPatch(int wx, int wy, int size) : wx(wx), wy(wy), size(size)
 {
-	miny = -100000;
-	maxy = 100000;
+	min_height_ = -100000;
+	max_height_ = 100000;
 	LoD = -1;
 }
 
@@ -688,15 +688,15 @@ void TerrainPatch::Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>
 	RenderCommand rc;
 	rc.mesh.ib = &this->ibuffer;
 	rc.mesh.vb = &this->vbuffer;
-	rc.mesh.OutFrames = 0;
+	rc.mesh.skinning_frames = 0;
 	rc.mesh.num_indices = ibuffer.size / 2;
 	rc.mesh.primitives = ibuffer.size / 6;
 	rc.material = terrain_mat;
 	rc.alpha = false;
 	rc.source = static_cast<Renderable*>(root);
 	rc.material_instance.extra = 0;
-	rc.position = Vec3(this->wx + PatchSize / 2, (this->maxy + this->miny) / 2, this->wy + PatchSize / 2);
-	rc.radius = max(TerrainScale*(this->maxy - this->miny)/2, PatchSize*TerrainScale);
+	rc.position = Vec3(this->wx + PatchSize / 2, this->wy + PatchSize / 2, (max_height_ + min_height_) / 2);
+	rc.radius = max(TerrainScale*(max_height_ - min_height_)/2, PatchSize*TerrainScale);
 	
 	queue->push_back(rc);
 }
@@ -737,18 +737,18 @@ void TerrainPatch::GenerateVertices(float* heights)
 		{
 			auto v = &data[Vertex(x, y)];
 			v->x = x*(size / PatchSize)*TerrainScale + wx;
-			v->z = y*(size / PatchSize)*TerrainScale + wy;
-			if (v->z == 2048 * TerrainScale || v->x == 2048 * TerrainScale)
-				v->y = 10;
+			v->y = y*(size / PatchSize)*TerrainScale + wy;
+			if (v->y == 2048 * TerrainScale || v->x == 2048 * TerrainScale)
+				v->z = 10;
 			else
-				v->y = heights[((int)(v->z / TerrainScale)) * 2048 + ((int)(v->x / TerrainScale))];//(float)(noise2d_perlin(v->x/26, v->z/26, 123456789, 2, 0.4)*8.0);//y + wy;//height I guess
+				v->z = heights[((int)(v->y / TerrainScale)) * 2048 + ((int)(v->x / TerrainScale))];//(float)(noise2d_perlin(v->x/26, v->z/26, 123456789, 2, 0.4)*8.0);//y + wy;//height I guess
 
 			v->u = tuCoordinate;
 			v->v = tvCoordinate;
-			if (v->y < min)
-				min = v->y;
-			if (v->y > max)
-				max = v->y;
+			if (v->z < min)
+				min = v->z;
+			if (v->z > max)
+				max = v->z;
 
 			//increment the tu texture coordinate by the increment value and increment the index by one.
 			tuCoordinate += incrementValue;
@@ -772,8 +772,8 @@ void TerrainPatch::GenerateVertices(float* heights)
 			tvCount = 0;
 		}
 	}
-	this->maxy = max;
-	this->miny = min;
+	max_height_ = max;
+	min_height_ = min;
 
 #ifdef USE_SKIRTS
 	//do the 4 corners, because they are wierd

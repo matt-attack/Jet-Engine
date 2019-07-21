@@ -39,7 +39,7 @@ class TerrainPatch
 	int wx, wy;//world x and y positions
 	
 public:
-	float miny, maxy;
+	float min_height_, max_height_;//max and min heights
 
 	int LoD;
 	TerrainPatch(int wx, int wy, int size);

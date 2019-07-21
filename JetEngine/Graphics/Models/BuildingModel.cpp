@@ -471,7 +471,7 @@ void BuildingModel::MakeFlatModel(int blockid, float scale)
 	this->verts = 12;
 };
 
-void BuildingModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+void BuildingModel::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	RenderCommand rc;
 	rc.alpha = this->material->alpha;
@@ -481,7 +481,7 @@ void BuildingModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	rc.mesh.ib = 0;
 	rc.mesh.primitives = this->verts;
 	rc.mesh.vb = this->vb;
-	rc.mesh.OutFrames = 0;
+	rc.mesh.skinning_frames = 0;
 	rc.source = this;
 	queue->push_back(rc);
 }

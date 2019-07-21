@@ -178,6 +178,15 @@ enum Blend
 	InvDestColor,// = D3DBLEND_INVDESTCOLOR,
 };
 
+//lets cheat, and just add all of the beams to render to a list and render last
+struct Beam
+{
+	Vec3 start, end;
+	float size;
+	int color;
+	Vec3 cam_pos;
+};
+
 #ifdef USEOPENGL
 struct _VertexElement
 {
@@ -294,6 +303,10 @@ public:
 	Matrix4 world, view, projection;
 
 private:
+
+	// todo beam rendering should probably be a different class
+	std::mutex beam_mutex_;
+	std::vector<Beam> beams_;
 
 	CShader* passthrough = 0;
 	CShader* unlit_textured = 0;

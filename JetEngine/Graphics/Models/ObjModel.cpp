@@ -392,7 +392,7 @@ void ObjModel::UpdateAnimations()
 	}
 }
 
-void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
+void ObjModel::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 {
 	if (this->animate)
 		this->type = RenderableType::Skinned;
@@ -406,13 +406,14 @@ void ObjModel::Render(CCamera* cam, std::vector<RenderCommand>* queue)
 	rc.dist = this->dist;
 	rc.source = this;
 	if (this->animate)
-		rc.mesh.OutFrames = this->OutFrames;
+		rc.mesh.skinning_frames = this->OutFrames;
 	else
-		rc.mesh.OutFrames = 0;
+		rc.mesh.skinning_frames = 0;
 	rc.mesh.vb = &this->data->vbt;// vb;
 	rc.material_instance.color = this->color;
 	rc.position = this->matrix.GetTranslation();
 	rc.radius = this->data->bounds->radius;
+	rc.mesh.num_frames = this->data->num_joints;
 
 	for (int i = 0; i < data->num_meshes; i++)
 	{

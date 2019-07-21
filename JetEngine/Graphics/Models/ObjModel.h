@@ -80,7 +80,7 @@ public:
 	//render debug info
 	void DebugRender(CRenderer* render);
 #ifndef MATT_SERVER
-	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue);
+	virtual void Render(const CCamera* cam, std::vector<RenderCommand>* queue);
 #endif
 
 	//gets a 512x512 2d texture showing the local position and bone of each surface of the model
