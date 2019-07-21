@@ -77,6 +77,9 @@ void ResourceManager::update()
 
 			logf("[ResourceManager] Reloading file %s!\n", filename);
 
+			//delay a bit for safety
+			Sleep(100);
+
 			log("it was a loaded resource\n");
 			this->reload_lock.lock();
 			iter->second->Reload(this, filename);
@@ -137,10 +140,6 @@ void ResourceManager::release_unused()
 
 	log("[ResourceManager] Freeing Unused Resources!\n");
 
-	//std::map<std::string, Resource *> &v = m_stack[m_stack.size() - 1];
-	//std::map<std::string, Resource *>::reverse_iterator iter;
-	//todo: get this working again and remove stacks
-	//for (iter = v.rbegin(); iter != v.rend(); iter++)//need to iterate through backwards
 	std::vector<std::string> to_remove;
 	for (auto iter : this->m_stack)
 	{
@@ -175,7 +174,6 @@ CShader * ResourceManager::get_shader(const std::string &filename)//todo, optimi
 {
 	resource_lock.lock();
 	std::map<std::string, Resource *>::iterator iter;
-	//for (int i = m_stack.size() - 1; i >= 0; i--) {
 	iter = m_stack.find(filename);
 	if (iter != m_stack.end()) {
 		CShader *ptr = dynamic_cast<CShader*>(iter->second);
@@ -184,7 +182,6 @@ CShader * ResourceManager::get_shader(const std::string &filename)//todo, optimi
 		ptr->AddRef();
 		return ptr;
 	}
-	//}
 
 	resource_lock.unlock();
 

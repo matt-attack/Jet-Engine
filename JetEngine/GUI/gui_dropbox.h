@@ -54,7 +54,7 @@ public:
 
 	void SetItem(const std::string& item)
 	{
-		for (int i = 0; i < this->items.size(); i++)
+		for (size_t i = 0; i < this->items.size(); i++)
 		{
 			if (item == items[i])
 			{
@@ -109,7 +109,7 @@ public:
 			r.right += x;
 			renderer->DrawRectUV(&r, 0,1,0,50.0f/512.0f, color);
 			r.bottom = r.top + 25;
-			for (int i = 0; i < this->items.size(); i++)
+			for (size_t i = 0; i < this->items.size(); i++)
 			{
 				renderer->DrawCenteredText(r, this->items[i].c_str(), 0xFFFFFFFF);
 				r.bottom += 25;
@@ -151,7 +151,7 @@ public:
 		if (open)
 		{
 			int index = (y-40)/25;
-			if (y > 40 && index < this->items.size())
+			if (y > 40 && index < (int)this->items.size())
 			{
 				this->selected = index;
 				if (this->callback)

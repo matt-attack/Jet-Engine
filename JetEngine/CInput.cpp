@@ -112,7 +112,7 @@ float CInput::GetBindingState(int player, const Binding& binding)
 		}
 	}
 
-	if (this->controllers.size() > 0 && state == false)
+	if (this->controllers.size() > 0 && state == 0.0f)
 	{//only check controller if kb or mouse not pressed
 		if (this->controllers.size() == 1 && player == 1 && this->first_player_controller)
 			return state;

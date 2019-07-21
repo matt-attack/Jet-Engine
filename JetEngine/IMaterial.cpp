@@ -33,7 +33,8 @@ public:
 	~ShaderBuilder()
 	{
 		for (auto ii : shaders)
-			delete shaders[ii.first];
+			for (int i = 0; i < 64; i++)
+				delete shaders[ii.first][i];
 	}
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)

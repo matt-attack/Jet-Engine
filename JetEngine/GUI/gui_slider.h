@@ -83,7 +83,7 @@ public:
 				position = 1000.0;
 
 			if (callback)
-				this->callback(position);
+				this->callback((int)position);
 		}
 		return 0;
 	}
@@ -104,7 +104,7 @@ public:
 				position = 1000;
 
 			if (this->callback)
-				callback(position);
+				callback((int)position);
 		}
 
 		return 1;

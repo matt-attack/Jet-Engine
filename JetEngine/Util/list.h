@@ -72,6 +72,7 @@ public:
 		{
 			return this->ptr->m_value;
 		}
+		return T();
 	}
 };
 

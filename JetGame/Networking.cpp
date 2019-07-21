@@ -846,7 +846,7 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 	for (auto bind : input->GetBindings())
 		n.binds |= input->GetBindBool(player_id, bind.first) ? bind.first : 0;
 
-	//build the axes
+	//build the control axes
 	for (int i = 0; i < 4; i++)
 		n.axes[i] = (signed char)(input->GetAxis(player_id, i)*127.0f);
 
@@ -866,8 +866,9 @@ void ClientNetworker::CreateMove(float dT, PlayerBase* player, int player_id, CI
 
 void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 {
-	if (packetID == NetworkingPackets::AddPlayer)//add new player entity
+	if (packetID == NetworkingPackets::AddPlayer)
 	{
+		// adds a new player entity, or just updates data if its a local player that already exists
 		PlayerInitialUpdate *p = (PlayerInitialUpdate*)buffer;
 
 		PlayerBase* player = 0;
@@ -896,9 +897,9 @@ void ClientNetworker::ProcessPacket(char packetID, int size, char* buffer)
 			memcpy(ent->name, p->name, 25);//copy the name over
 		}
 	}
-	else if (packetID == NetworkingPackets::Snapshot)//important entity data packet
+	else if (packetID == NetworkingPackets::Snapshot)
 	{
-		//this is the snapshot...
+		//Apply entity snapshot data
 		NetMsg msg(size, buffer);
 
 		int oldn = this->lastSnapshotNum;
@@ -952,7 +953,7 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 			{
 				networked_field* cf = &fields[i];
 
-				if (cf->flags & FIELD_ENTITY)
+				if (cf->flags & FIELD_ENTITY)// encodes an entity by its id
 				{
 					byte* ep = (byte*)ent + cf->offset;
 					char* epd = *(char**)(ep);//this is a pointer to a CEntity, need to add an offset
@@ -985,8 +986,8 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 
 					curpos += cf->bits;//6 bytes total
 				}
-				else if (cf->flags & FIELD_QUATERNION)//really code for networking normal vectors efficiently
-				{//saves 1/2 the bandwidth
+				else if (cf->flags & FIELD_QUATERNION)//todo lets do this more efficiently
+				{
 					void* d = (byte*)ent + cf->offset;
 					Quaternion* q = *(Quaternion**)d;
 					//normalize to short
@@ -1009,7 +1010,7 @@ void EntityManagerBase::EncodeEntities(ServerSnap* snap)
 				else
 				{
 					void* d = (byte*)ent + cf->offset;
-					memcpy(data + curpos, d, cf->bits);//replace 4 with field size
+					memcpy(data + curpos, d, cf->bits);
 					curpos += cf->bits;//field size
 				}
 
@@ -1032,16 +1033,16 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 	//last = GetTickCount();
 
 	unsigned short ents = snap->entcount;
-	for (int i = 0; i < ents; i++)
+	for (int ei = 0; ei < ents; ei++)
 	{
-		ED* e = &snap->entdata[i];
+		ED* e = &snap->entdata[ei];
 		unsigned short entid = e->id;
 
-		char* data = snap->entdata[i].data;
-		networked_field* fields = (*GetDataTable())[snap->entdata[i].classid];
+		char* data = snap->entdata[ei].data;
+		networked_field* fields = (*GetDataTable())[snap->entdata[ei].classid];
 		if (fields == 0)
 		{
-			printf("Got Entity with no DataTable: %d\n", snap->entdata[i].classid);
+			printf("Got Entity with no DataTable: %d\n", snap->entdata[ei].classid);
 		}
 
 		//does the ent already exist?
@@ -1050,7 +1051,7 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 		int offset = -4;// watch out for this, it could be different
 		//todo need to calculate this
 		bool isnewent = false;
-		if (curEnt && netEnt->typeID == snap->entdata[i].classid)
+		if (curEnt && netEnt->typeID == snap->entdata[ei].classid)
 		{
 
 		}
@@ -1118,12 +1119,12 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 			}
 			else if (cf->flags & FIELD_PREDICTED && netEnt->predicted)
 			{
-				//do nothing!
+				//do nothing, unless we indicate another location to store the data
 				if (cf->data)
 				{
 					//store it in the alternative location if we have one
 					void* d = (byte*)curEnt + (int)cf->data;//offset;
-					memcpy(d, data + curpos, cf->bits);//replace 4 with field size
+					memcpy(d, data + curpos, cf->bits);
 				}
 
 				curpos += cf->bits;
@@ -1132,13 +1133,13 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 			{
 				//todo warn or error if the size is not 4
 				void* d = (byte*)curEnt + cf->offset;
-				int ov = *(int*)(d);
-				int nv = *(int*)(data + curpos);
+				int old_value = *(int*)(d);
+				int new_value = *(int*)(data + curpos);
 
-				memcpy(d, data + curpos, cf->bits);//replace 4 with field size
+				memcpy(d, data + curpos, cf->bits);
 				curpos += cf->bits;//field size
 
-				if ((ov != nv) || isnewent)
+				if ((old_value != new_value) || isnewent)
 				{
 					void(*cb)(void*) = (callback_t*)cf->data;
 					cb(curEnt);
@@ -1147,7 +1148,7 @@ void EntityManagerBase::ApplySnapshot(Snapshot* snap, Snapshot* oldsnap)
 			else
 			{
 				void* d = (byte*)curEnt + cf->offset;
-				memcpy(d, data + curpos, cf->bits);//replace 4 with field size
+				memcpy(d, data + curpos, cf->bits);
 				curpos += cf->bits;//field size
 			}
 

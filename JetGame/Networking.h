@@ -68,6 +68,7 @@ class PlayerBase;
 class EntityManagerBase
 {
 public:
+	// Basic functions you will need to implement
 	virtual int MaxID() = 0;
 	virtual int Count() = 0;
 	virtual CEntity* CreateEntity(int id) = 0;

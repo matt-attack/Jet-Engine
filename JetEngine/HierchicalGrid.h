@@ -118,7 +118,7 @@ public:
 				int id = levels_[0].data_[CellIndex(x, y, levels_[0].size_, levels_[0].resolution_)];
 				if (id >= 0)
 				{
-					for (int i = 0; i < cells_[id].contents_.size(); i++)
+					for (size_t i = 0; i < cells_[id].contents_.size(); i++)
 					{
 						out.push_back(cells_[id].contents_[i]);
 					}
@@ -158,7 +158,7 @@ private:
 	{
 		int index = levels_[0].data_[cell];
 		int found = -1;
-		for (int i = 0; i < cells_[index].contents_.size(); i++)
+		for (size_t i = 0; i < cells_[index].contents_.size(); i++)
 		{
 			int val = cells_[index].contents_[i];
 			if (val == id)

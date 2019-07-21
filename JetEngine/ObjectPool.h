@@ -66,11 +66,10 @@ public:
 		return current_max_index_++;
 	}
 
-
-
+#undef free
 	void free(T* ptr)
 	{
-		int index = ptr - pool;
+		int index = ptr - pool_;
 		if (index == current_max_index_)
 		{
 			current_max_index_--;

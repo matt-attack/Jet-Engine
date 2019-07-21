@@ -137,8 +137,8 @@ public:
 	{
 		//caps.Vibration 
 		XINPUT_VIBRATION vib;
-		vib.wLeftMotorSpeed = left * 65535.0f;
-		vib.wRightMotorSpeed = right * 65535.0f;
+		vib.wLeftMotorSpeed = static_cast<unsigned short>(left * 65535.0f);
+		vib.wRightMotorSpeed = static_cast<unsigned short>(right * 65535.0f);
 		XInputSetState(id, &vib);
 	}
 
