@@ -326,5 +326,11 @@
     <ClInclude Include="Graphics\VRRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HierchicalGrid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -86,6 +86,7 @@ void ParticleRenderer::Update(float dt)
 {
 	PROFILE("particle update");
 
+	// todo do this CPU update on another thread
 	//update the stufffs
 	for (int i = 0; i < this->num_particles; i++)
 	{
@@ -120,6 +121,8 @@ void ParticleRenderer::Update(float dt)
 
 void ParticleRenderer::AddParticle(const int color, const Vec3& pos, const Vec3& vel, const Vec2& size, float lt)
 {
+	// this is largely threadsafe between add and render at least, so I'm going to leave it for now
+	// todo we really need to make sure that this is threadsafe between adds at some point though
 	if (this->num_particles >= 1024 - 1)
 		return;
 
@@ -168,7 +171,7 @@ void ParticleRenderer::Draw(ID3D11DeviceContext* dc, const CCamera& cam)
 	//
 	//ok, use additive blending on spark particles
 	renderer->DepthWriteEnable(false);
-	this->shader->BindIL(&this->vd);// GetVertexDeclaration(22));
+	this->shader->BindIL(&this->vd);
 	
 	if (this->additive)
 		renderer->SetBlendMode(CRenderer::BlendMode::BlendAdditive);

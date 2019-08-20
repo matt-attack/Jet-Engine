@@ -79,16 +79,19 @@ void CGame::RenderLoop()
 		r.SetMaxShadowDist(this->GetSettingFloat("cl_shadow_dist"));
 
 		//ok, lets be dumb and update materials here
-		// todo maybe move this, definately need to move it for VR
 		for (auto ii : IMaterial::GetList())
 			ii.second->Update(renderer);
 
-		r.ThreadedRender(renderer, &this->process_camera_, this->process_clear_color_);
+#ifdef USE_RENDER_THREAD
+		r.ThreadedRender(renderer, &this->process_camera_, this->process_clear_color_, true);
+#else
+		r.ThreadedRender(renderer, &this->process_camera_, this->process_clear_color_, false);
+#endif
 
 		renderer->FlushDebug();
 
 		//draw stuff like message boxes
-		this->base_gui.renderall(0, 0, input.m_pos.x, input.m_pos.y, 0);
+		base_gui_.renderall(0, 0, input_.m_pos.x, input_.m_pos.y, 0);
 
 		if (showdebug)
 		{
@@ -107,7 +110,7 @@ void CGame::RenderLoop()
 			float rp = 0;
 			if (Profiles.find({ "RendererProcess", 0 }) != Profiles.end())
 				rp = Profiles[{"RendererProcess", 0}]->average;
-			renderer->DrawStats(1 / this->timer.GetFPS(), rft, mem, rp);
+			renderer->DrawStats(1 / timer_.GetFPS(), rft, mem, rp);
 
 			if (showdebug >= 2)
 				ProfilesDraw();
@@ -126,13 +129,13 @@ void CGame::RenderLoop()
 void CGame::Init(Window* window)
 {
 	//need escape and back button also to only do rising edge of controller buttons (A) for menus
-	this->input.kb = this->keyboard;
+	input_.kb = this->keyboard;
 
 	OSInit((HWND)window->GetOSHandle());
 
-	this->window = window;
+	window_ = window;
 
-	this->input.kb = this->keyboard;
+	input_.kb = this->keyboard;
 	for (int i = 0; i < 256; i++)
 		this->keyboard[i] = false;
 
@@ -167,20 +170,20 @@ void CGame::Init(Window* window)
 	});
 #endif
 
-	this->timer.Start();
+	timer_.Start();
 
 #ifdef _WIN32
-	this->input.window = (HWND)window->GetOSHandle();
+	input_.window = (HWND)window->GetOSHandle();
 #endif
 
 	this->onInit();
 
 	this->LoadSettings();//load after on init so new cvars load properly
 
-	this->m_running = true;
+	running_ = true;
 
 	showdebug = 0;
-	this->last = 0;
+	last_ = 0;
 }
 
 void CGame::Cleanup()
@@ -188,10 +191,10 @@ void CGame::Cleanup()
 	this->SaveSettings();
 
 	// cleanup the all states
-	while (!states.empty()) {
-		states.back()->Cleanup();
-		delete states.back();
-		states.pop_back();
+	while (!states_.empty()) {
+		states_.back()->Cleanup();
+		delete states_.back();
+		states_.pop_back();
 	}
 
 	SoundManager::Destroy();
@@ -206,94 +209,94 @@ void CGame::Cleanup()
 void CGame::ChangeState(CGameState* state)
 {
 	// cleanup the current state
-	if (!states.empty()) {
-		states.back()->Cleanup();
+	if (!states_.empty()) {
+		states_.back()->Cleanup();
 		//queue it to delete on next update
-		to_delete.push_back(states.back());
+		to_delete_.push_back(states_.back());
 
-		states.pop_back();
+		states_.pop_back();
 	}
 
 	// store and init the new state
-	states.push_back(state);
-	states.back()->Init(this);
+	states_.push_back(state);
+	states_.back()->Init(this);
 }
 
 void CGame::PushState(CGameState* state)
 {
 	// pause current state
-	if (!states.empty()) {
-		states.back()->Pause();
+	if (!states_.empty()) {
+		states_.back()->Pause();
 	}
 
 	// store and init the new state
-	states.push_back(state);
-	states.back()->Init(this);
+	states_.push_back(state);
+	states_.back()->Init(this);
 }
 
 void CGame::PopState()
 {
 	// cleanup the current state
-	if (!states.empty()) {
-		states.back()->Cleanup();
+	if (!states_.empty()) {
+		states_.back()->Cleanup();
 		//then delete it!
-		this->to_delete.push_back(states.back());
+		to_delete_.push_back(states_.back());
 
 		//delete states.back();
-		states.pop_back();
+		states_.pop_back();
 	}
 
 	// resume previous state
-	if (!states.empty()) {
-		states.back()->Resume();
+	if (!states_.empty()) {
+		states_.back()->Resume();
 	}
 }
 
 void CGame::HandleEvents(int messagetype, void* data1, void* data2)
 {
 	// let the state handle events
-	states.back()->HandleEvents(this, messagetype, data1, data2);
+	states_.back()->HandleEvents(this, messagetype, data1, data2);
 }
 
 void CGame::MouseEvent(int x, int y, int eventId)
 {
 	if (eventId == ENG_R_DOWN)
 	{
-		this->input.rmouse_down = true;
+		input_.rmouse_down = true;
 	}
 	else if (eventId == ENG_L_DOWN)
 	{
-		this->input.lmouse_down = true;
+		input_.lmouse_down = true;
 
-		if (this->base_gui.wm_lbuttondown(x, y))
+		if (base_gui_.wm_lbuttondown(x, y))
 			return;//dont bother passing it down if we capture it
 	}
 	else if (eventId == ENG_R_UP)
 	{
-		this->input.rmouse_down = false;
+		input_.rmouse_down = false;
 
-		if (this->base_gui.wm_rclick(x, y))
+		if (base_gui_.wm_rclick(x, y))
 			return;//dont bother passing it down if we capture it
 	}
 	else if (eventId == ENG_L_UP)
 	{
-		this->input.lmouse_down = false;
+		input_.lmouse_down = false;
 
-		if (this->base_gui.wm_lclick(x, y))
+		if (base_gui_.wm_lclick(x, y))
 			return;//dont bother passing it down, we captured it
 	}
 	else if (eventId == ENG_L_DRAG)
 	{
-		if (this->base_gui.wm_ldrag(x, y))
+		if (base_gui_.wm_ldrag(x, y))
 			return;//dont bother passing it down if we capture it
 	}
 
-	states.back()->MouseEvent(this, x, y, eventId);
+	states_.back()->MouseEvent(this, x, y, eventId);
 }
 
 void CGame::TouchEvent(int eventType, float x, float y, float dx, float dy)
 {
-	states.back()->TouchEvent(this, eventType, x, y, dx, dy);
+	states_.back()->TouchEvent(this, eventType, x, y, dx, dy);
 }
 
 void CGame::KeyboardEvent(int state, int key)
@@ -302,7 +305,7 @@ void CGame::KeyboardEvent(int state, int key)
 	{
 		this->keyboard[key] = true;
 
-		this->base_gui.wm_keydown(key);
+		base_gui_.wm_keydown(key);
 
 #ifndef ANDROID
 		if (key == VK_F3)
@@ -315,22 +318,22 @@ void CGame::KeyboardEvent(int state, int key)
 	}
 	else if (state == ENG_CHAR)
 	{
-		this->base_gui.wm_char(key);
+		base_gui_.wm_char(key);
 	}
 
-	states.back()->KeyboardEvent(this, state, key);
+	states_.back()->KeyboardEvent(this, state, key);
 }
 
 void CGame::Pause()
 {
-	if (states.size() > 0)
-		states.back()->Pause();
+	if (states_.size() > 0)
+		states_.back()->Pause();
 }
 
 void CGame::Resume()
 {
-	if (states.size() > 0)
-		states.back()->Resume();
+	if (states_.size() > 0)
+		states_.back()->Resume();
 }
 
 void CGame::Update()
@@ -340,20 +343,20 @@ void CGame::Update()
 	GPUPROFILE("FrameTime");
 
 	//delete old states
-	for (size_t i = 0; i < this->to_delete.size(); i++)
-		delete this->to_delete[i];
-	this->to_delete.clear();
+	for (size_t i = 0; i < to_delete_.size(); i++)
+		delete to_delete_[i];
+	to_delete_.clear();
 
-	this->window->ProcessMessages();
+	window_->ProcessMessages();
 
 	//update input stuff
-	this->input.Update();
+	input_.Update();
 
-	if (states.size() > 0)
+	if (states_.size() > 0)
 	{
-		auto state = states.back();
-		this->input.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
-		this->input.first_player_controller = this->GetSettingBool("cl_controller");
+		auto state = states_.back();
+		input_.DoCallbacks([this, state](int player, int bind) { state->BindPress(this, player, bind);  });
+		input_.first_player_controller = this->GetSettingBool("cl_controller");
 	}
 
 	//update settings
@@ -364,9 +367,9 @@ void CGame::Update()
 	//was using LINEAR_DISTANCE_CLAMPED
 	alDistanceModel(AL_LINEAR_DISTANCE_CLAMPED);// _CLAMPED);
 
-	this->timer.Update();
+	timer_.Update();
 
-	elapsedtime = timer.GetElapsedTime();
+	elapsedtime_ = timer_.GetElapsedTime();
 
 	resources.update();//this polls for changes in the filesystem
 
@@ -374,29 +377,30 @@ void CGame::Update()
 	this->onUpdate();
 
 	// let the state update the game
-	if (states.size() > 0)
-		states.back()->Update(this, elapsedtime);
+	if (states_.size() > 0)
+		states_.back()->Update(this, elapsedtime_);
 
-	if (states.size() > 0 && this->states.back() != this->last)//prevents rendering right after gamestate changed because update hasnt yet ran
+	if (states_.size() > 0 && states_.back() != last_)//prevents rendering right after gamestate changed because update hasnt yet ran
 	{
-		this->last = this->states.back();
+		last_ = states_.back();
 		return;
 	}
 
 	this->Draw();//render the frame
 
 	//reset input
-	input.EOFUpdate();
-	input.deltaX = 0;
-	input.deltaY = 0;
-	input.left_mouse = false;
-	input.right_mouse = false;
+	input_.EOFUpdate();
+	input_.deltaX = 0;
+	input_.deltaY = 0;
+	input_.left_mouse = false;
+	input_.right_mouse = false;
 
 	//this is a dumb not crossplatform part
 #ifdef WIN32
+	// if we lose focus, pause
 	auto res = GetFocus();
-	if (states.size() > 0 && res != this->window->GetOSHandle())
-		this->states.back()->Pause();
+	if (states_.size() > 0 && res != this->window_->GetOSHandle())
+		states_.back()->Pause();
 #endif
 }
 
@@ -406,8 +410,8 @@ void CGame::Draw()
 	// let the state draw the screen
 	{
 		GPUPROFILEGROUP("Game Render");
-		if (states.size() > 0)
-			states.back()->Draw(this, elapsedtime);
+		if (states_.size() > 0)
+			states_.back()->Draw(this, elapsedtime_);
 	}
 #ifndef USE_RENDER_THREAD
 	this->RenderLoop();
@@ -417,13 +421,16 @@ void CGame::Draw()
 
 	// theres a bit of free time here if you want to do something...
 
-	r.renderable_lock_.wait();// wait for the renderer to start before moving to the next frame
+	{
+		PROFILE("PreRenderLock");
+		r.renderable_lock_.wait();// wait for the renderer to start before moving to the next frame
+	}
 #endif
 }
 
 CInput* CGame::GetInput()
 {
-	return &this->input;
+	return &input_;
 }
 
 void CGame::MessageBox(char* caption, char* text)
@@ -437,5 +444,5 @@ void CGame::MessageBox(char* caption, char* text)
 	m->setsize(minsize, 200);
 	m->settext(text);
 	m->setcaption(caption);
-	this->base_gui.AddWindow(m);
+	base_gui_.AddWindow(m);
 }

@@ -167,7 +167,7 @@ public:
 	}*/
 
 	// Does a threaded render 
-	void ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color);
+	void ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color, bool notify = true);
 
 	void GenerateQueue(const CCamera* cam, const std::vector<Renderable*>& renderable, std::vector<RenderCommand>& renderqueue);
 

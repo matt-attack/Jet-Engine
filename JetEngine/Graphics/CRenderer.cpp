@@ -2446,7 +2446,7 @@ void CRenderer::DrawStats(float frametime, float realframetime, unsigned int mem
 
 #include "../camera.h"
 #include "Renderable.h"
-bool CRenderer::WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* parent)
+bool CRenderer::WorldToScreen(const CCamera* cam, const Vec3 pos, Vec3& out, Parent* parent)
 {
 	Matrix4f worl;
 	Viewport viewport;

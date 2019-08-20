@@ -1,5 +1,6 @@
 #include "SplashScreen.h"
 #include <JetEngine/Graphics/CRenderer.h>
+#include <JetEngine/Graphics/Renderer.h>
 
 SplashScreenState::SplashScreenState(void)
 {
@@ -27,9 +28,12 @@ void SplashScreenState::Update(CGame* game, float dTime)
 
 void SplashScreenState::Draw(CGame* game, float dTime)
 {
-	//renderer->Clear(1.0f, 0.0f, 0.0f, 0.0f);
+	r.add_queue_.push_back([this]()
+	{
+		renderer->Clear(1.0f, 0.0f, 0.0f, 0.0f);
 
-	//renderer->DrawCenteredText(Rect(0, renderer->yres, 0, renderer->xres), "Powered by Jet Engine", COLOR_ARGB(255, 255, 255, 255));
+		renderer->DrawCenteredText(Rect(0, renderer->yres, 0, renderer->xres), "Powered by Jet Engine", COLOR_ARGB(255, 255, 255, 255));
 
-	//desktop.renderall(0, 0, 0, 0, 1);
+		desktop.renderall(0, 0, 0, 0, 1);
+	});
 }

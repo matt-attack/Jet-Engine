@@ -524,7 +524,7 @@ public:
 	void DrawBoundingBox(const Vec3 min, const Vec3 max);
 
 	//returns false if the position is onscreen
-	bool WorldToScreen(CCamera* cam, const Vec3 pos, Vec3& out, Parent* p = 0);
+	bool WorldToScreen(const CCamera* cam, const Vec3 pos, Vec3& out, Parent* p = 0);
 
 	//stats stuff
 	struct RendererStats

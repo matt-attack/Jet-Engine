@@ -32,11 +32,6 @@ extern CRenderer* renderer;
 //your game should derive this and override the virtuals
 class CGame
 {
-	//the time since the last frame started, used for dt
-	float elapsedtime;
-
-	//the window that this game is running in
-	Window* window;
 public:
 	void Init(Window* window);
 	virtual void onInit() = 0;
@@ -62,8 +57,8 @@ public:
 #undef min
 	int GetPlayerCount()
 	{
-		int controllers = this->input.controllers.size();
-		int num_players = (this->input.first_player_controller ? controllers : controllers + 1);
+		int controllers = input_.controllers.size();
+		int num_players = (input_.first_player_controller ? controllers : controllers + 1);
 		if (num_players == 0)
 			num_players = 1;
 		return num_players > 4 ? 4 : num_players;
@@ -72,15 +67,15 @@ public:
 	//gets the controller id for a given player number
 	int GetPlayerControllerId(int player)
 	{
-		return this->input.first_player_controller ? player + 1 : player;
+		return input_.first_player_controller ? player + 1 : player;
 	}
 
 private:
 	void Draw();
 
 public:
-	bool Running() { return m_running; }
-	void Quit() { m_running = false; }
+	bool Running() { return running_; }
+	void Quit() { running_ = false; }
 
 	std::map<int, Setting> settings;
 	void LoadSettings()
@@ -273,7 +268,7 @@ public:
 
 	void Dialog(gui_window* window)
 	{
-		this->base_gui.AddWindow(window);
+		base_gui_.AddWindow(window);
 	}
 	void MessageBox(char* caption, char* text);
 
@@ -281,29 +276,21 @@ public:
 
 	Window* GetWindow()
 	{
-		return this->window;
+		return window_;
 	}
 
 	bool keyboard[256];
 
-
-	// todo maybe abstract this into another class?
-	// also need to handle VR where the Render thread gets this transform
-	CCamera add_camera_, process_camera_;
 	void SetView(const CCamera* cam)
 	{
 		add_camera_ = *cam;
 	}
 
-	Vec4 add_clear_color_;
-	Vec4 process_clear_color_;
 	void SetClearColor(float a, float r, float g, float b)
 	{
 		add_clear_color_ = { a, r, g, b };
 	}
 
-	bool needs_resize_ = false;
-	int xres_, yres_;
 	void Resize(int x, int y)
 	{
 		// tell the render thread to perform a resize
@@ -318,23 +305,36 @@ private:
 	std::thread render_thread_;
 
 	// the stack of states
-	std::vector<CGameState*> states;
-	std::vector<CGameState*> to_delete;
+	std::vector<CGameState*> states_;
+	std::vector<CGameState*> to_delete_;
 
 	//used for a latch to make sure theres an update before a render
-	CGameState* last;
+	CGameState* last_;
 
 	//the input manager
-	CInput input;
+	CInput input_;
 
 	//overarching gui_manager for messageboxes
-	gui_window base_gui;
+	gui_window base_gui_;
 
 	//timer for calculating dt and framerate
-	CTimer timer;
+	CTimer timer_;
 
-	bool m_running;
-	bool m_fullscreen;
+	//the time since the last frame started, used for dt
+	float elapsedtime_;
+
+	//the window that this game is running in
+	Window* window_;
+
+	// Threaded render stuff (some of this should probably move)
+	CCamera add_camera_, process_camera_;
+	Vec4 add_clear_color_;
+	Vec4 process_clear_color_;
+	bool needs_resize_ = false;
+	int xres_, yres_;
+
+	bool running_;
+	bool fullscreen_;
 };
 
 #endif

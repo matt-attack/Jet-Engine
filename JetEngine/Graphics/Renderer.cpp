@@ -605,7 +605,7 @@ void Renderer::GenerateQueue(const CCamera* cam, const std::vector<Renderable*>&
 
 #include "VRRenderer.h"
 
-void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color)
+void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color, bool notify)
 {
 	// swap buffers
 	std::swap(add_queue_, process_queue_);
@@ -638,7 +638,10 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	rendered_shadows_ = true;
 
 	//unlock
-	renderable_lock_.notify();
+	if (notify)
+	{
+		renderable_lock_.notify();
+	}
 
 	VRRenderer* vr = dynamic_cast<VRRenderer*>(renderer);
 
@@ -649,7 +652,6 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 		CRenderTexture ot = renderer->GetRenderTarget(0);
 		vr->Clear(clear_color.a, clear_color.r,
 			clear_color.g, clear_color.b);
-
 
 		Viewport ovp;
 		renderer->GetViewport(&ovp);

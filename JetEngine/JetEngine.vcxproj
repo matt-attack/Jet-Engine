@@ -159,6 +159,7 @@
     <ClInclude Include="GUI\gui_textbox.h" />
     <ClInclude Include="GUI\gui_vertical_scrollbar.h" />
     <ClInclude Include="GUI\gui_window.h" />
+    <ClInclude Include="HierchicalGrid.h" />
     <ClInclude Include="IMaterial.h" />
     <ClInclude Include="iqm.h" />
     <ClInclude Include="Math\AABB.h" />
@@ -169,6 +170,7 @@
     <ClInclude Include="Math\Rect.h" />
     <ClInclude Include="Math\Vector.h" />
     <ClInclude Include="ModelData.h" />
+    <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Sound\ISoundFileWrapper.h" />
     <ClInclude Include="Sound\OpenAL.h" />
