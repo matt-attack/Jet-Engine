@@ -431,9 +431,9 @@ void FoliageRenderer::GenerateImpostors()
 	//todo need to not have to do lighting in this, lets export normals
 	r.SetAmbient(ambient, ambient);
 
-	//cam._matrix = Matrix4::BuildMatrix(Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1));//
+	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 1, 0), Vec3(0, 0, 1), Vec3(1, 0, 0));//
 	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
-	//cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(1, 0, 0), Vec3(0, 1, 0));
+	cam._matrix = Matrix4::BuildMatrix(Vec3(0, 0, 1), Vec3(-1, 0, 0), Vec3(0, 1, 0));
 
 	if (this->tree_models.size() > 8)
 		throw 7;
@@ -463,7 +463,7 @@ void FoliageRenderer::GenerateImpostors()
 			// todo ok, I need to actually move the camera around the object or else the normals just get rotated, either that or I need to
 			//	skip rotating just the normals;
 			//model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
-			model->matrix = Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
+			model->matrix = Matrix4::RotationMatrixZ((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
 
 
 			auto ii = model;

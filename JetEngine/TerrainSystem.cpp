@@ -367,7 +367,7 @@ public:
 	}
 
 	char state;
-	void UpdateLOD(CCamera* cam)
+	void UpdateLOD(const CCamera* cam)
 	{
 		//todo decouple texture lod and this lod
 		if (this->northeast)
@@ -571,7 +571,7 @@ void HeightmapTerrainSystem::Render(const CCamera* cam, std::vector<RenderComman
 	}
 }
 
-void HeightmapTerrainSystem::Render(CCamera* cam, int player)
+void HeightmapTerrainSystem::Render(const CCamera* cam, int player)
 {
 	PROFILE("Terrian Render");
 	//GPUPROFILE("Terrain Render");
@@ -1470,7 +1470,9 @@ float HeightmapTerrainSystem::GetHeightAndVectors(float x, float y, Vec3& normal
 		//renderer->DrawNormals(Vec3(x, res, y), va, normal, vb);
 		return res;
 	}
-	normal = Vec3(0, 1, 0);
+	normal = Vec3(0, 0, 1);
+	xtangent = Vec3(1, 0, 0);
+	ytangent = Vec3(0, 1, 0);
 	return 0;
 }
 

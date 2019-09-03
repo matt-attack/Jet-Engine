@@ -12,7 +12,7 @@ public:
 	ITerrainSystem(void);
 	virtual ~ITerrainSystem(void);
 
-	virtual void Render(CCamera* cam, int player) = 0;
+	virtual void Render(const CCamera* cam, int player) = 0;
 };
 
 class VoxelTerrainSystem: public ITerrainSystem
@@ -78,7 +78,7 @@ public:
 
 	void GenerateNormals();
 
-	virtual void Render(CCamera* cam, int player);
+	virtual void Render(const CCamera* cam, int player);
 	virtual void Render(const CCamera* cam, std::vector<RenderCommand>* queue);
 
 	void SetHeight(int x, int y, float z);

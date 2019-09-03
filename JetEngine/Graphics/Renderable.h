@@ -191,7 +191,7 @@ public:
 
 	void SetMeshEasy(const std::string& material_name, const std::string& image_name, const EzVert* vertex, int count);
 
-	virtual void Render(CCamera* cam, std::vector<RenderCommand>* queue)
+	virtual void Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 	{
 		RenderCommand rc;
 		rc.material_instance.extra = 0;

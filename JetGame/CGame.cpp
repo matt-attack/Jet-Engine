@@ -46,6 +46,7 @@ void OSInit(HWND hWnd)
 
 #include <JetEngine/Graphics/RenderTexture.h>
 
+std::mutex render_lock;
 void CGame::RenderLoop()
 {
 #ifdef USE_RENDER_THREAD
@@ -56,6 +57,7 @@ void CGame::RenderLoop()
 #ifdef USE_RENDER_THREAD
 		r.start_lock_.wait();
 #endif
+		render_lock.lock();
 		if (this->needs_resize_)
 		{
 			//if (renderer)
@@ -123,6 +125,8 @@ void CGame::RenderLoop()
 			GPUPROFILE("Present");
 			renderer->Present();//exclude this from rft
 		}
+
+		render_lock.unlock();
 	}
 }
 
@@ -238,12 +242,17 @@ void CGame::PopState()
 {
 	// cleanup the current state
 	if (!states_.empty()) {
+		// wait for the render to stop
+		render_lock.lock();
+
 		states_.back()->Cleanup();
 		//then delete it!
 		to_delete_.push_back(states_.back());
 
 		//delete states.back();
 		states_.pop_back();
+
+		render_lock.unlock();
 	}
 
 	// resume previous state

@@ -231,7 +231,10 @@ private:
 
 	void ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>& renderqueue);
 
-	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowmats, bool shader_changed, const Light* lights);
+	inline void UpdateUniforms(const RenderCommand* rc, const CShader* shader, 
+		                       const Matrix4* shadowmats, bool shader_changed, 
+		                       const Light* lights,
+		                       const Matrix4* view, const Matrix4* projection);
 
 	inline void CalculateLighting();
 

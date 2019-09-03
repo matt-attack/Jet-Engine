@@ -610,16 +610,11 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	// swap buffers
 	std::swap(add_queue_, process_queue_);
 	std::swap(add_prequeue_, process_prequeue_);
-	std::swap(add_renderables_, process_renderables_);
 
-	// todo this is kinda dangerous, also theres a limit of 2000 matrices...
+	// okay, just to note, some things add renderables IN the preque, so wait for that before touching them
+
+	// todo fix this is kinda dangerous, also theres a limit of 2000 matrices...
 	this->current_matrix = 0;
-
-	// mark the renderables as not updated
-	for (int i = 0; i < process_renderables_.size(); i++)
-	{
-		process_renderables_[i]->updated = false;
-	}
 
 	// Run the pre-render queue
 	for (size_t i = 0; i < process_prequeue_.size(); i++)
@@ -627,6 +622,15 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 		process_prequeue_[i]();
 	}
 	process_prequeue_.clear();
+
+
+	std::swap(add_renderables_, process_renderables_);
+
+	// mark the renderables as not updated
+	for (int i = 0; i < process_renderables_.size(); i++)
+	{
+		process_renderables_[i]->updated = false;
+	}
 
 	//todo change the camera matrix for VR, and generate queues twice if the FOV is too wide
 	std::vector<RenderCommand> commands;
@@ -950,13 +954,17 @@ void Renderer::SetupMaterials(const RenderCommand* rc)
 
 }
 
-void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, const Matrix4* shadowMapTexXforms, bool shader_changed, const Light* light_list)
+
+void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, 
+	                          const Matrix4* shadowMapTexXforms, bool shader_changed, 
+	                          const Light* light_list,
+	                          const Matrix4* view, const Matrix4* projection)
 {
 	//clean this up ok
 	//todo, only do this if the rc source has changed
 	auto matrix = rc->transform;// &rc->source->matrix;// rc->transform;
 
-	auto wVP = (*matrix)*renderer->view*renderer->projection;
+	auto wVP = (*matrix)**view**projection;// renderer->view*renderer->projection;
 	wVP.MakeTranspose();
 
 	if (shader->buffers.matrices.buffer)
@@ -973,8 +981,8 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, co
 		auto data = (mdata*)cb.pData;
 		// todo fix this dumb needing to transpose literally all of this
 		data->world = matrix->Transpose();
-		data->view = renderer->view.Transpose();
-		data->projection = renderer->projection.Transpose();
+		data->view = view->Transpose();// renderer->view.Transpose();
+		data->projection = projection->Transpose();// renderer->projection.Transpose();
 		data->wvp = wVP;
 
 		renderer->context->Unmap(shader->buffers.matrices.buffer, 0);
@@ -1112,6 +1120,8 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 
 void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>& renderqueue)
 {
+	const Matrix4* view = &cam->_matrix;
+	const Matrix4* proj = &cam->_projectionMatrix;
 	//setup vars for shadows
 	if (this->shadows_)
 	{
@@ -1184,7 +1194,8 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 			}
 			else//object is in global space and has no parent
 			{*/
-				renderer->SetMatrix(VIEW_MATRIX, &globalview);
+				//renderer->SetMatrix(VIEW_MATRIX, &globalview);
+		        view = &globalview;
 			/*}
 			last = rc.source->parent;
 		}*/
@@ -1256,7 +1267,8 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 			renderer->SetPixelTexture(8, rc.material_instance.extra);
 		if (rc.material_instance.extra2)
 			renderer->SetPixelTexture(9, rc.material_instance.extra2);
-		if (renderer->shader->cbuffers.find("color") != renderer->shader->cbuffers.end())
+		auto iter = renderer->shader->cbuffers.find("color");
+		if (iter != renderer->shader->cbuffers.end())
 		{
 			unsigned int col = rc.material_instance.color;
 			if (col == 0)
@@ -1269,7 +1281,7 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 			color /= 255;
 
 			//order needs to be rgba
-			renderer->shader->cbuffers["color"].UploadAndSet(&color, 4 * 4);
+			iter->second.UploadAndSet(&color, 4 * 4);
 		}
 		else
 		{
@@ -1279,7 +1291,7 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 
 		/* execute render command */
 		CShader* shader = renderer->shader;
-		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights);
+		this->UpdateUniforms(&rc, shader, shadowMapTexXforms, shaderchange, found_lights, view, proj);
 
 		rc.mesh.vb->Bind();//maybe make this more data oriented?
 
