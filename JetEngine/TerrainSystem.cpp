@@ -103,8 +103,8 @@ public:
 		this->patch = 0;
 		this->state = 0;
 
-		this->aabb.min = Vec3(x, 0, y);
-		this->aabb.max = Vec3(x + size * TerrainScale, 1000, y + size * TerrainScale);
+		this->aabb.min = Vec3(x, y, 0);
+		this->aabb.max = Vec3(x + size * TerrainScale, y + size * TerrainScale, 1000);
 	}
 
 	~QuadTreeNode()
@@ -298,8 +298,8 @@ public:
 	void Render(float* heights, const CCamera* cam, std::vector<RenderCommand>* queue, int p = 0)
 	{
 		//frustum cull
-		//if (cam->BoxInFrustum(this->aabb) == false)
-		//	return;
+		if (cam->BoxInFrustum(this->aabb) == false)
+			return;
 
 		//renderer->DrawBoundingBox(this->aabb.min, this->aabb.max);
 
@@ -332,7 +332,7 @@ public:
 			//if (this->patch->level == 8)
 			//return;
 			//render myself
-			this->patch->Render(renderer, 0, queue, root);
+			this->patch->Render(renderer, cam, queue, root);
 		}
 	}
 
@@ -808,7 +808,7 @@ int HeightmapTerrainSystem::RenderTile(const std::vector<HeightmapTerrainSystem:
 				Vec3 p;
 				p.x = source_points[i].pos.x;
 				p.z = 0;
-				p.y = source_points[i].pos.z;
+				p.y = source_points[i].pos.y;
 
 				points.push_back(p);
 			}
@@ -1463,9 +1463,9 @@ float HeightmapTerrainSystem::GetHeightAndVectors(float x, float y, Vec3& normal
 		//Vec3 n = va.cross(vb);
 
 		//lets try using 3 positions to get the tangent vectors, then getting the normal from these
-		xtangent = Vec3(1, s01 - s00, 0).getnormal();
-		ytangent = Vec3(0, s10 - s00, 1).getnormal();
-		normal = ytangent.cross(xtangent).getnormal();
+		xtangent = Vec3(TerrainScale, 0, s01 - s00).getnormal();
+		ytangent = Vec3(0, TerrainScale, s10 - s00).getnormal();
+		normal = xtangent.cross(ytangent).getnormal();
 		float res = biLinearInterpolation(s00, s01, s10, s11, x - ix, y - iy);
 		//renderer->DrawNormals(Vec3(x, res, y), va, normal, vb);
 		return res;
@@ -1589,7 +1589,7 @@ int HeightmapTerrainSystem::AddRoad(RoadPoint* points, unsigned int count)
 	AABB bounds(100000, -100000, 100000, -100000, 100000, -100000);
 	for (int i = 0; i < count; i++)
 	{
-		Vec3 half_normal = Vec3(0, 0, 1)*(points[i].width / 2);
+		Vec3 half_normal = Vec3(0, 0, 1)*(points[i].width / 2);// todo this is probably wrong
 		//todo, need to include width
 		bounds.FitPoint(points[i].pos + half_normal);
 		bounds.FitPoint(points[i].pos - half_normal);

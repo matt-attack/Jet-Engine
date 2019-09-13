@@ -99,6 +99,6 @@ public:
 	void GenerateIndices(int lod, bool xi, bool xd, bool yi, bool yd);
 
 	void Render(CRenderer* r, CCamera* cam);
-	void Render(CRenderer* r, CCamera* cam, std::vector<RenderCommand>* queue, HeightmapTerrainSystem* root);
+	void Render(CRenderer* r, const CCamera* cam, std::vector<RenderCommand>* queue, HeightmapTerrainSystem* root);
 };
 

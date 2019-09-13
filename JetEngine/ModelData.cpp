@@ -115,7 +115,9 @@ ModelData* ModelData::load_as_resource(const std::string &path, ModelData* res)
 			if (d->default_bounds.bbmax[i] > max)
 				max = d->default_bounds.bbmax[i];
 		}
-		d->default_bounds.radius = max(abs(min), abs(max));
+		d->default_bounds.radius = max(std::abs(min), std::abs(max));
+		d->default_bounds.xyradius = max(max(std::abs(d->default_bounds.bbmin[0]), std::abs(d->default_bounds.bbmax[0])),
+			max(std::abs(d->default_bounds.bbmin[1]), std::abs(d->default_bounds.bbmax[1])));
 	}
 	else
 	{

@@ -285,18 +285,18 @@ public:
 		if (light_->type == Renderer::LightType::Point)
 		{
 			rect[0] = light_->position.x - light_->radius;
-			rect[1] = light_->position.z - light_->radius;
+			rect[1] = light_->position.y - light_->radius;
 			rect[2] = light_->position.x + light_->radius;
-			rect[3] = light_->position.z + light_->radius;
+			rect[3] = light_->position.y + light_->radius;
 		}
 		else
 		{
 			float half_radius = light_->radius * 0.5f;
 			Vec3 midpoint = light_->position + light_->direction*half_radius;
 			rect[0] = midpoint.x - half_radius;
-			rect[1] = midpoint.z - half_radius;
+			rect[1] = midpoint.y - half_radius;
 			rect[2] = midpoint.x + half_radius;
-			rect[3] = midpoint.z + half_radius;
+			rect[3] = midpoint.y + half_radius;
 		}
 	}
 

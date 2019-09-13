@@ -44,7 +44,7 @@ public:
 
 	void AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal);
 
-	void Draw();
+	void Draw(const CCamera* cam);
 
 	void Clear()
 	{

@@ -73,7 +73,7 @@ public:
 	RMesh mesh;
 	Matrix4* transform;
 	bool alpha;//use this for flags
-	float dist;//for sorting
+	float dist;//squared distance for sorting
 
 	//for lighting, a bit o a hack
 	Vec3 position;

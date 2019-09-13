@@ -71,7 +71,8 @@ void DecalManager::AddDecal(char* texture, Vec3 pos, Vec3 tangent, Vec3 normal)
 }
 
 
-void DecalManager::Draw()
+#include "../camera.h"
+void DecalManager::Draw(const CCamera* cam)
 {
 	mutex_.lock();
 	if (dirty_)
@@ -92,7 +93,7 @@ void DecalManager::Draw()
 		shader_ = resources.get_shader("Shaders/model_diffuse.shdr");
 		texture_ = resources.get_unsafe<CTexture>("decals.png");
 	}
-
+	
 	if (count_ > 0)
 	{
 		renderer->DepthWriteEnable(false);
@@ -105,7 +106,7 @@ void DecalManager::Draw()
 
 		if (shader->buffers.wvp.buffer)
 		{
-			auto wVP = Matrix4::Identity()*renderer->view*renderer->projection;
+			auto wVP = Matrix4::Identity()*cam->_matrix*cam->_projectionMatrix;// *renderer->view*renderer->projection;
 			wVP.MakeTranspose();
 
 			D3D11_MAPPED_SUBRESOURCE cb;

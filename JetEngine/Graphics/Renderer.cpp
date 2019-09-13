@@ -636,7 +636,7 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	std::vector<RenderCommand> commands;
 	GenerateQueue(cam, process_renderables_, commands);
 
-	// todo
+	// todo make this threaded as well
 	Matrix4 shadowMapViewProjs[SHADOW_MAP_MAX_CASCADE_COUNT];
 	this->RenderShadowMaps(shadowMapViewProjs, cam, process_renderables_);
 	rendered_shadows_ = true;
@@ -708,10 +708,7 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	// todo lets just lock on renderables and remove mutable state from them
 
 	//ok, now render our viewports set by the game
-	
 	ProcessQueue(cam, commands);
-	//add new render function that runs on a queue
-	//r.Render(cam, renderer, r.process_renderables_);
 
 	//now draw guis if we arent in VR
 	for (size_t i = 0; i < process_queue_.size(); i++)
@@ -1221,9 +1218,9 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 		std::vector<int> lights;
 		int rect[4];
 		rect[0] = rc.position.x - rc.radius;
-		rect[1] = rc.position.z - rc.radius;
+		rect[1] = rc.position.y - rc.radius;
 		rect[2] = rc.position.x + rc.radius;
-		rect[3] = rc.position.z + rc.radius;
+		rect[3] = rc.position.y + rc.radius;
 		this->light_grid_.Query(rect, lights);
 
 		//todo: get enemy spawning system and deaths
