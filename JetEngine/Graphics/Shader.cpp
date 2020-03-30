@@ -162,7 +162,7 @@ ID3D10Blob* CShader::CompileVS(const char* file, const char* function, void* _ma
 			D3D_COMPILE_STANDARD_FILE_INCLUDE/*include*/,
 			function, "vs_4_0", 0, 0, &vertexShaderBuffer, &errorMessage);
 	}
-
+	//todo fix ambient lighting on terrain, shadows dont match ambient
 	if (FAILED(result))
 	{
 		if (errorMessage != NULL)

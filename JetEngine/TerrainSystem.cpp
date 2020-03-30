@@ -522,8 +522,6 @@ HeightmapTerrainSystem::HeightmapTerrainSystem()
 {
 	this->castsShadows = false;
 
-	this->matrix = Matrix4::Identity();
-
 	grass = 0;
 	hmap.texture = 0;
 	hmap.texture_rv = 0;
@@ -657,7 +655,9 @@ void HeightmapTerrainSystem::Render(const CCamera* cam, int player)
 	this->my_material->nmap = this->nmap;
 
 
-	r.add_renderables_.push_back(this);
+	auto mat = r.AllocateMatrix();
+	*mat = Matrix4::Identity();
+	r.add_renderables_.push_back({ this, mat, this->aabb } );
 	//r.AddRenderable(this);
 
 	flipper++;

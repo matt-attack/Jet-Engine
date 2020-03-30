@@ -145,7 +145,7 @@ Matrix4 mv[SHADOW_MAP_MAX_CASCADE_COUNT * 2 + 1];
 void Renderer::CalcShadowMapMatrices(
 	Matrix4 &outViewProj,
 	Matrix4 &outShadowMapTexXform,
-	const CCamera* cam, std::vector<Renderable*>* objs, int id)
+	const CCamera* cam, std::vector<renderable_data>* objs, int id)
 {
 	PROFILE("CalcShadowMapMatrices");
 	Vec3 upDir = Vec3(0, 1, 0);
@@ -180,12 +180,14 @@ void Renderer::CalcShadowMapMatrices(
 				//objBB.GetAllCorners(boxCorners);
 				//ii->aabb.m
 
-				boxCorners[0] = view*ii->aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
-				boxCorners[1] = view*ii->aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
-				boxCorners[2] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.max.z);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
-				boxCorners[3] = view*Vec3(ii->aabb.min.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
-				boxCorners[4] = view*Vec3(ii->aabb.max.x, ii->aabb.min.y, ii->aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
-				boxCorners[5] = view*Vec3(ii->aabb.min.x, ii->aabb.max.y, ii->aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
+				auto& aabb = ii.aabb;
+
+				boxCorners[0] = view*aabb.max;//Vec3(ii->_position.x, ii->_position.y, ii->_position.z);
+				boxCorners[1] = view*aabb.min;//Vec3(ii->_position.x, ii->_position.y+16, ii->_position.z);
+				boxCorners[2] = view*Vec3(aabb.min.x, aabb.max.y, aabb.max.z);//Vec3(ii->_position.x, ii->_position.y, ii->_position.z+16);
+				boxCorners[3] = view*Vec3(aabb.min.x, aabb.min.y, aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z+16);
+				boxCorners[4] = view*Vec3(aabb.max.x, aabb.min.y, aabb.max.z);//Vec3(ii->_position.x+16, ii->_position.y+16, ii->_position.z+16);
+				boxCorners[5] = view*Vec3(aabb.min.x, aabb.max.y, aabb.min.z);//Vec3(ii->_position.x+16, ii->_position.y, ii->_position.z);
 
 				//TransformArray(boxCorners, _countof(boxCorners), view);
 				for (unsigned int corner_i = 0; corner_i < 6; corner_i++)
@@ -233,10 +235,10 @@ void Renderer::CalcShadowMapMatrices(
 			for (auto ii : *objs)
 			{
 #ifdef _DEBUG
-				if (ii->aabb.max.x == FLT_MAX)
+				if (ii.aabb.max.x == FLT_MAX)
 					throw "Invalid Bounding Box!";
 #endif
-				objbounds.FitAABB(ii->aabb);
+				objbounds.FitAABB(ii.aabb);
 			}
 			//renderer->DrawBoundingBox(objbounds);
 			objbounds.Transform(view);
@@ -302,7 +304,7 @@ void Renderer::CalcShadowMapMatrices(
 }
 
 
-void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Matrix4& viewProj)
+void Renderer::RenderShadowMap(int id, std::vector<renderable_data>* objs, const Matrix4& viewProj)
 {
 	renderer->EnableAlphaBlending(false);
 
@@ -325,18 +327,18 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 	Matrix4 shadowmat = viewProj.Transpose();
 	for (auto obj : *objs)
 	{
-		if (obj->type == Skinned)
+		if (obj.renderable->type == Skinned)
 			shader = renderer->SetShader(this->shader_ss);
 		else
 			shader = renderer->SetShader(this->shader_s);
 
-		Matrix4 world = (obj->matrix*shadowmat).Transpose();
+		Matrix4 world = ((*obj.matrix)*shadowmat).Transpose();// todo, I think I can just swap the order and remove the transpose
 
 		//renderer->context->PSSetShader(0, 0, 0);
 
-		if (obj->material)
+		if (obj.renderable->material)
 		{
-			if (obj->material->alphatest == false)
+			if (obj.renderable->material->alphatest == false)
 			{
 				//renderer->SetPixelTexture(0, 0);//commented out because probably not necessary
 				//renderer->context->PSSetShader(0, 0, 0);
@@ -346,11 +348,11 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 				renderer->SetShader(atest);
 
 				//need to set vertex shader too...
-				renderer->SetPixelTexture(0, obj->material->texture);
+				renderer->SetPixelTexture(0, obj.renderable->material->texture);
 				renderer->SetFilter(0, FilterMode::Linear);
 			}
 
-			if (obj->material->cullmode == CULL_NONE)
+			if (obj.renderable->material->cullmode == CULL_NONE)
 				renderer->SetCullmode(CULL_NONE);
 			else
 				renderer->SetCullmode(CULL_CCW);
@@ -373,13 +375,13 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 			renderer->context->VSSetConstantBuffers(mat.vsslot, 1, &mat.buffer);
 		}
 
-		switch (obj->type)
+		switch (obj.renderable->type)
 		{
 		case Standard:
 		{
-			obj->vb->Bind();
+			obj.renderable->vb->Bind();
 
-			int vcount = obj->vb->GetSize() / obj->vb->GetStride();
+			int vcount = obj.renderable->vb->GetSize() / obj.renderable->vb->GetStride();
 
 			renderer->DrawPrimitive(PT_TRIANGLELIST, 0, vcount);
 
@@ -387,7 +389,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 		}
 		case Skinned:
 		{
-			ObjModel* model = static_cast<ObjModel*>(obj);
+			ObjModel* model = static_cast<ObjModel*>(obj.renderable);// um, this is pretty dangerous
 
 			if (model->animate)
 			{
@@ -412,7 +414,7 @@ void Renderer::RenderShadowMap(int id, std::vector<Renderable*>* objs, const Mat
 		}
 		case Indexed:
 		{
-			ObjModel* model = static_cast<ObjModel*>(obj);
+			ObjModel* model = static_cast<ObjModel*>(obj.renderable);
 			model->data->vb.Bind();
 			for (int i = 0; i < model->data->num_meshes; i++)
 			{
@@ -511,7 +513,7 @@ void BuildShadowFrustum(CCamera* cam, CCamera& out, Vec3 _DirToLight)
 	out.BuildViewFrustum();
 }
 
-void Renderer::GenerateQueue(const CCamera* cam, const std::vector<Renderable*>& renderables, std::vector<RenderCommand>& renderqueue)
+void Renderer::GenerateQueue(const CCamera* cam, const std::vector<renderable_data>& renderables, std::vector<RenderCommand>& renderqueue)
 {
 	RPROFILE("Renderer::GenerateQueue");
 
@@ -547,11 +549,11 @@ void Renderer::GenerateQueue(const CCamera* cam, const std::vector<Renderable*>&
 
 	for (unsigned int i = 0; i < renderables.size(); i++)//loop through all renderables to calculate sorting factors
 	{
-		Renderable* r = renderables[i];
-		if (r->parent != cam->parent || r->aabb.max.x == FLT_MAX || cam->BoxInFrustum(r->aabb))//frustum cull
+		auto& r = renderables[i];
+		if (r.renderable->parent != cam->parent || r.aabb.max.x == FLT_MAX || cam->BoxInFrustum(r.aabb))//frustum cull
 		{
 			// 2. Calculate sort indices! 
-			Vec3 pos = r->matrix.GetTranslation();
+			/*Vec3 pos = r->matrix.GetTranslation();
 			if (r->parent == cam->parent)
 				r->dist = cam->_pos.distsqr(pos);
 			else if (r->parent == 0)
@@ -560,28 +562,36 @@ void Renderer::GenerateQueue(const CCamera* cam, const std::vector<Renderable*>&
 			{
 				Vec3 wpos = r->parent->LocalToWorld(r->matrix.GetTranslation());
 				r->dist = worldcampos.distsqr(wpos);
-			}
+			}*/
+			//todo why am I even filling out dist here? it should go only into the render commands
+			//maybe it should be another argument for render? we really shouldnt modify the renderable
 
 			//push children renderables to list and process
 			int old_size = renderqueue.size();
-			r->Render(cam, &renderqueue);
+			r.renderable->Render(cam, &renderqueue);
 
-			//save matrices for the new things
-			for (int i = old_size; i < renderqueue.size(); i++)
+			//this should be done on renderable adding
+			// save the next matrix, and tell others to use it
+			//auto mat = &this->matrix_block[this->current_matrix++];
+			//*mat = r->matrix;
+
+			// save matrices for the new things
+			// also set up the position
+			for (int ri = old_size; ri < renderqueue.size(); ri++)
 			{
-				auto ptr = &this->matrix_block[this->current_matrix++];
-				renderqueue[i].transform = ptr;
-				*ptr = renderqueue[i].source->matrix;
+				renderqueue[ri].transform = r.matrix;
+				renderqueue[ri].position += r.matrix->GetTranslation();
 			}
 
+			//so after fixing the above, this is the only issue remaining
 			//update predraw hooks
-			if (r->updated == false)
+			/*if (r.renderable->updated == false)
 			{
 				//if we have an entity, update it before rendering
-				if (r->entity)
-					r->entity->PreRender();
-				r->updated = true;
-			}
+				if (r.renderable->entity)
+					r.renderable->entity->PreRender();
+				r.renderable->updated = true;
+			}*/
 		}
 	}
 
@@ -612,10 +622,6 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	std::swap(add_prequeue_, process_prequeue_);
 
 	// okay, just to note, some things add renderables IN the preque, so wait for that before touching them
-
-	// todo fix this is kinda dangerous, also theres a limit of 2000 matrices...
-	this->current_matrix = 0;
-
 	// Run the pre-render queue
 	for (size_t i = 0; i < process_prequeue_.size(); i++)
 	{
@@ -623,13 +629,23 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	}
 	process_prequeue_.clear();
 
-
 	std::swap(add_renderables_, process_renderables_);
+
+	// swap allocation blocks
+	current_matrix_ = 0;
+	if (current_matrix_block_ == matrix_block_1_)
+	{
+		current_matrix_block_ = matrix_block_2_;
+	}
+	else
+	{
+		current_matrix_block_ = matrix_block_1_;
+	}
 
 	// mark the renderables as not updated
 	for (int i = 0; i < process_renderables_.size(); i++)
 	{
-		process_renderables_[i]->updated = false;
+		process_renderables_[i].renderable->updated = false;
 	}
 
 	//todo change the camera matrix for VR, and generate queues twice if the FOV is too wide
@@ -724,7 +740,7 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 //okay, todo lets make this take in a list of renderables instead of having it stored inside
 void Renderer::Render(CCamera* cam, 
 	CRenderer* render,
-	const std::vector<Renderable*>& renderables,
+	const std::vector<renderable_data>& renderables,
 	bool regenerate_shadowmaps)//if the renderable's parent is the same as the cameras, just render nicely
 {
 	RPROFILE("RendererProcess");
@@ -773,7 +789,7 @@ void Renderer::Render(CCamera* cam,
 
 	Vec3 worldcampos = globalview.GetTranslation();
 
-	this->current_matrix = 0;
+	current_matrix_ = 0;
 
 	//maybe for vr I should use the union of the two frustums so I only have to cull once? though, this only works with non fancy headsets (< 180o FoV). So I need to support
 	//	both cases
@@ -1088,7 +1104,7 @@ void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader,
 	//perhaps this should be done per renderable, not per command
 }
 
-void Renderer::Render(CCamera* cam, Renderable* r)
+void Renderer::Render(CCamera* cam, Renderable* r, const Matrix4* matrix)
 {
 	/* 4. RENDER OBJECTS */
 	//Parent* last = 0;//keeps track of what view matix is active
@@ -1106,7 +1122,7 @@ void Renderer::Render(CCamera* cam, Renderable* r)
 
 	for (int i = 0; i < renderqueue.size(); i++)
 	{
-		matrices[i] = renderqueue[i].source->matrix;
+		matrices[i] = *matrix;
 		renderqueue[i].transform = &matrices[i];
 	}
 
@@ -1310,7 +1326,7 @@ void Renderer::ProcessQueue(const CCamera* cam, const std::vector<RenderCommand>
 	}
 }
 
-void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam, const std::vector<Renderable*>& renderables)
+void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam, const std::vector<renderable_data>& renderables)
 {
 	if (this->shadows_ == false)
 		return;
@@ -1351,22 +1367,22 @@ void Renderer::RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam,
 		BuildShadowFrustum(&tmpCamera, culling, this->dirToLight);
 
 		//need to make list of all renderables in frustum
-		std::vector<Renderable*> locals;
-		for (auto ren : renderables)
+		std::vector<renderable_data> locals;
+		for (auto& ren : renderables)
 		{
 			//submit to render queue
-			if (ren->castsShadows && ren->parent == cam->parent)
+			if (ren.renderable->castsShadows && ren.renderable->parent == cam->parent)
 			{
 				//need to cull against light dir
-				if (culling.BoxInFrustumSidesAndFar(ren->aabb))
+				if (culling.BoxInFrustumSidesAndFar(ren.aabb))
 				{
-					if (ren->updated == false)
+					/*if (ren.renderable->updated == false)
 					{
 						//if we have an entity, update it before rendering
-						if (ren->entity)
-							ren->entity->PreRender();
-						ren->updated = true;
-					}
+						if (ren.renderable->entity)
+							ren.renderable->entity->PreRender();
+						ren.renderable->updated = true;
+					}*/
 					locals.push_back(ren);
 				}
 			}

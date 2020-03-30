@@ -129,8 +129,8 @@ void CLoadingState::Draw(CGame* game, float dTime)
 
 		vr->Clear(1, 0, 0, 0.1);
 
-		r.add_renderables_.push_back(&floor);
-		r.add_renderables_.push_back(&gui);
+		//r.add_renderables_.push_back(&floor);
+		//r.add_renderables_.push_back(&gui);
 		//r.AddRenderable(&floor);
 		//r.AddRenderable(&gui);
 

@@ -252,11 +252,12 @@ void FoliageRenderer::Render(CRenderer* renderer, const CCamera& cam)
 					rm->aabb.max += offset;
 					rm->aabb.min += offset;
 					//rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*/*Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)**/Matrix4::TranslationMatrix(offset);
-					rm->matrix = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*Matrix4::TranslationMatrix(offset);
+					auto mat = r.AllocateMatrix();
+					*mat = Matrix4::ScaleMatrixXYZ(hf, hf, vf)*Matrix4::TranslationMatrix(offset);
 
 					rm->color = this->tiles[index].data[i].color;
 					//add color here
-					r.add_renderables_.push_back(rm);
+					r.add_renderables_.push_back({ rm, mat, rm->aabb });
 					//r.AddRenderable(rm);
 				}
 			}
@@ -463,7 +464,7 @@ void FoliageRenderer::GenerateImpostors()
 			// todo ok, I need to actually move the camera around the object or else the normals just get rotated, either that or I need to
 			//	skip rotating just the normals;
 			//model->matrix = Matrix4::RotationMatrixX(-3.1415926535895f / 2.0f)*Matrix4::RotationMatrixY((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
-			model->matrix = Matrix4::RotationMatrixZ((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
+			Matrix4 matrix = Matrix4::RotationMatrixZ((3.14159265 / 4.0) * ((float)i));// *Matrix4::TranslationMatrix(Vec3(0, 0, -model.aabb.min.z));
 
 
 			auto ii = model;
@@ -524,7 +525,7 @@ void FoliageRenderer::GenerateImpostors()
 				}
 			}
 
-			r.Render(&cam, model);
+			r.Render(&cam, model, &matrix);
 
 			for (int i = 0; i < model->data->num_meshes; i++)
 			{

@@ -101,18 +101,32 @@ private:
 	float shadowMapDepthBias;
 	Vec3 dirToLight;
 
+	struct renderable_data
+	{
+		Renderable* renderable;
+		const Matrix4* matrix;
+		AABB aabb;
+	};
+
 	void CalcShadowMapSplitDepths(float *outDepths, const CCamera* camera, float maxdist);
-	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, const CCamera* cam, std::vector<Renderable*>* objs, int id);
+	void CalcShadowMapMatrices(Matrix4 &outViewProj, Matrix4 &outShadowMapTexXform, const CCamera* cam, std::vector<renderable_data>* objs, int id);
 
 	Parent* cur_parent;
 
 	bool shadows_;
 
 public:
-	int current_matrix;
-	Matrix4 matrix_block[2000];//todo: allocate these on heap
+	int current_matrix_;
+	Matrix4 matrix_block_1_[2000];//todo: allocate these on heap
+	Matrix4 matrix_block_2_[2000];
 
-	std::vector<Renderable*> add_renderables_, process_renderables_;
+	Matrix4* current_matrix_block_;
+	inline Matrix4* AllocateMatrix()
+	{
+		return &current_matrix_block_[current_matrix_++];
+	}
+
+	std::vector<renderable_data> add_renderables_, process_renderables_;
 
 public:
 	int rcount;
@@ -169,15 +183,15 @@ public:
 	// Does a threaded render 
 	void ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color, bool notify = true);
 
-	void GenerateQueue(const CCamera* cam, const std::vector<Renderable*>& renderable, std::vector<RenderCommand>& renderqueue);
+	void GenerateQueue(const CCamera* cam, const std::vector<renderable_data>& renderable, std::vector<RenderCommand>& renderqueue);
 
 	//this renders all the given renderables from the given view
-	void Render(CCamera* cam, CRenderer* render, const std::vector<Renderable*>& renderables, bool regenerate_shadowmaps = false);
+	void Render(CCamera* cam, CRenderer* render, const std::vector<renderable_data>& renderables, bool regenerate_shadowmaps = false);
 
 	//draws a single renderable
-	void Render(CCamera* cam, Renderable* r);
+	void Render(CCamera* cam, Renderable* r, const Matrix4* matrix);
 
-	void RenderShadowMap(int id, std::vector<Renderable*>* objs, const Matrix4& viewProj);
+	void RenderShadowMap(int id, std::vector<renderable_data>* objs, const Matrix4& viewProj);
 
 	void EnableShadows(bool yn)
 	{
@@ -241,7 +255,7 @@ private:
 	inline void SetupMaterials(const RenderCommand* rc);
 
 	inline void RenderShadowMaps(Matrix4* shadowMapViewProjs, const CCamera* cam,
-		const std::vector<Renderable*>& renderables);
+		const std::vector<renderable_data>& renderables);
 };
 
 extern Renderer r;

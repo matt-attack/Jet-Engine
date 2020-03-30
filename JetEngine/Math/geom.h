@@ -61,7 +61,7 @@ struct Matrix3x4
 	Vec4 a, b, c;
 
 	Matrix3x4() {}
-	Matrix3x4(Matrix4 &m)
+	Matrix3x4(const Matrix4 &m)
 	{
 		this->a = m.GetColumn(0);
 		this->b = m.GetColumn(1);

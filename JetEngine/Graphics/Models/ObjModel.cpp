@@ -411,7 +411,7 @@ void ObjModel::Render(const CCamera* cam, std::vector<RenderCommand>* queue)
 		rc.mesh.skinning_frames = 0;
 	rc.mesh.vb = &this->data->vbt;// vb;
 	rc.material_instance.color = this->color;
-	rc.position = this->matrix.GetTranslation();
+	rc.position = Vec3(0.0f, 0.0f, 0.0f);
 	rc.radius = this->data->default_bounds.radius;// bounds->radius;// this seems wrong sometimes...
 	rc.mesh.num_frames = this->data->num_joints;
 

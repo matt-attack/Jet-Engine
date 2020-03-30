@@ -12,7 +12,7 @@ void BasicRenderable::SetMeshEasy(const std::string& material_name, const std::s
 	if (mname.length() > 0 && mname[mname.length() - 1] != 'g')
 		mname = mname + ".png";//.tga
 
-							   //need to change this to not always be set to skinned, for example for trees
+	//need to change this to not always be set to skinned, for example for trees
 	mat->skinned = false;
 	mat->shader_name = "Shaders/ubershader.txt";
 	mat->shader_builder = true;

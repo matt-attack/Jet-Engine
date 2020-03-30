@@ -124,6 +124,7 @@ void VRRenderer::VisualizeWindow()
 
 void VRRenderer::Present()
 {
+	//todo need to move this out of here
 	this->VisualizeWindow();
 
 	if (this->chain)

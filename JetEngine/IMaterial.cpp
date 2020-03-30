@@ -39,8 +39,6 @@ public:
 
 	virtual void Reload(ResourceManager* mgr, const std::string& path)
 	{
-
-
 		if (this->path.length())
 		{
 			for (auto& shader : this->shaders)

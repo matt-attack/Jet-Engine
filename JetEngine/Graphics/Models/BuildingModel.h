@@ -10,6 +10,7 @@ class BuildingModel : public Renderable
 	//CVertexBuffer* vb;
 	int verts;
 public:
+	Matrix4 matrix;
 #ifdef ANDROID
 	GLuint obj;
 #endif

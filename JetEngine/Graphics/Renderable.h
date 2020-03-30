@@ -71,7 +71,7 @@ public:
 	IMaterial* material;
 	MaterialInstanceBlock material_instance;
 	RMesh mesh;
-	Matrix4* transform;
+	const Matrix4* transform;
 	bool alpha;//use this for flags
 	float dist;//squared distance for sorting
 
@@ -107,7 +107,7 @@ public:
 	Parent* parent;
 
 	AABB aabb;
-	Matrix4 matrix;
+	//Matrix4 matrix;
 	IMaterial* material;//use me
 
 	CVertexBuffer* vb;
@@ -143,6 +143,8 @@ public:
 	float light;
 	float depthoverride;
 	float radius;
+	
+	Matrix4 matrix;
 
 	CVertexBuffer my_vb;
 
