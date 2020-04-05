@@ -36,6 +36,7 @@ class ObjModel: public Renderable
 	friend class Renderer;
 	bool loaded;
 	bool _external;
+public:
 	Matrix3x4* OutFrames;
 	JointTransform* JointTransforms;
 

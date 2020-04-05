@@ -57,6 +57,7 @@ void CGame::RenderLoop()
 #ifdef USE_RENDER_THREAD
 		r.start_lock_.wait();
 #endif
+
 		render_lock.lock();
 		if (this->needs_resize_)
 		{
@@ -426,7 +427,8 @@ void CGame::Draw()
 	this->RenderLoop();
 #else
 	// wait for the renderer to be free so we dont get ahead of ourselves
-	r.start_lock_.notify();
+	r.start_lock_.waitUntilZero();
+	r.start_lock_.notify();// tell it we have new data
 
 	// theres a bit of free time here if you want to do something...
 

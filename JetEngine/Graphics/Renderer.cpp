@@ -18,7 +18,7 @@ struct shadow_data
 };
 
 
-Renderer::Renderer() : light_pool_(1000), light_grid_(10000,0,0), renderable_lock_(1)//start as ready
+Renderer::Renderer() : light_pool_(1000), light_grid_(10000,0,0), renderable_lock_(0)// make sure to start as not done with the renderables
 {
 	this->shadowSplits = 3;
 	this->dirToLight = Vec3(0, -1, 0);
@@ -585,13 +585,13 @@ void Renderer::GenerateQueue(const CCamera* cam, const std::vector<renderable_da
 
 			//so after fixing the above, this is the only issue remaining
 			//update predraw hooks
-			/*if (r.renderable->updated == false)
+			if (r.renderable->updated == false)
 			{
 				//if we have an entity, update it before rendering
 				if (r.renderable->entity)
 					r.renderable->entity->PreRender();
 				r.renderable->updated = true;
-			}*/
+			}
 		}
 	}
 
@@ -617,6 +617,12 @@ void Renderer::GenerateQueue(const CCamera* cam, const std::vector<renderable_da
 
 void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec4& clear_color, bool notify)
 {
+	// make sure these are empty
+	if (process_queue_.size() || process_prequeue_.size() || process_renderables_.size())
+	{
+		throw 7;
+	}
+
 	// swap buffers
 	std::swap(add_queue_, process_queue_);
 	std::swap(add_prequeue_, process_prequeue_);
@@ -735,6 +741,12 @@ void Renderer::ThreadedRender(CRenderer* renderer, const CCamera* cam, const Vec
 	process_renderables_.clear();
 
 	EndFrame();
+
+	// put here for testing, this basically makes this single threaded
+	/*if (notify)
+	{
+		renderable_lock_.notify();
+	}*/
 }
 
 //okay, todo lets make this take in a list of renderables instead of having it stored inside
@@ -960,13 +972,10 @@ void Renderer::EndFrame()
 	}
 }
 
-
-
 void Renderer::SetupMaterials(const RenderCommand* rc)
 {
 
 }
-
 
 void Renderer::UpdateUniforms(const RenderCommand* rc, const CShader* shader, 
 	                          const Matrix4* shadowMapTexXforms, bool shader_changed, 

@@ -61,6 +61,16 @@ public:
 		}
 		count--;
 	}
+
+	inline void waitUntilZero() {
+		//std::unique_lock<std::mutex> lock(mtx);
+		while (count != 0) {
+			//cout << "thread " << tid << " wait" << endl;
+			//wait on the mutex until notify is called
+			//cv.wait(lock);
+			//cout << "thread " << tid << " run" << endl;
+		}
+	}
 private:
 	std::mutex mtx;
 	std::condition_variable cv;
@@ -115,18 +125,22 @@ private:
 
 	bool shadows_;
 
-public:
+private:
 	int current_matrix_;
 	Matrix4 matrix_block_1_[2000];//todo: allocate these on heap
 	Matrix4 matrix_block_2_[2000];
 
+public:
 	Matrix4* current_matrix_block_;
 	inline Matrix4* AllocateMatrix()
 	{
 		return &current_matrix_block_[current_matrix_++];
 	}
 
-	std::vector<renderable_data> add_renderables_, process_renderables_;
+	std::vector<renderable_data> add_renderables_;
+	
+private:
+	std::vector<renderable_data> process_renderables_;
 
 public:
 	int rcount;
@@ -234,10 +248,13 @@ public:
 	void EndFrame();
 
 	// things to run after rendering
-	std::vector<std::function<void()>> add_queue_, process_queue_;
+	std::vector<std::function<void()>> add_queue_;
 
 	// things to run before rendering
-	std::vector<std::function<void()>> add_prequeue_, process_prequeue_;
+	std::vector<std::function<void()>> add_prequeue_;
+	
+private:
+	std::vector<std::function<void()>> process_queue_, process_prequeue_;
 
 private:
 	//common constant buffers

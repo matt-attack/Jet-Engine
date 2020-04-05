@@ -327,6 +327,9 @@ private:
 	Window* window_;
 
 	// Threaded render stuff (some of this should probably move)
+	// the add variables are what should be set for the next frame
+	// the processs variables are used by the thread
+
 	CCamera add_camera_, process_camera_;
 	Vec4 add_clear_color_;
 	Vec4 process_clear_color_;
